@@ -1,0 +1,16 @@
+/**
+ * Precision-Architected. Future-Built by Docsyanpse
+ * Sentra Healthcare Artificial Intelligence
+ */
+
+/**
+ * Mock Data Exports
+ * Central export point for all mock modules
+ *
+ * @module lib/api/mocks
+ */
+
+export * from './diagnosis-mock';
+export * from './prescription-mock';
+export * from './ddi-mock';
+export * from './alerts-mock';
