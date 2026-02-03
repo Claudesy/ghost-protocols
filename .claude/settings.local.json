@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run postinstall:*)",
+      "Bash(npm run build:*)",
+      "Bash(pnpm build:*)",
+      "Bash(git init:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nfeat: initial Sentra Assist Chrome Extension\n\n- WXT Framework with Manifest V3\n- Side Panel UI with React 18 + Tailwind CSS\n- Carbon neumorphic design system\n- Content scripts for ePuskesmas DOM integration\n- Background service worker with sidePanel API fix\n- CDSS components \\(AIRecommendations, CDSSAlerts\\)\n- Messaging utilities and storage helpers\n\nFixes:\n- sidePanel API polyfill for Chrome/Edge compatibility\n- CSP configuration for extension pages\n- defineContentScript pattern for WXT build\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(move \"components\\\\StatusIndicator.tsx\" \"archieved\\\\2026-02-03-cleanup\\\\unused-components\"\" 2>&1 && move \"componentsEncounterFiller.tsx\" \"archieved2026-02-03-cleanupunused-components\"\")",
+      "Bash(pnpm typecheck:*)",
+      "Bash(pnpm lint:*)",
+      "Bash(pnpm quality:*)"
+    ]
+  }
+}

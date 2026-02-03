@@ -1,0 +1,52 @@
+---
+description: Sentra UI Design Token enforcement — immutable visual DNA for clinical interfaces
+globs: src/components/**/*.tsx, src/components/**/*.ts, src/entrypoints/**/*.tsx, src/tokens/**/*.ts, tailwind.config.ts
+alwaysApply: false
+---
+
+# Sentra UI Design Tokens — IMMUTABLE
+
+**Status:** LOCKED. Changes require explicit Chief approval + governance Gate 5.
+
+## Color Tokens (Dark-Mode-First)
+
+```typescript
+// ONLY these values. No exceptions. No opacity variants without token.
+primary:    '#3B82F6'  // Actions, trust, links
+safe:       '#10B981'  // Normal range, affirmative
+caution:    '#F59E0B'  // Warning, attention needed
+critical:   '#EF4444'  // Alert, intervention required
+info:       '#06B6D4'  // Informational, supplementary
+bg.primary: '#0F1115'  // Deep Abyss — main background
+bg.surface: '#16181D'  // Surface — component layers
+bg.raised:  '#1C1F26'  // Raised — elevated components
+```
+
+## Typography
+
+- **Geist** → all UI text (headings, body, labels, status messages)
+- **JetBrains Mono** → patient IDs, ICD-10 codes, medication names, lab values, timestamps
+
+## Shadows (Neumorphic)
+
+- **Raised:** `4px 4px 8px rgba(0,0,0,0.6), -2px -2px 6px rgba(255,255,255,0.03)`
+- **Inset:** `inset 3px 3px 6px rgba(0,0,0,0.6), inset -2px -2px 4px rgba(255,255,255,0.03)`
+- **Hover:** Deepen shadow only. NO color shift. NO scale. NO translate.
+
+## Spacing (Base-4 System)
+
+Only these pixel values: `0 | 4 | 8 | 12 | 16 | 24 | 32 | 48 | 64 | 96`
+
+## Enforcement
+
+- ❌ `#FF0000` → FORBIDDEN (hardcoded hex)
+- ✅ `colors.critical` → CORRECT (token import)
+- ❌ `padding: '15px'` → FORBIDDEN (not base-4)
+- ✅ `padding: spacing[16]` → CORRECT (token import)
+- ❌ `font-family: 'Arial'` → FORBIDDEN (not in token system)
+- ✅ `fontFamily: fonts.ui` → CORRECT (Geist via token)
+
+## WCAG AAA
+
+All text on `bg.primary` (#0F1115) must achieve ≥7:1 contrast ratio.
+All interactive elements MUST have `aria-label`.

@@ -1,0 +1,70 @@
+---
+description: Clinical Decision Support safety rules — patient safety is absolute priority
+globs: src/lib/cdss/**/*.ts, src/lib/cdss/**/*.tsx
+alwaysApply: false
+---
+
+# Clinical Safety — CDSS Module Rules
+
+**Principle:** AADI is a COPILOT, not a PILOT. The doctor decides. We suggest.
+
+## Non-Negotiable
+
+1. **NEVER auto-submit forms.** CDSS is advisory. Display suggestions, never act.
+2. **NEVER suppress alerts.** If DDI or vital anomaly detected, ALWAYS show alert.
+3. **NEVER guess thresholds.** All clinical values must cite evidence source in code comments.
+4. **NEVER store PII in logs.** Use hashed patient IDs only.
+5. **All alerts must show:** severity, reasoning, confidence level, evidence source.
+
+## Drug-Drug Interaction (DDI) Severity
+
+```typescript
+// Severity hierarchy — highest always wins
+type DDISeverity = 'contraindicated' | 'major' | 'moderate' | 'minor';
+// Color mapping:
+// contraindicated → colors.critical (#EF4444)
+// major → colors.critical (#EF4444)
+// moderate → colors.caution (#F59E0B)
+// minor → colors.info (#06B6D4)
+```
+
+## Vital Signs Thresholds
+
+```typescript
+// Source: WHO Clinical Guidelines + Indonesian PMK standards
+// Every threshold MUST have a comment citing its source
+interface VitalThreshold {
+  parameter: string;
+  low: number;     // Below = abnormal
+  high: number;    // Above = abnormal
+  critical_low: number;
+  critical_high: number;
+  source: string;  // REQUIRED: e.g., "WHO Sepsis Guidelines 2023"
+}
+```
+
+## Sepsis Scoring
+
+- Use **qSOFA** (Quick SOFA) for initial screening: RR ≥22, AMS, SBP ≤100.
+- Use **SIRS** criteria for full evaluation.
+- Score ≥2 on qSOFA → generate URGENT alert with `colors.critical`.
+- Include: "Recommend blood culture, broad-spectrum antibiotics, fluid resuscitation."
+
+## Audit Trail
+
+Every CDSS evaluation must produce an audit entry:
+```typescript
+interface ClinicalAuditEntry {
+  timestamp: string;        // ISO 8601
+  patientIdHash: string;    // SHA-256 of patient ID
+  evaluationType: 'DDI' | 'VITALS' | 'SEPSIS' | 'DIFFERENTIAL';
+  input: Record<string, unknown>;
+  output: { severity: string; suggestion: string; confidence: number };
+  gateStatus: 'PASS' | 'FAIL';
+}
+```
+
+## Test Coverage
+
+Clinical algorithms in this directory require **100% test coverage**.
+Gate 4 blocks deployment if coverage drops below 100% for `src/lib/cdss/`.

@@ -1,0 +1,51 @@
+---
+description: Testing strategy — Vitest unit tests, Playwright E2E, Guardian quality gate
+globs: tests/**/*.ts, tests/**/*.tsx, src/**/*.test.ts, src/**/*.test.tsx, vitest.config.ts, playwright.config.ts
+alwaysApply: false
+---
+
+# Testing — The Guardian
+
+**The Guardian** = `pnpm quality` = `typecheck + lint + test`.
+Nothing ships unless The Guardian is GREEN.
+
+## Test Structure
+
+```
+tests/
+├── unit/
+│   ├── cdss/           # Clinical algorithm tests (100% coverage required)
+│   ├── scraper/        # DOM scraper tests (mocked HTML fixtures)
+│   └── components/     # Component snapshot tests
+├── integration/
+│   └── messaging/      # Chrome message passing tests
+├── e2e/
+│   └── sidepanel/      # Playwright Side Panel workflow tests
+└── fixtures/
+    ├── html/           # Mock ePuskesmas HTML pages
+    └── data/           # Mock patient data (anonymized)
+```
+
+## Rules
+
+1. Test file naming: `[module].test.ts` colocated OR in `tests/` mirror.
+2. Use `describe` → `it` structure. Test names must be human-readable sentences.
+3. Clinical tests: use `test.each()` with golden dataset for edge cases.
+4. Mock chrome APIs with `vi.mock('wxt/browser')`.
+5. Mock DOM with JSDOM + fixture HTML files (never test against live ePuskesmas).
+6. Snapshot tests for UI components — update snapshots intentionally, never blindly.
+
+## Coverage Thresholds
+
+| Directory          | Minimum Coverage |
+|--------------------|-----------------|
+| `src/lib/cdss/`    | **100%**        |
+| `src/lib/scraper/` | **90%**         |
+| `src/components/`  | **80%**         |
+| Overall            | **85%**         |
+
+## Fixture Data
+
+- Use anonymized, synthetic patient data. NEVER use real patient records.
+- Fixture files are in `tests/fixtures/data/` as typed JSON.
+- HTML fixtures capture ePuskesmas DOM structure for scraper tests.

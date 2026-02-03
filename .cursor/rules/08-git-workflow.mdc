@@ -1,0 +1,44 @@
+---
+description: Git workflow, Conventional Commits, and PR standards for governance traceability
+globs:
+alwaysApply: true
+---
+
+# Git Workflow & Governance
+
+## Conventional Commits (Required)
+
+```
+feat:     New feature (MINOR version bump)
+fix:      Bug fix (PATCH version bump)
+refactor: Code restructuring (no behavior change)
+docs:     Documentation changes
+chore:    Build, tooling, dependencies
+test:     Test additions/modifications
+perf:     Performance improvement
+security: Security fix (triggers Gate 3 review)
+clinical: Clinical logic change (triggers Gate 5 + Gate 6 review)
+```
+
+Format: `<type>(scope): <description under 60 chars>`
+Example: `feat(cdss): add qSOFA sepsis scoring engine`
+
+## Branch Strategy
+
+- `main` → protected, requires PR + Guardian GREEN
+- `feat/*` → feature branches
+- `fix/*` → bug fix branches
+- `clinical/*` → clinical logic changes (require Chief review)
+
+## Pre-Commit Checks (via Husky)
+
+1. `pnpm typecheck` — TypeScript strict
+2. `pnpm lint` — ESLint zero warnings
+3. `pnpm test --changed` — tests for changed files only
+
+## Critical: Clinical Logic Changes
+
+Any commit touching `src/lib/cdss/` MUST:
+- Use `clinical:` commit type
+- Include test coverage proof
+- Be flagged for Gate 5 (Chief approval) and Gate 6 (Agent eval)

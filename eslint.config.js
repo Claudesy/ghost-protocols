@@ -3,6 +3,18 @@ import tseslint from 'typescript-eslint';
 import reactPlugin from 'eslint-plugin-react';
 
 export default [
+  {
+    ignores: [
+      '.output/**',
+      '.wxt/**',
+      'node_modules/**',
+      'dist/**',
+      'archieved/**',
+      'public/**',
+      '*.config.js',
+      '*.config.ts',
+    ],
+  },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {

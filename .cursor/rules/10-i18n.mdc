@@ -1,0 +1,33 @@
+---
+description: Internationalization standards for Sentra Assist — Bahasa Indonesia primary, English secondary
+globs:
+  - src/locales/**
+  - src/entrypoints/**/pages/**
+  - public/_locales/**
+alwaysApply: false
+---
+
+# Internationalization (i18n)
+
+## Language Priority
+- Primary: Bahasa Indonesia (id)
+- Secondary: English (en)
+- All user-facing strings MUST exist in both languages
+- Clinical terms: use Indonesian common name + English medical term in parentheses
+  Example: "Tekanan Darah (Blood Pressure)"
+
+## Chrome Extension i18n
+- Use `chrome.i18n.getMessage()` for manifest strings
+- Store translations in `public/_locales/{lang}/messages.json`
+- Default locale in manifest.json: `"default_locale": "id"`
+
+## React i18n
+- Use a lightweight i18n library (e.g., `react-i18next` or custom hook)
+- Never hardcode user-facing text in JSX — always use translation keys
+- Translation keys: `camelCase` with component prefix: `sidepanel.dashboard.title`
+
+## Clinical Terminology
+- Medical terms MUST follow Indonesian Ministry of Health (Kemenkes) standard terminology
+- Drug names: use generic names, not brand names
+- ICD-10 codes: display code + Indonesian description
+- Forbidden: machine-translating clinical terms without physician review

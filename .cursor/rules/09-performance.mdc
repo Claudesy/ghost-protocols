@@ -1,0 +1,39 @@
+---
+description: Performance optimization standards for Sentra Assist Chrome Extension
+globs:
+  - src/entrypoints/background/**
+  - src/entrypoints/content/**
+  - src/lib/scraper/**
+  - src/hooks/**
+alwaysApply: false
+---
+
+# Performance Standards
+
+## Service Worker (Background)
+- Keep startup time < 500ms — lazy-load heavy modules
+- Use `chrome.alarms` instead of `setInterval` for periodic tasks
+- Avoid persistent connections — service workers hibernate after 30s idle
+- Cache API responses in `chrome.storage.local` with TTL
+
+## Content Scripts
+- DOM queries must be scoped: `element.querySelector()` not `document.querySelector()` where possible
+- Batch DOM reads before DOM writes (avoid layout thrashing)
+- Use `MutationObserver` for dynamic content, not polling
+- Disconnect observers when no longer needed
+
+## React Side Panel
+- Use `React.memo()` for components receiving stable props
+- Use `useMemo`/`useCallback` for expensive computations and stable references
+- Implement virtualization for lists > 50 items
+- Images: use `loading="lazy"` and WebP format
+
+## Bundle Size
+- Target: < 2MB total extension size, < 500KB per entrypoint chunk
+- Tree-shake unused imports — no barrel imports from large libraries
+- Dynamic import heavy dependencies: `const x = await import('./heavy')`
+
+## Metrics
+- Side Panel Time to Interactive: < 1s
+- Content Script injection: < 100ms
+- Background script cold start: < 500ms

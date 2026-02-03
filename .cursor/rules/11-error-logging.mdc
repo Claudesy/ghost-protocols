@@ -1,0 +1,44 @@
+---
+description: Error handling and structured logging standards for audit trail compliance
+globs:
+  - src/**/*.ts
+  - src/**/*.tsx
+alwaysApply: false
+---
+
+# Error Handling & Logging
+
+## Error Handling Pattern
+- Wrap all Chrome API calls in try-catch with typed error handling
+- Use custom error classes: `SentraError`, `ClinicalError`, `ScraperError`, `StorageError`
+- Never swallow errors silently — always log or re-throw
+- Clinical modules: errors MUST be logged with patient-safety context
+
+## Structured Logging
+```typescript
+// Required log fields for audit compliance
+interface AuditLog {
+  timestamp: string;     // ISO 8601
+  level: 'info' | 'warn' | 'error' | 'critical';
+  module: string;        // e.g., 'cdss.sepsis', 'scraper.vitals'
+  action: string;        // what happened
+  userId?: string;       // hashed
+  context?: Record<string, unknown>;
+}
+```
+
+## Log Levels
+- `info`: normal operations (feature used, data fetched)
+- `warn`: recoverable issues (retry succeeded, fallback used)
+- `error`: operation failed (API error, parse failure)
+- `critical`: patient-safety relevant (CDSS failure, data corruption)
+
+## Forbidden
+- No `console.log` in production — use structured logger
+- No PII (patient names, IDs) in logs — hash or omit
+- No stack traces exposed to end users
+- No `catch(e) {}` empty catch blocks
+
+## Retention
+- Extension local logs: 30-day rolling window
+- Critical logs: flag for export to audit system

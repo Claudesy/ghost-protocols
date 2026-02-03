@@ -1,0 +1,54 @@
+---
+description: React 18 + TypeScript strict coding standards for Sentra Assist
+globs: src/**/*.tsx, src/**/*.ts
+alwaysApply: false
+---
+
+# React + TypeScript Standards
+
+## Component Rules
+
+- Functional components ONLY. No class components.
+- Named exports ONLY: `export function PatientCard() {}` — no `export default`.
+- Props must be typed with explicit interface: `interface PatientCardProps { ... }`.
+- Destructure props in function signature: `function PatientCard({ name, mrn }: PatientCardProps)`.
+- Max component length: 80 lines. Extract logic to custom hooks.
+- Colocate: component + hook + types in same directory.
+
+## TypeScript Strict
+
+- `strict: true` in tsconfig.json (no exceptions).
+- No `any` — use `unknown` + type guards if truly needed.
+- No type assertions (`as`) except for DOM elements after null check.
+- Prefer `interface` over `type` for object shapes.
+- Use discriminated unions for state machines and message types.
+
+## State Management
+
+- **URL params** → shareable state (filters, pagination).
+- **Zustand** → global session state (patient context, CDSS alerts).
+- **chrome.storage.local** → cross-page persistence (scraped data between pages).
+- No prop drilling deeper than 2 levels. Use Zustand or context.
+
+## Hooks
+
+- Prefix custom hooks with `use`: `usePatientData`, `useDDIChecker`.
+- Keep hooks pure: no direct DOM manipulation inside hooks.
+- Cleanup all subscriptions/listeners in `useEffect` return.
+
+## Imports
+
+```typescript
+// Order: 1) React 2) External 3) Internal 4) Types 5) Tokens/Styles
+import { useState, useEffect } from 'react';
+import { create } from 'zustand';
+import { PageDetector } from '@/lib/scraper/page-detector';
+import type { PatientData } from '@/types/patient';
+import { colors, spacing } from '@/tokens';
+```
+
+## Error Boundaries
+
+- Wrap clinical components in ErrorBoundary with fallback UI.
+- Log errors to structured audit trail (never swallow silently).
+- Fallback UI must show: "CDSS temporarily unavailable. Clinical judgment takes priority."

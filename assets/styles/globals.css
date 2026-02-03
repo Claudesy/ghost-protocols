@@ -1,27 +1,45 @@
 @import "tailwindcss";
 
 @theme {
-  /* Base: Oxygen Carbon Slate */
+  /* =========================================================================
+   * SENTRA DESIGN SYSTEM - Carbon + Pulse Theme
+   * ========================================================================= */
+
+  /* Base: Oxygen Carbon Slate (Dark-first palette) */
   --color-sentra-50: #f2f2f3;
   --color-sentra-100: #e1e1e3;
   --color-sentra-200: #c8c8cc;
   --color-sentra-300: #a3a3a8;
   --color-sentra-400: #75757d;
-  --color-sentra-50: #55555e;
+  --color-sentra-500: #55555e;
   --color-sentra-600: #42424a;
   --color-sentra-700: #36363c;
   --color-sentra-800: #2d2d32;
   --color-sentra-900: #1e1e20;
   --color-sentra-950: #0f0f12;
 
-  /* Accent: High-Voltage Red Orange */
+  /* Accent: High-Voltage Pulse (Red-Orange) */
+  --color-pulse-400: #ff6b2f;
   --color-pulse-500: #ff4500;
   --color-pulse-600: #f02e06;
   --color-pulse-700: #c71f07;
+  --color-pulse-900: #7a1a04;
+
+  /* Status Colors (Medical-grade semantic) */
+  --color-critical: #ef4444;
+  --color-caution: #f59e0b;
+  --color-info: #3b82f6;
+  --color-safe: #22c55e;
+
+  /* Background Surfaces */
+  --color-bg-surface: #242426;
+  --color-bg-elevated: #2a2a2e;
+  --color-bg-card: #1e1e20;
 
   /* Typography Colors */
   --color-platinum: #e5e7eb;
   --color-creamy: #d1d5db;
+  --color-muted: #9a948a;
 
   /* Neumorphism Shadows */
   --shadow-neu-flat: 5px 5px 10px #161618, -5px -5px 10px #262628;
