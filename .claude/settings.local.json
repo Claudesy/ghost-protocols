@@ -10,7 +10,8 @@
       "Bash(move \"components\\\\StatusIndicator.tsx\" \"archieved\\\\2026-02-03-cleanup\\\\unused-components\"\" 2>&1 && move \"componentsEncounterFiller.tsx\" \"archieved2026-02-03-cleanupunused-components\"\")",
       "Bash(pnpm typecheck:*)",
       "Bash(pnpm lint:*)",
-      "Bash(pnpm quality:*)"
+      "Bash(pnpm quality:*)",
+      "Bash(git commit:*)"
     ]
   }
 }
