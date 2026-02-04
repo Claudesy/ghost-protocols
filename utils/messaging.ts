@@ -28,6 +28,7 @@ import type {
   PediatricDoseRequest,
   APIResponse,
 } from '@/types/api';
+import type { CDSSEngineStatus } from '@/lib/cdss/engine';
 
 // Message protocol interface
 // All messages between Panel ↔ Worker ↔ Content
@@ -68,6 +69,12 @@ interface ProtocolMap {
   checkInteractions(drugs: string[]): Promise<APIResponse<DrugInteraction[]>>;
   checkAllergies(context: { medications: string[]; allergies: string[] }): Promise<APIResponse<CDSSAlert[]>>;
   calculatePediatricDose(context: PediatricDoseRequest): Promise<APIResponse<PediatricDose>>;
+
+  // ========================================
+  // Panel → Worker (CDSS Engine Status)
+  // ========================================
+  getCDSSStatus(data: undefined): Promise<CDSSEngineStatus>;
+  initializeCDSS(data: undefined): Promise<boolean>;
 }
 
 // Export typed messaging functions
@@ -84,6 +91,14 @@ export function isResepPayload(payload: unknown): payload is ResepFillPayload {
   );
 }
 
+/**
+ * isAnamnesaPayload
+ * 
+ * @remarks
+ * TODO: Add detailed description, parameters, and examples
+ * Auto-generated on 2026-02-04
+ */
+
 export function isAnamnesaPayload(payload: unknown): payload is AnamnesaFillPayload {
   return (
     typeof payload === 'object' &&
@@ -92,6 +107,14 @@ export function isAnamnesaPayload(payload: unknown): payload is AnamnesaFillPayl
     'alergi' in payload
   );
 }
+
+/**
+ * isDiagnosaPayload
+ * 
+ * @remarks
+ * TODO: Add detailed description, parameters, and examples
+ * Auto-generated on 2026-02-04
+ */
 
 export function isDiagnosaPayload(payload: unknown): payload is DiagnosaFillPayload {
   return (

@@ -10,13 +10,18 @@
 
 import { getEncounter } from '@/utils/storage.ts';
 import {
-  fillTextField,
-  fillSelect,
-  fillAutocomplete,
   fillFields,
   type FillResult,
   type FieldMapping,
 } from '@/lib/filler/filler-core.ts';
+
+/**
+ * PulseFillResult interface
+ * 
+ * @remarks
+ * TODO: Add type description and property documentation
+ * Auto-generated on 2026-02-04
+ */
 
 export interface PulseFillResult {
   success: boolean;

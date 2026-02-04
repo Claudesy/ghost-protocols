@@ -2,6 +2,13 @@
 .env.local
 .env.*.local
 
+# Local assistant/cache state
+.claude/
+.nexus-sync/
+
+# Package managers
+package-lock.json
+
 # Logs
 logs
 *.log
@@ -17,6 +24,11 @@ stats.html
 stats-*.json
 .wxt
 web-ext.config.ts
+
+# Backups and scratch
+entrypoints/sidepanel/*.backup
+temp_styles.txt
+nul
 
 # Editor directories and files
 .vscode/*

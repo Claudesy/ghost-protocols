@@ -15,4 +15,7 @@ export default defineConfig({
     },
   },
   modules: ['@wxt-dev/module-react'],
+  runner: {
+    disabled: true, // Disable auto-open browser
+  },
 });

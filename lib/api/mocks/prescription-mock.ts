@@ -213,6 +213,13 @@ export function getMockMedicationsByDiagnosis(icd_x: string): MedicationRecommen
 }
 
 /**
+ * Generate unique alert ID
+ */
+function generateAlertId(): string {
+  return `alert-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+}
+
+/**
  * Generate allergy alerts based on patient allergies
  */
 export function generateAllergyAlerts(
@@ -236,11 +243,12 @@ export function generateAllergyAlerts(
       const medLower = med.nama_obat.toLowerCase();
       if (relatedDrugs.some((drug) => medLower.includes(drug))) {
         alerts.push({
-          level: 'critical',
+          id: generateAlertId(),
           type: 'allergy',
+          severity: 'emergency',
+          title: 'Alergi Obat Terdeteksi',
           message: `ALERGI: ${med.nama_obat} mengandung komponen yang berkaitan dengan alergi ${allergy}`,
-          action_required: true,
-          alert_id: `allergy-${Date.now()}`,
+          action: 'Ganti obat dengan alternatif yang aman',
         });
       }
     });
@@ -263,19 +271,21 @@ export function buildMockPrescriptionResponse(
   // Add chronic disease alerts
   if (chronicDiseases.includes('Hipertensi') && icd_x.startsWith('J')) {
     alerts.push({
-      level: 'info',
+      id: generateAlertId(),
       type: 'chronic_disease',
+      severity: 'info',
+      title: 'Perhatian Hipertensi',
       message: 'Pasien memiliki riwayat Hipertensi - hindari dekongestan sistemik',
-      action_required: false,
     });
   }
 
   if (chronicDiseases.includes('Diabetes') && icd_x.startsWith('J')) {
     alerts.push({
-      level: 'warning',
+      id: generateAlertId(),
       type: 'chronic_disease',
+      severity: 'medium',
+      title: 'Perhatian Diabetes',
       message: 'Pasien DM - hindari sirup dengan kandungan gula tinggi',
-      action_required: false,
     });
   }
 

@@ -28,6 +28,14 @@ export interface FillResult {
   error?: string;
 }
 
+/**
+ * AutocompleteOptions interface
+ * 
+ * @remarks
+ * TODO: Add type description and property documentation
+ * Auto-generated on 2026-02-04
+ */
+
 export interface AutocompleteOptions {
   timeout?: number;
   dropdownSelector?: string;
@@ -43,12 +51,11 @@ export interface AutocompleteOptions {
  * Check if element is readonly or disabled
  */
 export function isFieldReadonly(element: HTMLElement): boolean {
-  if (
-    element instanceof HTMLInputElement ||
-    element instanceof HTMLTextAreaElement ||
-    element instanceof HTMLSelectElement
-  ) {
+  if (element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement) {
     return element.readOnly || element.disabled;
+  }
+  if (element instanceof HTMLSelectElement) {
+    return element.disabled;
   }
   return element.hasAttribute('readonly') || element.hasAttribute('disabled');
 }

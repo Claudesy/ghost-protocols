@@ -8,9 +8,41 @@
 
 export type PageType = 'anamnesa' | 'diagnosa' | 'resep' | 'unknown';
 
+/**
+ * AturanPakai type
+ * 
+ * @remarks
+ * TODO: Add type description and property documentation
+ * Auto-generated on 2026-02-04
+ */
+
 export type AturanPakai = '1' | '2' | '3' | '4' | '5';
+/**
+ * DiagnosaJenis type
+ * 
+ * @remarks
+ * TODO: Add type description and property documentation
+ * Auto-generated on 2026-02-04
+ */
+
 export type DiagnosaJenis = 'PRIMER' | 'SEKUNDER';
+/**
+ * DiagnosaKasus type
+ * 
+ * @remarks
+ * TODO: Add type description and property documentation
+ * Auto-generated on 2026-02-04
+ */
+
 export type DiagnosaKasus = 'BARU' | 'LAMA';
+/**
+ * Prioritas type
+ * 
+ * @remarks
+ * TODO: Add type description and property documentation
+ * Auto-generated on 2026-02-04
+ */
+
 export type Prioritas = '0' | '1';
 
 // Encounter state (Section 11.1)
@@ -86,6 +118,14 @@ export interface ResepFillPayload {
   prioritas: Prioritas;
 }
 
+/**
+ * AnamnesaFillPayload interface
+ * 
+ * @remarks
+ * TODO: Add type description and property documentation
+ * Auto-generated on 2026-02-04
+ */
+
 export interface AnamnesaFillPayload {
   keluhan_utama: string;
   keluhan_tambahan: string;
@@ -102,6 +142,14 @@ export interface AnamnesaFillPayload {
     lainnya: string[];
   };
 }
+
+/**
+ * DiagnosaFillPayload interface
+ * 
+ * @remarks
+ * TODO: Add type description and property documentation
+ * Auto-generated on 2026-02-04
+ */
 
 export interface DiagnosaFillPayload {
   icd_x: string;
@@ -142,6 +190,14 @@ export interface ScrapeRequest {
   fields?: string[];
 }
 
+/**
+ * ScrapePayload interface
+ * 
+ * @remarks
+ * TODO: Add type description and property documentation
+ * Auto-generated on 2026-02-04
+ */
+
 export interface ScrapePayload {
   pageType: PageType;
   data: Record<string, unknown>;
@@ -155,6 +211,14 @@ export interface FieldConfig {
   required?: boolean;
   readonly?: boolean;
 }
+
+/**
+ * PageFieldMap interface
+ * 
+ * @remarks
+ * TODO: Add type description and property documentation
+ * Auto-generated on 2026-02-04
+ */
 
 export interface PageFieldMap {
   [fieldName: string]: FieldConfig;

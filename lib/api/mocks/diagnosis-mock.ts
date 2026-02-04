@@ -25,18 +25,21 @@ import type {
  */
 export const ISPA_DIAGNOSIS: DiagnosisSuggestion[] = [
   {
+    rank: 1,
     icd_x: 'J06.9',
     nama: 'Infeksi saluran pernapasan akut atas, tidak spesifik',
     confidence: 0.87,
     rationale: 'Demam + batuk + pilek menunjukkan ISPA tipikal',
   },
   {
+    rank: 2,
     icd_x: 'J00',
     nama: 'Nasofaringitis akut (common cold)',
     confidence: 0.72,
     rationale: 'Gejala ringan tanpa komplikasi',
   },
   {
+    rank: 3,
     icd_x: 'J02.9',
     nama: 'Faringitis akut, tidak spesifik',
     confidence: 0.58,
@@ -50,12 +53,14 @@ export const ISPA_DIAGNOSIS: DiagnosisSuggestion[] = [
  */
 export const GE_DIAGNOSIS: DiagnosisSuggestion[] = [
   {
+    rank: 1,
     icd_x: 'A09',
     nama: 'Diare dan gastroenteritis presumtif asal infeksi',
     confidence: 0.89,
     rationale: 'Diare cair dengan dehidrasi ringan-sedang',
   },
   {
+    rank: 2,
     icd_x: 'K52.9',
     nama: 'Gastroenteritis dan kolitis non-infektif, tidak spesifik',
     confidence: 0.65,
@@ -69,12 +74,14 @@ export const GE_DIAGNOSIS: DiagnosisSuggestion[] = [
  */
 export const HYPERTENSION_DIAGNOSIS: DiagnosisSuggestion[] = [
   {
+    rank: 1,
     icd_x: 'I10',
     nama: 'Hipertensi esensial (primer)',
     confidence: 0.92,
     rationale: 'TD > 140/90 mmHg pada pengukuran berulang',
   },
   {
+    rank: 2,
     icd_x: 'R51',
     nama: 'Sakit kepala',
     confidence: 0.45,
@@ -88,12 +95,14 @@ export const HYPERTENSION_DIAGNOSIS: DiagnosisSuggestion[] = [
  */
 export const DIABETES_DIAGNOSIS: DiagnosisSuggestion[] = [
   {
+    rank: 1,
     icd_x: 'E11.9',
     nama: 'Diabetes mellitus tipe 2 tanpa komplikasi',
     confidence: 0.85,
     rationale: 'Poliuria + polifagia + GDS > 200 mg/dL',
   },
   {
+    rank: 2,
     icd_x: 'E11.65',
     nama: 'DM tipe 2 dengan hiperglikemia',
     confidence: 0.78,
@@ -107,18 +116,21 @@ export const DIABETES_DIAGNOSIS: DiagnosisSuggestion[] = [
  */
 export const SKIN_DIAGNOSIS: DiagnosisSuggestion[] = [
   {
+    rank: 1,
     icd_x: 'L30.9',
     nama: 'Dermatitis, tidak spesifik',
     confidence: 0.75,
     rationale: 'Lesi kulit dengan pruritus tanpa etiologi jelas',
   },
   {
+    rank: 2,
     icd_x: 'B35.9',
     nama: 'Dermatofitosis, tidak spesifik',
     confidence: 0.68,
     rationale: 'Lesi annular dengan tepi aktif',
   },
   {
+    rank: 3,
     icd_x: 'L50.9',
     nama: 'Urtikaria, tidak spesifik',
     confidence: 0.55,

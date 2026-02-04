@@ -19,14 +19,26 @@
  * AI-suggested diagnosis with confidence scoring
  */
 export interface DiagnosisSuggestion {
+  /** Rank in suggestion list */
+  rank: number;
   /** ICD-10 code (e.g., "J06.9", "A09") */
   icd_x: string;
   /** Diagnosis name in Indonesian */
   nama: string;
+  /** English diagnosis name */
+  diagnosis_name?: string;
+  /** Alias for ICD code compatibility */
+  icd10_code?: string;
   /** Confidence score 0.0 - 1.0 */
   confidence: number;
   /** Clinical rationale for this suggestion */
   rationale: string;
+  /** Alias for rationale */
+  reasoning?: string;
+  /** Red flags associated with this diagnosis */
+  red_flags?: string[];
+  /** Recommended actions */
+  recommended_actions?: string[];
 }
 
 // =============================================================================
@@ -71,23 +83,32 @@ export type SafetyStatus =
 
 /**
  * Clinical Decision Support Alert
+ * Matches lib/cdss/engine.ts:CDSSAlert
  */
 export interface CDSSAlert {
-  /** Alert severity level */
-  level: AlertLevel;
-  /** Alert category */
-  type: AlertType;
-  /** Human-readable alert message */
+  /** Unique alert ID */
+  id: string;
+  /** Alert type */
+  type: CDSSAlertType;
+  /** Severity level */
+  severity: AlertSeverity;
+  /** Alert title */
+  title: string;
+  /** Alert message */
   message: string;
-  /** Whether immediate action is required */
-  action_required?: boolean;
-  /** Unique alert identifier for tracking */
-  alert_id?: string;
+  /** Related ICD-10 codes */
+  icd_codes?: string[];
+  /** Recommended action */
+  action?: string;
 }
 
-export type AlertLevel = 'critical' | 'warning' | 'info';
+export type AlertSeverity = 'emergency' | 'high' | 'medium' | 'low' | 'info';
 
-export type AlertType =
+export type CDSSAlertType =
+  | 'red_flag'
+  | 'validation_warning'
+  | 'api_error'
+  | 'low_confidence'
   | 'allergy'
   | 'ddi'
   | 'dosing'
@@ -95,6 +116,12 @@ export type AlertType =
   | 'chronic_disease'
   | 'vital_sign'
   | 'sepsis_warning';
+
+/** @deprecated Use AlertSeverity instead */
+export type AlertLevel = 'critical' | 'warning' | 'info';
+
+/** @deprecated Use CDSSAlertType instead */
+export type AlertType = CDSSAlertType;
 
 // =============================================================================
 // DRUG INTERACTION TYPES
@@ -307,7 +334,7 @@ export function isCDSSAlert(obj: unknown): obj is CDSSAlert {
   return (
     typeof obj === 'object' &&
     obj !== null &&
-    'level' in obj &&
+    'severity' in obj &&
     'type' in obj &&
     'message' in obj
   );
@@ -324,7 +351,7 @@ export function isDrugInteraction(obj: unknown): obj is DrugInteraction {
 }
 
 export function isCriticalAlert(alert: CDSSAlert): boolean {
-  return alert.level === 'critical';
+  return alert.severity === 'emergency' || alert.severity === 'high';
 }
 
 export function isContraindicated(interaction: DrugInteraction): boolean {

@@ -16,8 +16,8 @@
 import { onMessage, sendMessage } from '@/utils/messaging';
 import { scrapeAnamnesa } from '@/lib/scraper/anamnesa';
 import { executePulseFill } from '@/lib/filler/core';
-import { saveEncounter } from '@/utils/storage';
-import type { FillResult, PageReadyInfo } from '@/utils/types';
+import { fillResepForm, scrapeResepForm, initResepPage } from '@/lib/handlers/page-resep';
+import type { PageReadyInfo, ResepFillPayload } from '@/utils/types';
 
 export default defineContentScript({
   matches: ['*://*.epuskesmas.id/*'],
@@ -43,8 +43,8 @@ export default defineContentScript({
         return 'soap';
       }
 
-      if (href.includes('/prescription/') || href.includes('resep')) {
-        return 'prescription';
+      if (href.includes('/resep/') || href.includes('/terapi/') || href.includes('prescription')) {
+        return 'resep';
       }
 
       return null;
@@ -58,12 +58,23 @@ export default defineContentScript({
       currentPage = getCurrentPage();
       debug('Current page detected:', currentPage);
 
+      // Initialize page-specific handlers
+      if (currentPage === 'resep') {
+        initResepPage();
+      }
+
+      // Extract pelayananId from URL if present
+      const getPelayananId = (): string | null => {
+        const match = window.location.href.match(/\/(\d+)(?:\/|$)/);
+        return match ? match[1] : null;
+      };
+
       // Notify background script that we're ready
       sendMessage('pageReady', {
-        page: currentPage,
+        pageType: (currentPage || 'unknown') as PageReadyInfo['pageType'],
+        pelayananId: getPelayananId(),
         url: window.location.href,
-        title: document.title,
-      } as PageReadyInfo);
+      });
 
       isReady = true;
     };
@@ -79,13 +90,14 @@ export default defineContentScript({
         }
 
         try {
-          const result = await executePulseFill(currentPage, payload.encounter);
-
-          // Save encounter data after fill
-          if (result.success && payload.encounter.patientMr) {
-            await saveEncounter(payload.encounter);
+          // Route to page-specific handler
+          if (currentPage === 'resep' && payload.type === 'resep') {
+            const result = await fillResepForm(payload.encounter as unknown as ResepFillPayload);
+            return result;
           }
 
+          // Fallback to legacy handler for other pages (reads from storage)
+          const result = await executePulseFill();
           return result;
         } catch (error) {
           debug('Fill error:', error);
@@ -105,6 +117,9 @@ export default defineContentScript({
           let scrapedData = {};
 
           switch (currentPage) {
+            case 'resep':
+              scrapedData = await scrapeResepForm();
+              break;
             case 'anamnesa':
               scrapedData = await scrapeAnamnesa();
               break;
@@ -129,10 +144,43 @@ export default defineContentScript({
       },
     };
 
-    // Set up message handlers
-    Object.keys(messageHandlers).forEach((key) => {
-      onMessage(key, messageHandlers[key]);
-      debug(`Registered handler for ${key}`);
+    // Set up @webext-core/messaging handlers
+    // Note: Using type assertion to bypass strict typing for dynamic handler registration
+    (['execFill', 'execScrape', 'getPageInfo'] as const).forEach((key) => {
+      if (key in messageHandlers) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        onMessage(key as any, messageHandlers[key] as any);
+        debug(`Registered handler for ${key}`);
+      }
+    });
+
+    // Native message listener for background → content communication
+    // This handles direct messages from background script via browser.tabs.sendMessage
+    browser.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+      const msg = message as { type?: string; data?: unknown };
+      debug('Native message received:', msg);
+
+      if (msg.type === 'execFill' && msg.data) {
+        Promise.resolve(messageHandlers.execFill(msg.data))
+          .then((result) => {
+            debug('Fill result:', result);
+            sendResponse(result);
+          })
+          .catch((error) => {
+            debug('Fill error:', error);
+            sendResponse({ success: [], failed: [{ field: 'all', error: String(error) }], skipped: [] });
+          });
+        return true; // Keep channel open for async response
+      }
+
+      if (msg.type === 'execScrape' && msg.data) {
+        Promise.resolve(messageHandlers.execScrape(msg.data))
+          .then((result) => sendResponse(result))
+          .catch((error) => sendResponse({ success: false, error: String(error) }));
+        return true;
+      }
+
+      return false;
     });
 
     // Initialize when DOM is ready

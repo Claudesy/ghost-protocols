@@ -65,10 +65,6 @@ function log(message: string, data?: unknown): void {
   }
 }
 
-function _logError(message: string, error: unknown): void {
-  console.error(`[SentraAPI] ${message}`, error);
-}
-
 // =============================================================================
 // HTTP CLIENT
 // =============================================================================
@@ -287,17 +283,20 @@ export const SentraAPI = {
           interactions.forEach((i) => {
             if (i.severity === 'contraindicated' || i.severity === 'major') {
               mockResponse.alerts.push({
-                level: 'critical',
+                id: `ddi-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
                 type: 'ddi',
+                severity: 'emergency',
+                title: 'Interaksi Obat Berbahaya',
                 message: `INTERAKSI OBAT: ${i.drug_a} + ${i.drug_b} - ${i.description}`,
-                action_required: true,
+                action: 'Ganti salah satu obat atau konsultasi apoteker',
               });
             } else if (i.severity === 'moderate') {
               mockResponse.alerts.push({
-                level: 'warning',
+                id: `ddi-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
                 type: 'ddi',
+                severity: 'medium',
+                title: 'Interaksi Obat Moderat',
                 message: `Interaksi: ${i.drug_a} + ${i.drug_b} - ${i.recommendation}`,
-                action_required: false,
               });
             }
           });
