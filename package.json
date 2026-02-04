@@ -25,7 +25,10 @@
     "docs:auto:lib": "node scripts/auto-document.js lib",
     "docs:auto:utils": "node scripts/auto-document.js utils",
     "docs:auto:components": "node scripts/auto-document.js components",
-    "docs:all": "node scripts/docs-all.js"
+    "docs:all": "node scripts/docs-all.js",
+    "commit": "node scripts/auto-commit.js",
+    "commit:push": "node scripts/auto-commit.js push",
+    "commit:watch": "node scripts/auto-commit.js watch"
   },
   "keywords": [],
   "author": "",

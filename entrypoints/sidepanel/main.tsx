@@ -3,9 +3,9 @@
  * Updated with TTV Inference UI + Emergency Dashboard
  */
 
-import React, { useState, useCallback } from 'react';
-import ReactDOM from 'react-dom/client';
 import { TTVInferenceUI, type ScreeningAlert } from '@/components/clinical/TTVInferenceUI';
+import React, { useCallback, useState } from 'react';
+import ReactDOM from 'react-dom/client';
 import './style.css';
 
 console.log('[SidePanel] main.tsx loading...');
@@ -57,7 +57,11 @@ function App() {
       <header className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
           <div className="neu-logo w-11 h-11 flex items-center justify-center overflow-hidden rounded-xl">
-            <img src="/sentra.png" alt="Sentra" className="w-8 h-8 object-contain" />
+            <img
+              src={browser.runtime.getURL('/sentra.png')}
+              alt="Sentra"
+              className="w-8 h-8 object-contain"
+            />
           </div>
           <div>
             <h1 className="text-title text-platinum">Sentra Assist</h1>
@@ -65,7 +69,11 @@ function App() {
           </div>
         </div>
         <div className="w-14 h-14 flex items-center justify-center overflow-hidden rounded-xl">
-          <img src="/docsy.png" alt="Docsy" className="w-14 h-14 object-contain" />
+          <img
+            src={browser.runtime.getURL('/docsy.png')}
+            alt="Docsy"
+            className="w-14 h-14 object-contain"
+          />
         </div>
       </header>
 
@@ -91,9 +99,7 @@ function App() {
             } ${hasEmergency ? 'emergency-tab-active' : ''}`}
           >
             <span className={hasEmergency ? 'emergency-blink' : ''}>Emergency</span>
-            {hasEmergency && (
-              <span className="emergency-dot" />
-            )}
+            {hasEmergency && <span className="emergency-dot" />}
           </button>
         </div>
       </div>
@@ -111,9 +117,7 @@ function App() {
             showMaskedName={false}
           />
         )}
-        {activeTab === 'emergency' && (
-          <EmergencyDashboard alerts={emergencyAlerts} />
-        )}
+        {activeTab === 'emergency' && <EmergencyDashboard alerts={emergencyAlerts} />}
       </div>
 
       {/* Footer */}
@@ -131,11 +135,12 @@ function App() {
       <div className="mt-6 p-3 rounded-lg bg-carbon-800/50 border border-carbon-700/40">
         <p className="text-xs text-muted leading-relaxed">
           <span className="text-caution font-medium">Disclaimer: Beta Testing Phase</span>
-          <br /><br />
-          This device is a pre-release prototype currently undergoing controlled beta testing.
-          Its use is strictly supervised and authorized by Sentra. The product is not yet finalized,
-          and its performance, features, and safety are subject to change. Users acknowledge that
-          they are participating in a testing phase and may encounter unforeseen errors or instability.
+          <br />
+          <br />
+          This device is a pre-release prototype currently undergoing controlled beta testing. Its
+          use is strictly supervised and authorized by Sentra. The product is not yet finalized, and
+          its performance, features, and safety are subject to change. Users acknowledge that they
+          are participating in a testing phase and may encounter unforeseen errors or instability.
           Sentra is not liable for any direct or indirect consequences arising from the use of this
           device during this trial period. All feedback and usage data will be collected to improve
           the final product.
@@ -257,7 +262,9 @@ function EmergencyCard({ alert }: { alert: ScreeningAlert }) {
       <p className="emergency-card-reasoning">{alert.reasoning}</p>
       <div className="emergency-card-recommendations">
         {alert.recommendations.slice(0, 3).map((rec, idx) => (
-          <div key={idx} className="emergency-rec-item">→ {rec}</div>
+          <div key={idx} className="emergency-rec-item">
+            → {rec}
+          </div>
         ))}
       </div>
     </div>
