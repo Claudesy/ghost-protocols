@@ -17,7 +17,12 @@
       "Bash(powershell -Command \"Set-Location ''D:\\\\sentrasolutions\\\\assist''; $process = Start-Process pnpm -ArgumentList ''dev'' -PassThru -NoNewWindow; Start-Sleep -Seconds 12; Stop-Process -Id $process.Id -Force 2>$null; Get-Content ''.\\\\.output\\\\chrome-mv3\\\\background.js'' -Head 20 2>$null\")",
       "Bash(powershell -Command:*)",
       "Bash(grep:*)",
-      "Bash(zip:*)"
+      "Bash(zip:*)",
+      "Bash(pnpm dev)",
+      "Bash(timeout:*)",
+      "Bash(taskkill:*)",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)"
     ]
   }
 }

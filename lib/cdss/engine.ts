@@ -19,25 +19,24 @@
  * 6. Audit Log → Append-only trail (async, non-blocking)
  */
 
-import type { Encounter } from '~/utils/types';
-import type { AnonymizedClinicalContext as _AnonymizedClinicalContext } from '@/lib/api/deepseek-types';
 import type { RAGSearchResult } from '@/lib/rag/types';
+import type { AlertSeverity, CDSSAlertType } from '@/types/api';
+import type { Encounter } from '~/utils/types';
 import type { RedFlag } from './red-flags';
-import type { ValidationResult, ValidatedSuggestion } from './validation/types';
-import type { CDSSAlertType, AlertSeverity } from '@/types/api';
+import type { ValidatedSuggestion, ValidationResult } from './validation/types';
 
-import { anonymize, validateAnonymization } from './anonymizer';
-import { runRedFlagChecksFromContext } from './red-flags';
+import { inferDiagnosis, localFallbackInference } from '@/lib/api/vertex-ai-client';
 import { searchForDiagnosisSuggestions } from '@/lib/rag';
-import { inferDiagnosis, localFallbackInference } from '@/lib/api/deepseek-client';
-import { runValidationPipeline } from './validation';
+import { anonymize, validateAnonymization } from './anonymizer';
 import {
   auditLogger,
   logDiagnosisRequest,
-  logSuggestionDisplayed,
   logEngineError,
   logFallbackUsed,
+  logSuggestionDisplayed,
 } from './audit-logger';
+import { runRedFlagChecksFromContext } from './red-flags';
+import { runValidationPipeline } from './validation';
 
 // =============================================================================
 // TYPES
@@ -265,7 +264,7 @@ export async function runDiagnosisEngine(
   const alerts: CDSSAlert[] = [];
 
   let source: 'ai' | 'local' | 'error' = 'ai';
-  let modelVersion = 'deepseek-r1-0528';
+  let modelVersion = 'gemini-1.5-flash-002';
 
   // =========================================================================
   // STEP 1: ANONYMIZE (CRITICAL — NEVER SKIP)
@@ -276,7 +275,10 @@ export async function runDiagnosisEngine(
   // Validate anonymization (paranoid check)
   const anonValidation = validateAnonymization(anonymizedContext);
   if (!anonValidation.valid) {
-    console.error('[CDSS Engine] CRITICAL: Anonymization validation failed!', anonValidation.violations);
+    console.error(
+      '[CDSS Engine] CRITICAL: Anonymization validation failed!',
+      anonValidation.violations
+    );
     throw new Error(`PII leak detected: ${anonValidation.violations.join(', ')}`);
   }
 
@@ -337,6 +339,10 @@ export async function runDiagnosisEngine(
     try {
       const inferenceResult = await inferDiagnosis(anonymizedContext, ragResults);
       rawSuggestions = inferenceResult.suggestions;
+      modelVersion = inferenceResult.model_version;
+
+      // Update source to AI since it succeeded
+      source = 'ai';
 
       if (inferenceResult.used_fallback) {
         console.log('[CDSS Engine] Using fallback inference');
@@ -404,14 +410,16 @@ export async function runDiagnosisEngine(
 
   // Add low confidence alert if applicable
   if (filteredSuggestions.length > 0) {
-    const avgConfidence = filteredSuggestions.reduce((sum, s) => sum + s.confidence, 0) / filteredSuggestions.length;
+    const avgConfidence =
+      filteredSuggestions.reduce((sum, s) => sum + s.confidence, 0) / filteredSuggestions.length;
     if (avgConfidence < 0.4) {
       alerts.push({
         id: generateAlertId(),
         type: 'low_confidence',
         severity: 'info',
         title: 'Kepercayaan Rendah',
-        message: 'Saran diagnosis memiliki tingkat kepercayaan rendah. Pertimbangkan anamnesis tambahan.',
+        message:
+          'Saran diagnosis memiliki tingkat kepercayaan rendah. Pertimbangkan anamnesis tambahan.',
       });
     }
   }
@@ -432,7 +440,11 @@ export async function runDiagnosisEngine(
       red_flag_count: redFlags.length,
       model_version: modelVersion,
       latency_ms: processingTime,
-      validation_status: validationResult.valid ? 'PASS' : validationResult.layer_passed >= 3 ? 'WARN' : 'FAIL',
+      validation_status: validationResult.valid
+        ? 'PASS'
+        : validationResult.layer_passed >= 3
+          ? 'WARN'
+          : 'FAIL',
     }).catch(console.error);
   }
 
@@ -455,13 +467,14 @@ export async function runDiagnosisEngine(
       unverified_codes: validationResult.unverified_codes,
       warnings: validationResult.warnings,
     },
-    rag_context: ragResults.length > 0
-      ? {
-          query: anonymizedContext.keluhan_utama,
-          result_count: ragResults.length,
-          top_codes: ragResults.slice(0, 5).map((r) => r.entry.code),
-        }
-      : undefined,
+    rag_context:
+      ragResults.length > 0
+        ? {
+            query: anonymizedContext.keluhan_utama,
+            result_count: ragResults.length,
+            top_codes: ragResults.slice(0, 5).map((r) => r.entry.code),
+          }
+        : undefined,
   };
 }
 
@@ -493,14 +506,14 @@ export async function getCDSSEngineStatus(): Promise<CDSSEngineStatus> {
     return {
       ready: stats.total_entries > 0,
       icd10_count: stats.total_entries,
-      model: 'deepseek-r1-0528',
+      model: 'gemini-1.5-flash-002',
       audit_entries: auditCount,
     };
   } catch (error) {
     return {
       ready: false,
       icd10_count: 0,
-      model: 'deepseek-r1-0528',
+      model: 'gemini-1.5-flash-002',
       audit_entries: 0,
       last_error: error instanceof Error ? error.message : 'Unknown error',
     };

@@ -68,7 +68,7 @@ function App() {
             <p className="text-small text-muted mt-0.5">Clinical Decision Support</p>
           </div>
         </div>
-        <div className="w-14 h-14 flex items-center justify-center overflow-hidden rounded-xl">
+        <div className="w-14 h-14 flex items-center justify-center overflow-hidden rounded-xl mr-4">
           <img
             src={browser.runtime.getURL('/docsy.png')}
             alt="Docsy"
@@ -131,21 +131,6 @@ function App() {
         </div>
       </footer>
 
-      {/* Disclaimer */}
-      <div className="mt-6 p-3 rounded-lg bg-carbon-800/50 border border-carbon-700/40">
-        <p className="text-xs text-muted leading-relaxed">
-          <span className="text-caution font-medium">Disclaimer: Beta Testing Phase</span>
-          <br />
-          <br />
-          This device is a pre-release prototype currently undergoing controlled beta testing. Its
-          use is strictly supervised and authorized by Sentra. The product is not yet finalized, and
-          its performance, features, and safety are subject to change. Users acknowledge that they
-          are participating in a testing phase and may encounter unforeseen errors or instability.
-          Sentra is not liable for any direct or indirect consequences arising from the use of this
-          device during this trial period. All feedback and usage data will be collected to improve
-          the final product.
-        </p>
-      </div>
     </div>
   );
 }

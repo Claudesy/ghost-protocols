@@ -11,6 +11,8 @@ export default [
       'dist/**',
       'archieved/**',
       'public/**',
+      'docs/**',
+      'scripts/**',
       '*.config.js',
       '*.config.ts',
     ],

@@ -150,11 +150,11 @@ export function anonymize(encounter: Encounter): AnonymizedClinicalContext {
   // Calculate age from timestamp or use default
   // Note: In production, we would have patient birth date
   // For now, we'll need age to be provided separately
-  let usia_tahun = 30; // Default age if not available
+  const usia_tahun = 30; // Default age if not available
 
   // Extract gender (default to unknown)
   // Note: This should come from patient data
-  let jenis_kelamin: 'L' | 'P' = 'L';
+  const jenis_kelamin: 'L' | 'P' = 'L';
 
   // Extract vital signs (these are clinical, not PII)
   const vital_signs = extractVitalSigns(encounter);

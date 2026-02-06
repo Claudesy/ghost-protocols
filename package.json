@@ -34,6 +34,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@google-cloud/vertexai": "^1.10.0",
     "lucide-react": "^0.468.0",
     "zustand": "^4.5.0"
   },

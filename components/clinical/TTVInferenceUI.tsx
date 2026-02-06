@@ -508,7 +508,7 @@ export const TTVInferenceUI: React.FC<TTVInferenceUIProps> = ({
                     type="number"
                     value={sbp}
                     onChange={(e) => setSBP(e.target.value)}
-                    placeholder="120"
+                    placeholder="---"
                     className="ttv-input-small"
                     min="50"
                     max="300"
@@ -518,7 +518,7 @@ export const TTVInferenceUI: React.FC<TTVInferenceUIProps> = ({
                     type="number"
                     value={dbp}
                     onChange={(e) => setDBP(e.target.value)}
-                    placeholder="80"
+                    placeholder="---"
                     className="ttv-input-small"
                     min="30"
                     max="200"
@@ -534,7 +534,7 @@ export const TTVInferenceUI: React.FC<TTVInferenceUIProps> = ({
                     type="number"
                     value={glucose}
                     onChange={(e) => setGlucose(e.target.value)}
-                    placeholder="100"
+                    placeholder="---"
                     className="ttv-input"
                     min="20"
                     max="600"
@@ -553,7 +553,7 @@ export const TTVInferenceUI: React.FC<TTVInferenceUIProps> = ({
                     type="number"
                     value={hr}
                     onChange={(e) => setHR(e.target.value)}
-                    placeholder="80"
+                    placeholder="---"
                     className="ttv-input"
                     min="40"
                     max="200"
@@ -569,7 +569,7 @@ export const TTVInferenceUI: React.FC<TTVInferenceUIProps> = ({
                     type="number"
                     value={rr}
                     onChange={(e) => setRR(e.target.value)}
-                    placeholder="20"
+                    placeholder="---"
                     className="ttv-input"
                     min="8"
                     max="60"
@@ -585,7 +585,7 @@ export const TTVInferenceUI: React.FC<TTVInferenceUIProps> = ({
                     type="number"
                     value={temp}
                     onChange={(e) => setTemp(e.target.value)}
-                    placeholder="36.5"
+                    placeholder="--.-"
                     className="ttv-input"
                     min="35"
                     max="42"

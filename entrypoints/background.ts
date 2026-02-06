@@ -7,26 +7,22 @@
 // Based on SENTRA-SPEC-001 v1.2.0 Section 4.3
 // Handles: message routing, state management, side panel site-lock, CDSS API routing
 
+import { SentraAPI } from '@/lib/api/sentra-api';
+import { getCDSSEngineStatus, initCDSSEngine, runDiagnosisEngine } from '@/lib/cdss';
+import type {
+  AllergyCheckRequest,
+  DiagnosisRequestContext,
+  PediatricDoseRequest,
+  PrescriptionRequestContext,
+} from '@/types/api';
 import { onMessage, sendMessage } from '~/utils/messaging';
 import {
+  createEmptyEncounter,
   getEncounter,
   saveEncounter,
   updateEncounter,
-  createEmptyEncounter,
 } from '~/utils/storage';
 import type { Encounter, PageReadyInfo, ScrapePayload } from '~/utils/types';
-import { SentraAPI } from '@/lib/api/sentra-api';
-import type {
-  DiagnosisRequestContext,
-  PrescriptionRequestContext,
-  AllergyCheckRequest,
-  PediatricDoseRequest,
-} from '@/types/api';
-import {
-  runDiagnosisEngine,
-  initCDSSEngine,
-  getCDSSEngineStatus,
-} from '@/lib/cdss';
 
 // =============================================================================
 // SIDE PANEL HELPER
@@ -66,8 +62,11 @@ export default defineBackground(() => {
   // ========================================
   const sidePanel = getSidePanel();
   console.log('[Background] sidePanel object:', sidePanel);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  console.log('[Background] chrome object:', typeof (globalThis as any).chrome !== 'undefined' ? 'exists' : 'undefined');
+   
+  console.log(
+    '[Background] chrome object:',
+    typeof (globalThis as any).chrome !== 'undefined' ? 'exists' : 'undefined'
+  );
 
   if (sidePanel?.setPanelBehavior) {
     sidePanel
@@ -76,8 +75,14 @@ export default defineBackground(() => {
       .catch((e: unknown) => console.error('[Background] setPanelBehavior FAILED:', e));
   } else {
     console.error('[Background] sidePanel API not available');
-    console.error('[Background] globalThis.chrome?.sidePanel:', (globalThis as any).chrome?.sidePanel);
-    console.error('[Background] globalThis.browser?.sidePanel:', (globalThis as any).browser?.sidePanel);
+    console.error(
+      '[Background] globalThis.chrome?.sidePanel:',
+      (globalThis as any).chrome?.sidePanel
+    );
+    console.error(
+      '[Background] globalThis.browser?.sidePanel:',
+      (globalThis as any).browser?.sidePanel
+    );
   }
 
   // ========================================
@@ -358,7 +363,7 @@ export default defineBackground(() => {
       return {
         ready: false,
         icd10_count: 0,
-        model: 'deepseek-r1-0528',
+        model: 'gemini-1.5-flash-002',
         audit_entries: 0,
         last_error: error instanceof Error ? error.message : 'Unknown error',
       };
