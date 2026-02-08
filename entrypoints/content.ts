@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Precision-Architected. Future-Built by Docsynapse
  * Sentra Healthcare Artificial Intelligence
  */
@@ -13,12 +13,12 @@
  * - pageReady: Notify background that page is ready
  */
 
-import { executePulseFill } from '@/lib/filler/core';
 import { fillAnamnesaForm, initAnamnesaPage } from '@/lib/handlers/page-anamnesa';
 import { fillDiagnosaForm, initDiagnosaPage } from '@/lib/handlers/page-diagnosa';
 import { fillResepForm, initResepPage, scrapeResepForm } from '@/lib/handlers/page-resep';
 import { scrapeAnamnesa } from '@/lib/scraper/anamnesa';
-import { onMessage, sendMessage } from '@/utils/messaging';
+import { createLogger } from '@/utils/logger';
+import { sendMessage } from '@/utils/messaging';
 import type {
   AnamnesaFillPayload,
   DiagnosaFillPayload,
@@ -29,6 +29,8 @@ import type {
 // DAS - Data Ascension System
 import type { MapperOptions, ScanOptions } from '@/lib/das/types';
 
+const contentLog = createLogger('SentraContent', 'content');
+
 export default defineContentScript({
   matches: ['*://*.epuskesmas.id/*'],
   main() {
@@ -38,7 +40,7 @@ export default defineContentScript({
 
     // Debug logging
     const debug = (msg: string, data?: unknown) => {
-      console.log(`[SentraContent] ${msg}`, data ? data : '');
+      contentLog.debug(`[SentraContent] ${msg}`, data ? data : '');
     };
 
     // Get current page type - Extended patterns for ePuskesmas
@@ -92,7 +94,7 @@ export default defineContentScript({
 
     // Initialize content script
     const init = () => {
-      console.log('🔴🔴🔴 SENTRA DEBUG: Content script INITIALIZED on', window.location.href);
+      contentLog.debug('Content script initialized on', window.location.href);
       debug('Initializing content script');
 
       // Check which page we're on
@@ -147,18 +149,18 @@ export default defineContentScript({
 
           if (payload.type === 'anamnesa') {
             // Use direct handler for anamnesa/TTV - DO NOT require currentPage match
-            console.log('🔴🔴🔴 SENTRA DEBUG: Content script received anamnesa fill request');
-            console.log('🔴🔴🔴 SENTRA DEBUG: currentPage =', currentPage);
-            console.log(
-              '🔴🔴🔴 SENTRA DEBUG: Payload.encounter =',
+            contentLog.debug('Content script received anamnesa fill request');
+            contentLog.debug('Current page =', currentPage);
+            contentLog.debug(
+              'Payload.encounter =',
               JSON.stringify(payload.encounter).substring(0, 200)
             );
             debug('Using direct Anamnesa handler with payload');
             const result = await fillAnamnesaForm(
               payload.encounter as unknown as AnamnesaFillPayload
             );
-            console.log(
-              '🔴🔴🔴 SENTRA DEBUG: fillAnamnesaForm result =',
+            contentLog.debug(
+              'fillAnamnesaForm result =',
               JSON.stringify(result).substring(0, 300)
             );
             return result;
@@ -166,27 +168,22 @@ export default defineContentScript({
 
           if (payload.type === 'diagnosa') {
             // Use direct handler for diagnosa/ICD-10 - DO NOT require currentPage match
-            console.log('[SentraContent] Routing to fillDiagnosaForm');
+            contentLog.debug('[SentraContent] Routing to fillDiagnosaForm');
             debug('Using Diagnosa handler with DAS integration');
             const result = await fillDiagnosaForm(
               payload.encounter as unknown as DiagnosaFillPayload
             );
-            console.log(
+            contentLog.debug(
               '[SentraContent] fillDiagnosaForm result:',
               JSON.stringify(result).substring(0, 300)
             );
             return result;
           }
 
-          // For legacy/generic fill, require currentPage
-          if (!currentPage) {
-            return { success: false, error: 'Unknown page type - cannot determine fill target' };
-          }
-
-          // Fallback to legacy handler for other pages (reads from storage)
-          debug('Fallback to legacy executePulseFill');
-          const result = await executePulseFill();
-          return result;
+          return {
+            success: false,
+            error: `Unsupported fill type for ALPHA v3 runtime: ${String(payload.type || 'unknown')}`,
+          };
         } catch (error) {
           debug('Fill error:', error);
           return {
@@ -237,6 +234,16 @@ export default defineContentScript({
         };
       },
 
+      getCurrentPageType: (_data: unknown) => {
+        const detected = getCurrentPage();
+        currentPage = detected;
+        return {
+          pageType: detected || 'unknown',
+          url: window.location.href,
+          isReady,
+        };
+      },
+
       // Diagnostic: Scan all input fields on the page
       scanFields: (_data: unknown) => {
         debug('Scanning all input fields on page...');
@@ -263,7 +270,7 @@ export default defineContentScript({
           });
         });
 
-        console.log('[SentraContent] Found fields:', fields);
+        contentLog.debug('[SentraContent] Found fields:', fields);
         return { success: true, fields };
       },
 
@@ -515,7 +522,7 @@ export default defineContentScript({
         const diag: string[] = [];
         const d = (msg: string) => {
           diag.push(msg);
-          console.log('[SentraScrape]', msg);
+          contentLog.debug('[SentraScrape]', msg);
         };
         d(`SCAN_START url=${window.location.href.slice(0, 80)}`);
 
@@ -637,7 +644,8 @@ export default defineContentScript({
           const fetchable = pastCandidates.filter((c) => c.id || c.href);
           d(`Fetchable: ${fetchable.length}`);
 
-          const targets = fetchable.slice(0, 3);
+          // Rollback to expected behavior: process up to 5 latest visits.
+          const targets = fetchable.slice(0, 5);
           d(`Targets: ${targets.length}`);
 
           if (!targets.length) {
@@ -975,38 +983,21 @@ export default defineContentScript({
       },
     };
 
-    // Set up @webext-core/messaging handlers
-    // Note: Using type assertion to bypass strict typing for dynamic handler registration
-    (
-      [
-        'execFill',
-        'execScrape',
-        'getPageInfo',
-        'scanFields',
-        'scanMedicalHistory',
-        'getPatientInfo',
-        'scanFieldsDAS',
-        'mapFieldsDAS',
-        'previewMappingDAS',
-      ] as const
-    ).forEach((key) => {
-      if (key in messageHandlers) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        onMessage(key as any, messageHandlers[key] as any);
-        debug(`Registered handler for ${key}`);
-      }
-    });
+    // NOTE:
+    // Keep content-side inbound messaging on native browser.runtime.onMessage only.
+    // Mixing @webext-core listener with native tab messages can throw
+    // "Unknown message format" for raw tab payloads that don't include timestamp.
 
     // Native message listener for background → content communication
     // This handles direct messages from background script via browser.tabs.sendMessage
     browser.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       const msg = message as { type?: string; data?: unknown };
-      console.log('🔴🔴🔴 SENTRA DEBUG: Native message received, type:', msg.type);
+      contentLog.debug('Native message received, type:', msg.type);
       debug('Native message received:', msg);
 
       if (msg.type === 'execFill' && msg.data) {
-        console.log(
-          '🔴🔴🔴 SENTRA DEBUG: execFill handler triggered, data.type:',
+        contentLog.debug(
+          'execFill handler triggered, data.type:',
           (msg.data as { type?: string })?.type
         );
         Promise.resolve(messageHandlers.execFill(msg.data))
@@ -1034,6 +1025,12 @@ export default defineContentScript({
 
       if (msg.type === 'scanFields') {
         const result = messageHandlers.scanFields(msg.data);
+        sendResponse(result);
+        return true;
+      }
+
+      if (msg.type === 'getCurrentPageType') {
+        const result = messageHandlers.getCurrentPageType(msg.data);
         sendResponse(result);
         return true;
       }

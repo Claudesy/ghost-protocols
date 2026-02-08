@@ -30,6 +30,8 @@ export const ISPA_DIAGNOSIS: DiagnosisSuggestion[] = [
     nama: 'Infeksi saluran pernapasan akut atas, tidak spesifik',
     confidence: 0.87,
     rationale: 'Demam + batuk + pilek menunjukkan ISPA tipikal',
+    red_flags: ['Pantau sesak napas progresif'],
+    recommended_actions: ['Edukasi hidrasi', 'Kontrol ulang 48-72 jam'],
   },
   {
     rank: 2,
@@ -58,6 +60,7 @@ export const GE_DIAGNOSIS: DiagnosisSuggestion[] = [
     nama: 'Diare dan gastroenteritis presumtif asal infeksi',
     confidence: 0.89,
     rationale: 'Diare cair dengan dehidrasi ringan-sedang',
+    recommended_actions: ['Evaluasi tanda dehidrasi', 'Pertimbangkan oralit'],
   },
   {
     rank: 2,
@@ -79,6 +82,8 @@ export const HYPERTENSION_DIAGNOSIS: DiagnosisSuggestion[] = [
     nama: 'Hipertensi esensial (primer)',
     confidence: 0.92,
     rationale: 'TD > 140/90 mmHg pada pengukuran berulang',
+    red_flags: ['Rujuk cepat bila ada nyeri dada, defisit neurologis, atau sesak berat'],
+    recommended_actions: ['Ulangi pengukuran TD terstandar', 'Skrining organ target'],
   },
   {
     rank: 2,
@@ -100,6 +105,7 @@ export const DIABETES_DIAGNOSIS: DiagnosisSuggestion[] = [
     nama: 'Diabetes mellitus tipe 2 tanpa komplikasi',
     confidence: 0.85,
     rationale: 'Poliuria + polifagia + GDS > 200 mg/dL',
+    recommended_actions: ['Konfirmasi GDS/GDP sesuai protokol', 'Edukasi diet dan aktivitas'],
   },
   {
     rank: 2,
@@ -121,6 +127,7 @@ export const SKIN_DIAGNOSIS: DiagnosisSuggestion[] = [
     nama: 'Dermatitis, tidak spesifik',
     confidence: 0.75,
     rationale: 'Lesi kulit dengan pruritus tanpa etiologi jelas',
+    recommended_actions: ['Hindari iritan', 'Pertimbangkan terapi simptomatik topikal'],
   },
   {
     rank: 2,

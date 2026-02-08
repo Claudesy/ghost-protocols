@@ -76,6 +76,16 @@ export function CDSSWidget({ onDiagnosisSelect, className = '' }: CDSSWidgetProp
   const [selectedDiagnosis, setSelectedDiagnosis] = useState<string | null>(null);
   const [acknowledgedFlags, setAcknowledgedFlags] = useState<Set<string>>(new Set());
 
+  const getAlertToneClass = (severity: string) => {
+    if (severity === 'emergency' || severity === 'high') {
+      return 'border-critical/30 bg-critical/5 text-critical';
+    }
+    if (severity === 'medium') {
+      return 'border-caution/30 bg-caution/10 text-caution';
+    }
+    return 'border-cyan-500/20 bg-cyan-500/5 text-cyan-300';
+  };
+
   // Check CDSS status on mount
   useEffect(() => {
     checkStatus();
@@ -147,13 +157,19 @@ export function CDSSWidget({ onDiagnosisSelect, className = '' }: CDSSWidgetProp
             })),
           alerts: response.data.alerts || [],
           processing_time_ms: response.data.meta?.processing_time_ms || 0,
-          source: response.data.meta?.is_mock ? 'local' : 'ai',
+          source: response.data.meta?.is_local ? 'local' : 'ai',
           model_version: response.data.meta?.model_version || 'unknown',
           validation_summary: {
-            total_raw: response.data.diagnosis_suggestions?.length || 0,
-            total_validated: response.data.diagnosis_suggestions?.length || 0,
-            unverified_codes: [],
-            warnings: [],
+            total_raw:
+              response.data.validation_summary?.total_raw ||
+              response.data.diagnosis_suggestions?.length ||
+              0,
+            total_validated:
+              response.data.validation_summary?.total_validated ||
+              response.data.diagnosis_suggestions?.length ||
+              0,
+            unverified_codes: response.data.validation_summary?.unverified_codes || [],
+            warnings: response.data.validation_summary?.warnings || [],
           },
         };
 
@@ -242,9 +258,13 @@ export function CDSSWidget({ onDiagnosisSelect, className = '' }: CDSSWidgetProp
           {/* Result metadata */}
           <div className="neu-card p-3 flex items-center justify-between">
             <div className="flex items-center gap-3 text-caption text-muted">
-              <span className="flex items-center gap-1">
+            <span className="flex items-center gap-1">
                 <Database className="w-3.5 h-3.5" />
-                {result.source === 'ai' ? 'DeepSeek AI' : 'Fallback Lokal'}
+                {result.model_version?.includes('sentra-inference-v3')
+                  ? 'Sentra Inference v3'
+                  : result.source === 'ai'
+                    ? 'DeepSeek AI'
+                    : 'Edge AI / Offline Mode'}
               </span>
               <span className="flex items-center gap-1">
                 <Zap className="w-3.5 h-3.5" />
@@ -294,6 +314,24 @@ export function CDSSWidget({ onDiagnosisSelect, className = '' }: CDSSWidgetProp
                   <li key={idx}>{warning}</li>
                 ))}
               </ul>
+            </div>
+          )}
+
+          {/* Non-red alerts */}
+          {result.alerts.filter((a) => a.type !== 'red_flag').length > 0 && (
+            <div className="space-y-2">
+              {result.alerts
+                .filter((a) => a.type !== 'red_flag')
+                .map((alert) => (
+                  <div
+                    key={alert.id}
+                    className={`neu-card p-3 border ${getAlertToneClass(alert.severity)}`}
+                  >
+                    <p className="text-caption font-medium">{alert.title}</p>
+                    <p className="text-small opacity-90 mt-1">{alert.message}</p>
+                    {alert.action && <p className="text-small mt-1">Tindakan: {alert.action}</p>}
+                  </div>
+                ))}
             </div>
           )}
         </div>

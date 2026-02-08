@@ -194,8 +194,36 @@ export interface CDSSResponse {
   clinical_guidelines?: string[];
   /** Detected drug interactions */
   drug_interactions?: DrugInteraction[];
+  /** Explainability payload for pharmacotherapy reasoning */
+  pharmacotherapy_explainability?: PharmacotherapyExplainability;
+  /** Validation summary from diagnosis engine */
+  validation_summary?: {
+    total_raw: number;
+    total_validated: number;
+    unverified_codes: string[];
+    warnings: string[];
+  };
   /** Response metadata */
   meta?: CDSSResponseMeta;
+}
+
+export interface PharmacotherapyExplainability {
+  /** Confidence score (0-100) of therapy proposal */
+  confidence: number;
+  /** Clinical/rule drivers that shaped recommendation */
+  drivers: string[];
+  /** Missing data that may reduce confidence */
+  missing_data: string[];
+  /** Risk tier inferred for follow-up intensity */
+  risk_tier: 'routine' | 'urgent' | 'emergency';
+  /** Recommended review window based on risk */
+  review_window: '6h' | '24h' | '48h';
+  /** Trace of pipeline branch used */
+  pathway:
+    | 'knowledge-only'
+    | 'knowledge+syndrome-intent'
+    | 'syndrome-intent-only'
+    | 'legacy-fallback';
 }
 
 export interface CDSSResponseMeta {
@@ -207,6 +235,8 @@ export interface CDSSResponseMeta {
   timestamp: string;
   /** Whether this is a mock response */
   is_mock?: boolean;
+  /** Whether inference executed locally on edge/browser runtime */
+  is_local?: boolean;
 }
 
 // =============================================================================
@@ -249,6 +279,14 @@ export interface PrescriptionRequestContext {
   penyakit_kronis: string[];
   /** Currently prescribed medications */
   current_medications?: string[];
+  /** Optional complaint context for reasoner */
+  keluhan_utama?: string;
+  /** Optional selected diagnosis label from UI */
+  selected_diagnosis_name?: string;
+  /** Optional vitals context to improve safety filtering */
+  vital_signs?: VitalSigns;
+  /** Explicit pregnancy status (preferred over text/ICD inference when provided) */
+  is_pregnant?: boolean;
 }
 
 /**

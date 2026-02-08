@@ -182,7 +182,7 @@ export async function mapPayloadToFields(
 
     try {
       result = await mapFieldsWithGemini(payload, fields, context);
-    } catch (error) {
+    } catch {
       console.warn('[DAS:Mapper] Gemini failed, using heuristic fallback');
       result = mapFieldsHeuristic(payload, fields);
     }

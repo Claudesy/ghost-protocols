@@ -40,6 +40,9 @@ const SIZE_CONFIG = {
   lg: { height: 'h-3', text: 'text-small', labelGap: 'gap-2.5' },
 };
 
+const HIGH_CONFIDENCE_THRESHOLD = 0.85;
+const MEDIUM_CONFIDENCE_THRESHOLD = 0.65;
+
 // =============================================================================
 // COMPONENT
 // =============================================================================
@@ -49,9 +52,9 @@ const SIZE_CONFIG = {
  * Displays AI diagnosis confidence as a visual bar
  *
  * Color coding:
- * - High (>70%): pulse-500 (trust indicator)
- * - Medium (40-70%): caution (review needed)
- * - Low (<40%): muted (limited confidence)
+ * - High (>=85%): pulse-500 (trust indicator)
+ * - Medium (65-84%): caution (review needed)
+ * - Low (<65%): muted (limited confidence)
  */
 export function ConfidenceMeter({
   confidence,
@@ -65,15 +68,15 @@ export function ConfidenceMeter({
 
   // Determine color based on confidence level
   const colorClass = useMemo(() => {
-    if (clampedConfidence >= 0.7) return 'bg-pulse-500';
-    if (clampedConfidence >= 0.4) return 'bg-caution';
+    if (clampedConfidence >= HIGH_CONFIDENCE_THRESHOLD) return 'bg-pulse-500';
+    if (clampedConfidence >= MEDIUM_CONFIDENCE_THRESHOLD) return 'bg-caution';
     return 'bg-muted';
   }, [clampedConfidence]);
 
   // Label color
   const labelColor = useMemo(() => {
-    if (clampedConfidence >= 0.7) return 'text-pulse-500';
-    if (clampedConfidence >= 0.4) return 'text-caution';
+    if (clampedConfidence >= HIGH_CONFIDENCE_THRESHOLD) return 'text-pulse-500';
+    if (clampedConfidence >= MEDIUM_CONFIDENCE_THRESHOLD) return 'text-caution';
     return 'text-muted';
   }, [clampedConfidence]);
 

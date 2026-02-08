@@ -66,6 +66,7 @@ export interface Encounter {
       bln: number;
       hr: number;
     };
+    is_pregnant?: boolean;
     riwayat_penyakit: string | null;
     alergi: {
       obat: string[];
@@ -134,6 +135,7 @@ export interface AnamnesaFillPayload {
     bln: number;
     hr: number;
   };
+  is_pregnant?: boolean;
   // Riwayat Penyakit (MRiwayatPasien)
   riwayat_penyakit?: {
     sekarang: string; // RPS - Riwayat Penyakit Sekarang
@@ -350,4 +352,91 @@ export interface FieldConfig {
 
 export interface PageFieldMap {
   [fieldName: string]: FieldConfig;
+}
+
+// =============================================================================
+// RME AUTO TRANSFER CONTRACTS
+// =============================================================================
+
+export type RMETransferStepStatus = 'anamnesa' | 'diagnosa' | 'resep';
+
+export type RMETransferStepState =
+  | 'pending'
+  | 'running'
+  | 'success'
+  | 'partial'
+  | 'failed'
+  | 'skipped'
+  | 'cancelled';
+
+export type RMETransferErrorClass = 'recoverable' | 'fatal';
+
+export type RMETransferReasonCode =
+  | 'DUPLICATE_SUPPRESSED'
+  | 'USER_CANCELLED'
+  | 'NO_ACTIVE_TAB'
+  | 'PAGE_NOT_READY'
+  | 'STEP_TIMEOUT'
+  | 'FIELD_NOT_FOUND'
+  | 'NO_FIELDS_FILLED'
+  | 'RETRY_EXHAUSTED'
+  | 'DIAGNOSA_PAYLOAD_EMPTY'
+  | 'RESEP_PAYLOAD_EMPTY'
+  | 'RESEP_EMPTY_AFTER_SAFETY'
+  | 'RESEP_TRIAD_INCOMPLETE'
+  | 'PREGNANCY_UNKNOWN_DEFAULT_FALSE'
+  | 'UNKNOWN_STEP_FAILURE';
+
+export interface RMETransferStepResult {
+  step: RMETransferStepStatus;
+  state: RMETransferStepState;
+  attempt: number;
+  latencyMs: number;
+  successCount: number;
+  failedCount: number;
+  skippedCount: number;
+  reasonCode?: RMETransferReasonCode;
+  errorClass?: RMETransferErrorClass;
+  message?: string;
+}
+
+export type RMETransferState = 'success' | 'partial' | 'failed' | 'cancelled';
+
+export interface RMETransferPayload {
+  anamnesa: AnamnesaFillPayload;
+  diagnosa?: DiagnosaFillPayload | null;
+  resep?: ResepFillPayload | null;
+  options?: {
+    requestId?: string;
+    forceRun?: boolean;
+    idempotencyWindowMs?: number;
+    startFromStep?: RMETransferStepStatus;
+    onlyStep?: RMETransferStepStatus;
+  };
+  meta?: {
+    reasonCodes?: RMETransferReasonCode[];
+    triadComplete?: boolean;
+    triadMissingRoles?: Array<'utama' | 'adjuvant' | 'vitamin'>;
+  };
+}
+
+export interface RMETransferResult {
+  runId: string;
+  fingerprint: string;
+  state: RMETransferState;
+  startedAt: string;
+  completedAt: string;
+  totalLatencyMs: number;
+  reasonCodes: RMETransferReasonCode[];
+  steps: Record<RMETransferStepStatus, RMETransferStepResult>;
+}
+
+export interface RMETransferProgressEvent {
+  runId: string;
+  state: 'running' | 'completed' | 'cancelled';
+  transferState: RMETransferState;
+  activeStep?: RMETransferStepStatus;
+  steps: Record<RMETransferStepStatus, RMETransferStepResult>;
+  reasonCodes: RMETransferReasonCode[];
+  updatedAt: string;
 }

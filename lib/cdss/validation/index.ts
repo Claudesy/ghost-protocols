@@ -442,7 +442,7 @@ export async function runValidationPipeline(
 
   // Count disease-specific red flags enriched
   let diseaseRedFlagCount = 0;
-  for (const [_code, entry] of schemaResult.entries) {
+  for (const [, entry] of schemaResult.entries) {
     if (entry.red_flags && entry.red_flags.length > 0) {
       diseaseRedFlagCount += entry.red_flags.length;
     }

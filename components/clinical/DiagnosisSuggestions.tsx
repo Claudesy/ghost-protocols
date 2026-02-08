@@ -16,10 +16,10 @@
  * @module components/clinical/DiagnosisSuggestions
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import type { DiagnosisRequestContext, DiagnosisSuggestion } from '@/types/api';
 import { sendMessage } from '@/utils/messaging';
 import type { DiagnosaFillPayload, DiagnosaJenis, DiagnosaKasus } from '@/utils/types';
-import type { DiagnosisSuggestion, DiagnosisRequestContext } from '@/types/api';
+import React, { useCallback, useEffect, useState } from 'react';
 
 // ============================================================================
 // TYPES
@@ -50,8 +50,8 @@ interface DiagnosisSuggestionsProps {
  * Get confidence color based on score
  */
 function getConfidenceColor(confidence: number): string {
-  if (confidence >= 0.85) return '#10B981'; // safe
-  if (confidence >= 0.65) return '#F59E0B'; // caution
+  if (confidence >= 0.85) return '#10B981'; // high
+  if (confidence >= 0.65) return '#F59E0B'; // medium
   return '#EF4444'; // critical
 }
 
@@ -62,6 +62,10 @@ function getConfidenceLabel(confidence: number): string {
   if (confidence >= 0.85) return 'High';
   if (confidence >= 0.65) return 'Medium';
   return 'Low';
+}
+
+function humanizeUiText(value: string): string {
+  return value.replace(/_/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
 // ============================================================================
@@ -174,7 +178,7 @@ export const DiagnosisSuggestions: React.FC<DiagnosisSuggestionsProps> = ({
   if (!isVisible) return null;
 
   return (
-    <div className="diagnosis-suggestions">
+    <div className="diagnosis-suggestions glass-panel">
       {/* Header with Advisory Label */}
       <div className="diagnosis-suggestions-header">
         <h4 className="diagnosis-suggestions-title">Saran Diagnosis (ICD-10)</h4>
@@ -256,7 +260,7 @@ export const DiagnosisSuggestions: React.FC<DiagnosisSuggestionsProps> = ({
               key={`${suggestion.icd_x}-${index}`}
               onClick={() => handleSuggestionClick(suggestion, index)}
               disabled={fillingIndex !== null}
-              className={`diagnosis-suggestion-card ${fillingIndex === index ? 'filling' : ''}`}
+              className={`diagnosis-suggestion-card glass-card ${fillingIndex === index ? 'filling' : ''}`}
             >
               <div className="diagnosis-suggestion-main">
                 <div className="diagnosis-suggestion-header">
@@ -272,8 +276,10 @@ export const DiagnosisSuggestions: React.FC<DiagnosisSuggestionsProps> = ({
                   </span>
                 </div>
                 <div className="diagnosis-name">{suggestion.nama}</div>
-                {suggestion.rationale && (
-                  <div className="diagnosis-rationale">{suggestion.rationale}</div>
+                {(suggestion.rationale || suggestion.reasoning) && (
+                  <div className="diagnosis-rationale">
+                    {suggestion.rationale || suggestion.reasoning}
+                  </div>
                 )}
               </div>
 
@@ -282,7 +288,17 @@ export const DiagnosisSuggestions: React.FC<DiagnosisSuggestionsProps> = ({
                 <div className="diagnosis-red-flags">
                   <span className="red-flag-icon">🚨</span>
                   <span className="red-flag-text">
-                    Red Flags: {suggestion.red_flags.join(', ')}
+                    Red Flags: {suggestion.red_flags.map((item) => humanizeUiText(item)).join(', ')}
+                  </span>
+                </div>
+              )}
+
+              {suggestion.recommended_actions && suggestion.recommended_actions.length > 0 && (
+                <div className="diagnosis-recommendations">
+                  <span className="recommendation-icon">✓</span>
+                  <span className="recommendation-text">
+                    Tindakan:{' '}
+                    {suggestion.recommended_actions.map((item) => humanizeUiText(item)).join('; ')}
                   </span>
                 </div>
               )}
@@ -304,8 +320,11 @@ export const DiagnosisSuggestions: React.FC<DiagnosisSuggestionsProps> = ({
 export const diagnosisSuggestionsStyles = `
 /* Diagnosis Suggestions Container */
 .diagnosis-suggestions {
-  background: var(--bg-surface, #16181D);
-  border-radius: 8px;
+  background: var(--glass-bg, rgba(255, 255, 255, 0.03));
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.08));
+  border-radius: 12px;
   padding: 12px;
   margin-top: 12px;
 }
@@ -461,8 +480,8 @@ export const diagnosisSuggestionsStyles = `
   position: relative;
   width: 100%;
   text-align: left;
-  background: var(--bg-raised, #1C1F26);
-  border: 1px solid var(--border-subtle, #2E3239);
+  background: var(--glass-bg, rgba(255, 255, 255, 0.03));
+  border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.08));
   border-radius: 8px;
   padding: 12px;
   cursor: pointer;
@@ -553,6 +572,27 @@ export const diagnosisSuggestionsStyles = `
 .red-flag-text {
   font-size: 11px;
   color: #EF4444;
+  line-height: 1.4;
+}
+
+.diagnosis-recommendations {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 8px;
+  background: rgba(16, 185, 129, 0.1);
+  border-radius: 4px;
+}
+
+.recommendation-icon {
+  font-size: 12px;
+  color: #10B981;
+}
+
+.recommendation-text {
+  font-size: 11px;
+  color: #10B981;
   line-height: 1.4;
 }
 

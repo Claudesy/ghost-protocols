@@ -263,11 +263,11 @@ export type WidgetType = 'assessment' | 'diagnosis' | 'therapy' | 'vitals';
 
 export interface TTVMedlinkBridge {
   // Convert TTV data to Medlink assessment
-  ttvToVitalSigns(ttvData: any): VitalSigns;
+  ttvToVitalSigns(ttvData: unknown): VitalSigns;
 
   // Extract symptoms from TTV inference
   extractSymptoms(symptomText: string): string[];
 
   // Map emergency alerts to assessment flags
-  mapEmergencyAlerts(alerts: any[]): string[];
+  mapEmergencyAlerts(alerts: unknown[]): string[];
 }

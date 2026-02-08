@@ -230,9 +230,72 @@ export function anonymizeWithDemographics(
  * Extract vital signs from encounter
  */
 function extractVitalSigns(_encounter: Encounter): VitalSigns | null {
-  // Vital signs would typically come from examination data
-  // This is placeholder for when vital signs are available
-  return null;
+  const encounter = _encounter as unknown as {
+    vital_signs?: {
+      tekanan_darah_sistolik?: number;
+      tekanan_darah_diastolik?: number;
+      nadi?: number;
+      respirasi?: number;
+      suhu?: number;
+      saturasi?: number;
+      kesadaran?: string;
+      gcs?: number;
+      gula_darah?: number;
+    };
+    anamnesa?: {
+      vital_signs?: {
+        tekanan_darah_sistolik?: number;
+        tekanan_darah_diastolik?: number;
+        nadi?: number;
+        respirasi?: number;
+        suhu?: number;
+        saturasi?: number;
+        kesadaran?: string;
+        gcs?: number;
+        gula_darah?: number;
+      };
+      periksa_fisik?: {
+        saturasi?: number;
+        gcs_membuka_mata?: string;
+        gcs_respon_verbal?: string;
+        gcs_respon_motorik?: string;
+      };
+    };
+  };
+
+  const vs = encounter.vital_signs ?? encounter.anamnesa?.vital_signs;
+  const pf = encounter.anamnesa?.periksa_fisik;
+
+  const toNumber = (value: unknown): number | undefined => {
+    if (typeof value === 'number' && Number.isFinite(value)) return value;
+    if (typeof value === 'string') {
+      const parsed = Number(value);
+      if (Number.isFinite(parsed)) return parsed;
+    }
+    return undefined;
+  };
+
+  const gcsFromPF =
+    toNumber(pf?.gcs_membuka_mata) &&
+    toNumber(pf?.gcs_respon_verbal) &&
+    toNumber(pf?.gcs_respon_motorik)
+      ? (toNumber(pf?.gcs_membuka_mata) || 0) +
+        (toNumber(pf?.gcs_respon_verbal) || 0) +
+        (toNumber(pf?.gcs_respon_motorik) || 0)
+      : undefined;
+
+  const vitalSigns: VitalSigns = {
+    systolic: toNumber(vs?.tekanan_darah_sistolik),
+    diastolic: toNumber(vs?.tekanan_darah_diastolik),
+    heart_rate: toNumber(vs?.nadi),
+    respiratory_rate: toNumber(vs?.respirasi),
+    temperature: toNumber(vs?.suhu),
+    spo2: toNumber(vs?.saturasi) ?? toNumber(pf?.saturasi),
+    gcs: toNumber(vs?.gcs) ?? gcsFromPF,
+  };
+
+  const hasAnyVital = Object.values(vitalSigns).some((value) => value !== undefined);
+  return hasAnyVital ? vitalSigns : null;
 }
 
 /**
@@ -261,6 +324,10 @@ function extractAllergies(encounter: Encounter): string[] {
  * Check pregnancy status from diagnosis codes
  */
 function checkPregnancyStatus(encounter: Encounter): boolean {
+  if (typeof encounter.anamnesa?.is_pregnant === 'boolean') {
+    return encounter.anamnesa.is_pregnant;
+  }
+
   const diagnosisCode = encounter.diagnosa?.icd_x || '';
 
   // Pregnancy-related ICD-10 codes start with O

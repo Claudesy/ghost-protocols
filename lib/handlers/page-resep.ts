@@ -1,239 +1,186 @@
 /**
- * Precision-Architected. Future-Built by Docsyanpse
- * Sentra Healthcare Artificial Intelligence
- */
-
-/**
- * Sentra Assist - Resep Page Handler
- * Fill cascade and scraping for ePuskesmas Resep form
- * Based on PRD Section 10.1: Fill Order Cascade
+ * Resep Page Handler
+ * Handles auto-fill for Resep/Prescription form in ePuskesmas
  */
 
 import {
-  fillTextField,
-  fillNumberField,
-  fillSelect,
-  fillAutocomplete,
-} from '@/lib/filler/filler-core';
-import { waitForElement, getInputValue } from '@/lib/scraper/dom-utils';
-import type { ResepFillPayload, FillResult, AturanPakai } from '@/utils/types';
-import {
-  RESEP_FIELDS,
-  getResepRowSelectors,
-  AUTOCOMPLETE_OPTIONS,
-  ATURAN_PAKAI_OPTIONS,
   ADD_ROW_BUTTON_SELECTORS,
+  ATURAN_PAKAI_OPTIONS,
+  getResepRowSelectors,
+  RESEP_FIELDS,
 } from '@/data/field-mappings';
+import type { FillResult } from '@/lib/filler/filler-core';
+import {
+  fillAutocomplete,
+  fillCheckbox,
+  fillSelect,
+  fillTextField,
+} from '@/lib/filler/filler-core';
+import { waitForElement } from '@/lib/scraper/dom-utils';
+import type { ResepFillPayload, ResepMedication } from '@/utils/types';
 
 // =============================================================================
 // TIMING CONSTANTS (PRD Section 10.1)
 // =============================================================================
-const TIMING = {
-  STATIC_FIELD: 0,
-  AJAX_DISPLAY: 800,
-  RACIKAN: 200,
-  OBAT_NAMA_AJAX: 1000,
-  STOCK_FETCH_WAIT: 300,
-  SIGNA_AJAX: 600,
-  SIGNA_SETTLE: 200,
-  ATURAN_PAKAI: 0,
-  KETERANGAN: 0,
-  ROW_GAP: 300,
-  PRIORITAS_FINAL: 0,
-} as const;
+const DELAY_BETWEEN_ROWS = 800; // ms
+const DELAY_AFTER_ADD_ROW = 1200; // ms
+const DELAY_STOCK_CHECK = 1500; // ms (Critical for stock fetch)
+const DELAY_SIGNA_LOOKUP = 1000; // ms (Wait for signa ID resolution)
+
+interface ScrapedResepData {
+  medications: ResepMedication[];
+  alergi?: string;
+  berat_badan?: string;
+  tinggi_badan?: string;
+}
 
 // =============================================================================
-// HELPERS
-// =============================================================================
-const sleep = (ms: number): Promise<void> =>
-  new Promise((resolve) => setTimeout(resolve, ms));
-
-// =============================================================================
-// MAIN FILL FUNCTION
+// MAIN FILL FUNCTION - CASCADING ROW FILLER
 // =============================================================================
 
 /**
- * Fill Resep form with payload data
- * Follows 10-step fill order cascade from PRD Section 10.1
+ * Fill Resep form with medication list
+ * Implements strict cascading timing to handle dynamic row addition and AJAX
  */
-export async function fillResepForm(payload: ResepFillPayload): Promise<FillResult> {
-  const result: FillResult = {
-    success: [],
-    failed: [],
-    skipped: [],
-  };
-
-  const addSuccess = (field: string, value: string, method: 'direct' | 'autocomplete') => {
-    result.success.push({ field, value, method });
-  };
-
-  const addFailed = (field: string, error: string) => {
-    result.failed.push({ field, error });
-  };
-
-  const addSkipped = (field: string, reason: 'readonly' | 'csrf' | 'empty') => {
-    result.skipped.push({ field, reason });
-  };
-
+export async function fillResepForm(payload: ResepFillPayload): Promise<{
+  success: FillResult[];
+  failed: FillResult[];
+  skipped: string[];
+}> {
   console.log('[ResepHandler] Starting fill cascade...');
+
+  const result = {
+    success: [] as FillResult[],
+    failed: [] as FillResult[],
+    skipped: [] as string[],
+  };
+
   const startTime = Date.now();
+  const totalRows = payload.medications.length;
 
   try {
-    // =========================================================================
-    // STEP 1: Static fields (0ms)
-    // =========================================================================
-    if (payload.static.no_resep) {
-      const res = await fillTextField(RESEP_FIELDS.no_resep.selector, payload.static.no_resep);
-      res.success
-        ? addSuccess('no_resep', payload.static.no_resep, 'direct')
-        : addFailed('no_resep', res.error || 'Element not found');
+    // 0. Fill Global Fields (Alergi, BB, TB) if present
+    if (payload.alergi) {
+      await fillTextField(RESEP_FIELDS.alergi.selector, payload.alergi);
+    }
+    if (payload.berat_badan) {
+      await fillTextField(RESEP_FIELDS.berat_badan.selector, String(payload.berat_badan));
+    }
+    if (payload.tinggi_badan) {
+      await fillTextField(RESEP_FIELDS.tinggi_badan.selector, String(payload.tinggi_badan));
     }
 
-    if (payload.static.alergi) {
-      const res = await fillTextField(RESEP_FIELDS.alergi.selector, payload.static.alergi);
-      res.success
-        ? addSuccess('alergi', payload.static.alergi, 'direct')
-        : addFailed('alergi', res.error || 'Element not found');
-    }
-
-    // =========================================================================
-    // STEP 2: AJAX display fields (500-1000ms)
-    // =========================================================================
-    await sleep(TIMING.AJAX_DISPLAY);
-
-    if (payload.ajax.ruangan) {
-      const res = await fillAutocomplete(
-        RESEP_FIELDS.ruangan.selector,
-        payload.ajax.ruangan,
-        AUTOCOMPLETE_OPTIONS.ruangan
-      );
-      res.success
-        ? addSuccess('ruangan', String(res.value), 'autocomplete')
-        : addFailed('ruangan', res.error || 'Autocomplete failed');
-    }
-
-    if (payload.ajax.dokter) {
-      const res = await fillAutocomplete(
-        RESEP_FIELDS.dokter_nama_bpjs.selector,
-        payload.ajax.dokter,
-        AUTOCOMPLETE_OPTIONS.dokter
-      );
-      res.success
-        ? addSuccess('dokter', String(res.value), 'autocomplete')
-        : addFailed('dokter', res.error || 'Autocomplete failed');
-    }
-
-    if (payload.ajax.perawat) {
-      const res = await fillAutocomplete(
-        RESEP_FIELDS.perawat_nama.selector,
-        payload.ajax.perawat,
-        AUTOCOMPLETE_OPTIONS.perawat
-      );
-      res.success
-        ? addSuccess('perawat', String(res.value), 'autocomplete')
-        : addFailed('perawat', res.error || 'Autocomplete failed');
-    }
-
-    // =========================================================================
-    // STEP 3-9: Per-row medication fill
-    // =========================================================================
-    const totalRows = payload.medications.length;
-
-    for (let rowIdx = 0; rowIdx < totalRows; rowIdx++) {
-      const med = payload.medications[rowIdx];
+    // Iterate through medications
+    for (let i = 0; i < totalRows; i++) {
+      const med = payload.medications[i];
+      const rowIdx = i; // 0-based index
       const sel = getResepRowSelectors(rowIdx);
       const rowNum = rowIdx + 1;
 
       console.log(`[ResepHandler] Processing row ${rowNum}/${totalRows}: ${med.nama_obat}`);
 
+      // STEP 1: Ensure Row Exists
+      if (rowIdx > 0) {
+        await ensureRowExists(rowIdx);
+        await new Promise((resolve) => setTimeout(resolve, DELAY_AFTER_ADD_ROW));
+      }
+
+      // STEP 2: Fill Nama Obat (Autocomplete - Critical)
+      // Must wait for stock fetch after selection
+      const namaResult = await fillAutocomplete(sel.obat_nama, med.nama_obat, {
+        timeout: 2000,
+        typeDelay: 50,
+      });
+
+      if (!namaResult.success) {
+        result.failed.push(namaResult);
+        console.warn(`[ResepHandler] Failed to fill nama_obat for row ${rowNum}`);
+        continue; // Skip rest of this row if main field fails
+      }
+      result.success.push(namaResult);
+
+      // CRITICAL WAIT: Stock fetch AJAX
+      await new Promise((resolve) => setTimeout(resolve, DELAY_STOCK_CHECK));
+
       // STEP 3: Racikan (200ms wait, filters available drugs)
       if (med.racikan) {
-        await sleep(TIMING.RACIKAN);
-        const res = await fillSelect(sel.obat_racikan, med.racikan);
-        res.success
-          ? addSuccess(`row${rowNum}_racikan`, med.racikan, 'direct')
-          : addFailed(`row${rowNum}_racikan`, res.error || 'Select failed');
+        await fillCheckbox(sel.racikan, true);
+        await new Promise((resolve) => setTimeout(resolve, 200));
       }
 
-      // STEP 3.5: Jumlah Permintaan (before drug selection)
-      if (med.jumlah_permintaan !== undefined && med.jumlah_permintaan > 0) {
-        const res = await fillNumberField(sel.obat_jumlah_permintaan, med.jumlah_permintaan);
-        res.success
-          ? addSuccess(`row${rowNum}_jumlah_permintaan`, String(med.jumlah_permintaan), 'direct')
-          : addFailed(`row${rowNum}_jumlah_permintaan`, res.error || 'Number fill failed');
+      // STEP 4: Jumlah
+      if (med.jumlah) {
+        const jumResult = await fillTextField(sel.jumlah, String(med.jumlah));
+        if (jumResult.success) result.success.push(jumResult);
+        else result.failed.push(jumResult);
       }
 
-      // STEP 4: Obat Nama AJAX (500-1000ms, triggers stock fetch)
-      if (med.nama_obat) {
-        await sleep(TIMING.OBAT_NAMA_AJAX);
-        const res = await fillAutocomplete(sel.obat_nama, med.nama_obat, AUTOCOMPLETE_OPTIONS.obat);
-        res.success
-          ? addSuccess(`row${rowNum}_obat_nama`, String(res.value), 'autocomplete')
-          : addFailed(`row${rowNum}_obat_nama`, res.error || 'Obat autocomplete failed');
-
-        // Extra wait for stock fetch to complete
-        await sleep(TIMING.STOCK_FETCH_WAIT);
+      // STEP 5: Signa 1 (Kali Sehari)
+      if (med.signa1) {
+        const s1Result = await fillTextField(sel.signa1, String(med.signa1));
+        if (s1Result.success) result.success.push(s1Result);
       }
 
-      // STEP 5: Jumlah (0ms, no dependencies)
-      if (med.jumlah !== undefined && med.jumlah > 0) {
-        const res = await fillNumberField(sel.obat_jumlah, med.jumlah);
-        res.success
-          ? addSuccess(`row${rowNum}_jumlah`, String(med.jumlah), 'direct')
-          : addFailed(`row${rowNum}_jumlah`, res.error || 'Number fill failed');
+      // STEP 6: Signa 2 (Jumlah Satuan)
+      if (med.signa2) {
+        const s2Result = await fillTextField(sel.signa2, String(med.signa2));
+        if (s2Result.success) result.success.push(s2Result);
       }
 
-      // STEP 6: Signa AJAX (500ms, may auto-populate Aturan Pakai)
-      let signaSetAturanPakai = false;
-      if (med.signa) {
-        await sleep(TIMING.SIGNA_AJAX);
-        const res = await fillAutocomplete(sel.obat_signa, med.signa, AUTOCOMPLETE_OPTIONS.signa);
-        res.success
-          ? addSuccess(`row${rowNum}_signa`, String(res.value), 'autocomplete')
-          : addFailed(`row${rowNum}_signa`, res.error || 'Signa autocomplete failed');
+      // STEP 7: Signa (Aturan Pakai - Dropdown/Text)
+      // Wait for signa1/signa2 logic to potentially auto-select rules
+      await new Promise((resolve) => setTimeout(resolve, DELAY_SIGNA_LOOKUP));
 
-        // Check if signa auto-set aturan_pakai
-        await sleep(TIMING.SIGNA_SETTLE);
-        const aturanEl = document.querySelector(sel.aturan_pakai) as HTMLSelectElement | null;
-        if (aturanEl && aturanEl.value && aturanEl.value !== '') {
-          signaSetAturanPakai = true;
-          console.log(`[ResepHandler] Signa auto-set aturan_pakai to: ${aturanEl.value}`);
+      if (med.aturan_pakai) {
+        // Try filling as select first (standard behavior)
+        let signaResult = await fillSelect(sel.aturan_pakai, med.aturan_pakai);
+
+        // Fallback: If text doesn't match option value, try mapping
+        if (!signaResult.success) {
+          // Attempt to map common terms (e.g. "Sesudah makan" -> "1")
+          const mappedValue = ATURAN_PAKAI_OPTIONS[med.aturan_pakai.toLowerCase()];
+          if (mappedValue) {
+            signaResult = await fillSelect(sel.aturan_pakai, mappedValue);
+          }
+        }
+
+        if (signaResult.success) {
+          result.success.push(signaResult);
+        } else {
+          // If select fails, check if it was auto-set by signa1/2
+          let signaSetAturanPakai = false;
+          const aturanEl = document.querySelector(sel.aturan_pakai) as HTMLSelectElement | null;
+          if (aturanEl && aturanEl.value && aturanEl.value !== '') {
+            signaSetAturanPakai = true;
+            console.log(`[ResepHandler] Signa auto-set aturan_pakai to: ${aturanEl.value}`);
+          }
+
+          if (!signaSetAturanPakai) {
+            result.failed.push({
+              field: sel.aturan_pakai,
+              value: med.aturan_pakai,
+              method: 'select',
+              error: 'Option not found and not auto-set',
+            });
+          }
         }
       }
 
-      // STEP 7: Aturan Pakai (0ms, skip if set by Signa)
-      if (med.aturan_pakai && !signaSetAturanPakai) {
-        const res = await fillSelect(sel.aturan_pakai, med.aturan_pakai);
-        res.success
-          ? addSuccess(`row${rowNum}_aturan_pakai`, ATURAN_PAKAI_OPTIONS[med.aturan_pakai], 'direct')
-          : addFailed(`row${rowNum}_aturan_pakai`, res.error || 'Select failed');
-      } else if (signaSetAturanPakai) {
-        addSkipped(`row${rowNum}_aturan_pakai`, 'empty');
-      }
-
-      // STEP 8: Keterangan (0ms, free text notes)
+      // STEP 8: Keterangan (Optional)
       if (med.keterangan) {
-        const res = await fillTextField(sel.obat_keterangan, med.keterangan);
-        res.success
-          ? addSuccess(`row${rowNum}_keterangan`, med.keterangan, 'direct')
-          : addFailed(`row${rowNum}_keterangan`, res.error || 'Text fill failed');
+        const ketResult = await fillTextField(sel.keterangan, med.keterangan);
+        if (ketResult.success) result.success.push(ketResult);
       }
 
-      // STEP 9: Wait before next row + ensure row exists
-      if (rowIdx < totalRows - 1) {
-        await sleep(TIMING.ROW_GAP);
-        await ensureNextRowExists(rowIdx + 1);
+      // STEP 9: BMHP Checkbox
+      if (med.bmhp) {
+        await fillCheckbox(sel.bmhp, true);
       }
-    }
 
-    // =========================================================================
-    // STEP 10: Set Prioritas (final field)
-    // =========================================================================
-    if (payload.prioritas) {
-      const res = await fillSelect(RESEP_FIELDS.prioritas.selector, payload.prioritas);
-      res.success
-        ? addSuccess('prioritas', payload.prioritas === '1' ? 'CITO' : 'Normal', 'direct')
-        : addFailed('prioritas', res.error || 'Select failed');
+      // STEP 10: Row Delay
+      if (i < totalRows - 1) {
+        await new Promise((resolve) => setTimeout(resolve, DELAY_BETWEEN_ROWS));
+      }
     }
 
     const duration = Date.now() - startTime;
@@ -248,19 +195,23 @@ export async function fillResepForm(payload: ResepFillPayload): Promise<FillResu
     result.failed.push({
       field: 'cascade',
       error: error instanceof Error ? error.message : 'Unknown error',
+      value: '',
+      method: 'cascade',
     });
     return result;
   }
 }
 
 // =============================================================================
-// HELPER: Ensure medication row exists (add if needed)
+// HELPER: DYNAMIC ROW ADDITION
 // =============================================================================
-async function ensureNextRowExists(rowIndex: number): Promise<void> {
-  const sel = getResepRowSelectors(rowIndex);
-  const existingRow = document.querySelector(sel.obat_nama);
 
-  if (existingRow) {
+async function ensureRowExists(rowIndex: number): Promise<void> {
+  const sel = getResepRowSelectors(rowIndex);
+  const rowEl = document.querySelector(sel.obat_nama);
+
+  if (rowEl) {
+    // Row already exists
     return;
   }
 
@@ -270,7 +221,7 @@ async function ensureNextRowExists(rowIndex: number): Promise<void> {
     const btn = document.querySelector(btnSelector) as HTMLElement | null;
     if (btn) {
       btn.click();
-      await sleep(200);
+      await new Promise((resolve) => setTimeout(resolve, 500));
 
       const newRow = document.querySelector(sel.obat_nama);
       if (newRow) {
@@ -287,28 +238,6 @@ async function ensureNextRowExists(rowIndex: number): Promise<void> {
 // SCRAPE FUNCTION
 // =============================================================================
 
-export interface ScrapedResepData {
-  static: {
-    no_resep: string;
-    alergi: string;
-  };
-  ajax: {
-    ruangan: string;
-    dokter: string;
-    perawat: string;
-  };
-  medications: Array<{
-    racikan: string;
-    jumlah_permintaan: number;
-    nama_obat: string;
-    jumlah: number;
-    signa: string;
-    aturan_pakai: AturanPakai;
-    keterangan: string;
-  }>;
-  prioritas: '0' | '1';
-}
-
 /**
  * Scrape current values from Resep form
  */
@@ -318,48 +247,48 @@ export async function scrapeResepForm(): Promise<ScrapedResepData> {
   await waitForElement(RESEP_FIELDS.alergi.selector, 3000);
 
   const data: ScrapedResepData = {
-    static: {
-      no_resep: getInputValue(RESEP_FIELDS.no_resep.selector),
-      alergi: getInputValue(RESEP_FIELDS.alergi.selector),
-    },
-    ajax: {
-      ruangan: getInputValue(RESEP_FIELDS.ruangan.selector),
-      dokter: getInputValue(RESEP_FIELDS.dokter_nama_bpjs.selector),
-      perawat: getInputValue(RESEP_FIELDS.perawat_nama.selector),
-    },
     medications: [],
-    prioritas:
-      ((document.querySelector(RESEP_FIELDS.prioritas.selector) as HTMLSelectElement | null)
-        ?.value as '0' | '1') || '0',
   };
 
-  // Scrape medication rows
-  const maxRows = 20;
+  // Global fields
+  const alergiEl = document.querySelector(RESEP_FIELDS.alergi.selector) as HTMLInputElement;
+  if (alergiEl) data.alergi = alergiEl.value;
 
-  for (let rowIndex = 0; rowIndex < maxRows; rowIndex++) {
-    const sel = getResepRowSelectors(rowIndex);
-    const obatNamaElement = document.querySelector(sel.obat_nama);
+  const bbEl = document.querySelector(RESEP_FIELDS.berat_badan.selector) as HTMLInputElement;
+  if (bbEl) data.berat_badan = bbEl.value;
 
-    if (!obatNamaElement) {
-      break;
-    }
+  const tbEl = document.querySelector(RESEP_FIELDS.tinggi_badan.selector) as HTMLInputElement;
+  if (tbEl) data.tinggi_badan = tbEl.value;
 
-    const namaObat = getInputValue(sel.obat_nama);
-    if (!namaObat) {
-      break;
-    }
+  // Scrape rows (limit 20 for safety)
+  for (let i = 0; i < 20; i++) {
+    const sel = getResepRowSelectors(i);
+    const namaEl = document.querySelector(sel.obat_nama) as HTMLInputElement;
 
-    const med = {
-      racikan: (document.querySelector(sel.obat_racikan) as HTMLSelectElement | null)?.value || '',
-      jumlah_permintaan: parseInt(getInputValue(sel.obat_jumlah_permintaan)) || 0,
-      nama_obat: namaObat,
-      jumlah: parseInt(getInputValue(sel.obat_jumlah)) || 0,
-      signa: getInputValue(sel.obat_signa),
-      aturan_pakai:
-        ((document.querySelector(sel.aturan_pakai) as HTMLSelectElement | null)?.value ||
-          '2') as AturanPakai,
-      keterangan: getInputValue(sel.obat_keterangan),
+    if (!namaEl) break; // End of rows
+
+    // If row exists but is empty/hidden, check if it has value
+    // (Some interfaces keep 10 rows but visible=false, check offsetParent)
+    if (namaEl.offsetParent === null && namaEl.value === '') continue;
+
+    const med: ResepMedication = {
+      nama_obat: namaEl.value,
     };
+
+    const jumEl = document.querySelector(sel.jumlah) as HTMLInputElement;
+    if (jumEl && jumEl.value) med.jumlah = Number(jumEl.value);
+
+    const s1El = document.querySelector(sel.signa1) as HTMLInputElement;
+    if (s1El && s1El.value) med.signa1 = Number(s1El.value);
+
+    const s2El = document.querySelector(sel.signa2) as HTMLInputElement;
+    if (s2El && s2El.value) med.signa2 = s2El.value;
+
+    const ruleEl = document.querySelector(sel.aturan_pakai) as HTMLSelectElement;
+    if (ruleEl && ruleEl.value) med.aturan_pakai = ruleEl.value;
+
+    const ketEl = document.querySelector(sel.keterangan) as HTMLInputElement;
+    if (ketEl && ketEl.value) med.keterangan = ketEl.value;
 
     data.medications.push(med);
   }
@@ -369,11 +298,10 @@ export async function scrapeResepForm(): Promise<ScrapedResepData> {
 }
 
 // =============================================================================
-// INITIALIZATION
+// PAGE INITIALIZATION
 // =============================================================================
 
 /**
- * Initialize Resep page handlers
  * Called from content script when page is detected as resep
  */
 export function initResepPage(): void {

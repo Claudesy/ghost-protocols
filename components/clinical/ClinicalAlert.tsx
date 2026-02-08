@@ -17,7 +17,7 @@ export type AlertSeverity = 'critical' | 'high' | 'moderate' | 'info' | 'success
 
 /**
  * ClinicalAlertProps interface
- * 
+ *
  * @remarks
  * TODO: Add type description and property documentation
  * Auto-generated on 2026-02-04
@@ -36,7 +36,7 @@ export interface ClinicalAlertProps {
 
 /**
  * AlertAction interface
- * 
+ *
  * @remarks
  * TODO: Add type description and property documentation
  * Auto-generated on 2026-02-04
@@ -66,7 +66,7 @@ export const ClinicalAlert: React.FC<ClinicalAlertProps> = ({
   const displayIcon = icon || severityConfig.icon;
 
   return (
-    <div className={`clinical-alert clinical-alert-${severity}`}>
+    <div className={`clinical-alert clinical-alert-${severity} glass-alert-${severity}`}>
       <div className="clinical-alert-header">
         <div className="clinical-alert-icon">{displayIcon}</div>
         <div className="clinical-alert-title-section">
@@ -119,7 +119,7 @@ export const CrisisAlert: React.FC<CrisisAlertProps> = ({
   const config = getCrisisConfig(type);
 
   return (
-    <div className="crisis-alert">
+    <div className="crisis-alert glass-card">
       <div className="crisis-alert-header">
         <div className="crisis-alert-icon">{config.icon}</div>
         <div className="crisis-alert-title-section">
@@ -158,14 +158,14 @@ export const CrisisAlert: React.FC<CrisisAlertProps> = ({
 export interface ReasoningStep {
   step_number: number;
   description: string;
-  data_used: { label: string; value: any }[];
+  data_used: { label: string; value: unknown }[];
   logic: string;
   result: string;
 }
 
 /**
  * ReasoningDisplayProps interface
- * 
+ *
  * @remarks
  * TODO: Add type description and property documentation
  * Auto-generated on 2026-02-04
@@ -204,7 +204,7 @@ export const ReasoningDisplay: React.FC<ReasoningDisplayProps> = ({
                 {step.data_used.map((data, index) => (
                   <div key={index} className="reasoning-data-item">
                     <span className="reasoning-data-label">• {data.label}:</span>
-                    <span className="reasoning-data-value">{data.value}</span>
+                    <span className="reasoning-data-value">{formatReasoningValue(data.value)}</span>
                   </div>
                 ))}
               </div>
@@ -289,6 +289,21 @@ function getSeverityConfig(severity: AlertSeverity) {
   return configs[severity];
 }
 
+function formatReasoningValue(value: unknown): React.ReactNode {
+  if (value === null || value === undefined) return '-';
+  if (typeof value === 'string') {
+    return value.replace(/_/g, ' ').replace(/\s+/g, ' ').trim();
+  }
+  if (typeof value === 'number' || typeof value === 'boolean') {
+    return String(value);
+  }
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return '[unserializable]';
+  }
+}
+
 function getCrisisConfig(type: CrisisAlertProps['type']) {
   const configs = {
     HYPOGLYCEMIA: {
@@ -327,16 +342,22 @@ export const clinicalAlertStyles = `
   padding: 16px;
   margin-bottom: 16px;
   border-left: 4px solid;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
 
 .clinical-alert-critical {
-  background: var(--error-bg);
-  border-color: var(--error-primary);
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-left-color: var(--error-primary);
+  border-left-width: 4px;
 }
 
 .clinical-alert-high {
-  background: var(--warning-bg);
-  border-color: var(--warning-primary);
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  border-left-color: var(--warning-primary);
+  border-left-width: 4px;
 }
 
 .clinical-alert-moderate {
@@ -425,8 +446,10 @@ export const clinicalAlertStyles = `
 
 /* Crisis Alert */
 .crisis-alert {
-  background: linear-gradient(135deg, var(--error-bg) 0%, var(--error-bg-dark) 100%);
-  border: 2px solid var(--error-primary);
+  background: linear-gradient(135deg, rgba(220, 38, 38, 0.2) 0%, rgba(153, 27, 27, 0.2) 100%);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--error-primary);
   border-radius: 12px;
   padding: 20px;
   margin-bottom: 20px;

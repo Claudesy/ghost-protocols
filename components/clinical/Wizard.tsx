@@ -9,6 +9,12 @@
 
 import React, { useState, useCallback } from 'react';
 
+type WizardDataMap = Record<string, unknown>;
+
+function humanizeUiText(value: string): string {
+  return value.replace(/_/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
 // ============================================================================
 // TYPES
 // ============================================================================
@@ -30,9 +36,9 @@ export interface WizardStep {
  */
 
 export interface WizardStepProps {
-  onNext: (data: any) => void;
+  onNext: (data: unknown) => void;
   onBack: () => void;
-  data: any;
+  data: unknown;
   isFirst: boolean;
   isLast: boolean;
 }
@@ -47,7 +53,7 @@ export interface WizardStepProps {
 
 export interface WizardProps {
   steps: WizardStep[];
-  onComplete: (allData: any) => void;
+  onComplete: (allData: WizardDataMap) => void;
   onCancel?: () => void;
   title: string;
   subtitle?: string;
@@ -59,13 +65,13 @@ export interface WizardProps {
 
 export const Wizard: React.FC<WizardProps> = ({ steps, onComplete, onCancel, title, subtitle }) => {
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
-  const [stepData, setStepData] = useState<Record<string, any>>({});
+  const [stepData, setStepData] = useState<WizardDataMap>({});
 
   const currentStep = steps[currentStepIndex];
   const progress = ((currentStepIndex + 1) / steps.length) * 100;
 
   const handleNext = useCallback(
-    (data: any) => {
+    (data: unknown) => {
       // Save step data
       setStepData((prev) => ({
         ...prev,
@@ -117,7 +123,7 @@ export const Wizard: React.FC<WizardProps> = ({ steps, onComplete, onCancel, tit
           <div className="wizard-progress-fill" style={{ width: `${progress}%` }} />
         </div>
         <div className="wizard-progress-text">
-          Step {currentStepIndex + 1} of {steps.length}: {currentStep.title}
+          Step {currentStepIndex + 1} of {steps.length}: {humanizeUiText(currentStep.title)}
         </div>
       </div>
 
@@ -125,12 +131,12 @@ export const Wizard: React.FC<WizardProps> = ({ steps, onComplete, onCancel, tit
       <div className="wizard-content">
         {/* Instruction */}
         <div className="wizard-instruction">
-          <h3 className="wizard-instruction-title">📋 {currentStep.instruction}</h3>
+          <h3 className="wizard-instruction-title">📋 {humanizeUiText(currentStep.instruction)}</h3>
 
           {currentStep.educational_tip && (
             <div className="wizard-tip">
               <span className="wizard-tip-icon">💡</span>
-              <span className="wizard-tip-text">{currentStep.educational_tip}</span>
+              <span className="wizard-tip-text">{humanizeUiText(currentStep.educational_tip)}</span>
             </div>
           )}
         </div>
@@ -152,7 +158,7 @@ export const Wizard: React.FC<WizardProps> = ({ steps, onComplete, onCancel, tit
         <div className="wizard-navigation-hints">
           {currentStepIndex > 0 && <span className="wizard-hint">← Back available</span>}
           {currentStepIndex < steps.length - 1 && (
-            <span className="wizard-hint">Next step: {steps[currentStepIndex + 1].title} →</span>
+            <span className="wizard-hint">Next step: {humanizeUiText(steps[currentStepIndex + 1].title)} →</span>
           )}
         </div>
       </div>

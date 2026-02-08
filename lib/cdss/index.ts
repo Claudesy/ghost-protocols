@@ -29,6 +29,8 @@ export {
   DEFAULT_ENGINE_CONFIG,
 } from './engine';
 
+export { runV3InferenceFromEncounter } from './v3-adapter';
+
 export type {
   CDSSEngineResult,
   CDSSAlert,

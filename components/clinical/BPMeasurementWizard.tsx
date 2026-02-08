@@ -32,6 +32,17 @@ export interface BPMeasurementData {
   readings: BPReading[];
 }
 
+interface BPReadingDraft {
+  sbp?: string | number;
+  dbp?: string | number;
+}
+
+function getInitialReadingValue(data: unknown, key: keyof BPReadingDraft): string {
+  if (typeof data !== 'object' || data === null) return '';
+  const value = (data as BPReadingDraft)[key];
+  return typeof value === 'number' || typeof value === 'string' ? String(value) : '';
+}
+
 // ============================================================================
 // STEP COMPONENTS
 // ============================================================================
@@ -46,8 +57,8 @@ const Step1FirstReading: React.FC<WizardStepProps> = ({
   isFirst,
   isLast,
 }) => {
-  const [sbp, setSbp] = useState<string>(data?.sbp || '');
-  const [dbp, setDbp] = useState<string>(data?.dbp || '');
+  const [sbp, setSbp] = useState<string>(getInitialReadingValue(data, 'sbp'));
+  const [dbp, setDbp] = useState<string>(getInitialReadingValue(data, 'dbp'));
 
   const handleNext = () => {
     const reading: BPReading = {
@@ -134,8 +145,8 @@ const Step2SecondReading: React.FC<WizardStepProps> = ({
   isFirst,
   isLast,
 }) => {
-  const [sbp, setSbp] = useState<string>(data?.sbp || '');
-  const [dbp, setDbp] = useState<string>(data?.dbp || '');
+  const [sbp, setSbp] = useState<string>(getInitialReadingValue(data, 'sbp'));
+  const [dbp, setDbp] = useState<string>(getInitialReadingValue(data, 'dbp'));
 
   const handleNext = () => {
     const reading: BPReading = {
@@ -218,8 +229,8 @@ const Step3ThirdReading: React.FC<WizardStepProps> = ({
   isFirst,
   isLast,
 }) => {
-  const [sbp, setSbp] = useState<string>(data?.sbp || '');
-  const [dbp, setDbp] = useState<string>(data?.dbp || '');
+  const [sbp, setSbp] = useState<string>(getInitialReadingValue(data, 'sbp'));
+  const [dbp, setDbp] = useState<string>(getInitialReadingValue(data, 'dbp'));
 
   const handleNext = () => {
     const reading: BPReading = {
@@ -325,8 +336,11 @@ export const BPMeasurementWizard: React.FC<BPMeasurementWizardProps> = ({
     },
   ];
 
-  const handleComplete = (allData: any) => {
-    const readings: BPReading[] = [allData.reading_1, allData.reading_2, allData.reading_3];
+  const handleComplete = (allData: Record<string, unknown>) => {
+    const data = allData as Partial<Record<'reading_1' | 'reading_2' | 'reading_3', BPReading>>;
+    const readings: BPReading[] = [data.reading_1, data.reading_2, data.reading_3].filter(
+      (reading): reading is BPReading => Boolean(reading)
+    );
     onComplete(readings);
   };
 

@@ -15,6 +15,9 @@
  */
 
 import { waitForElement } from '@/lib/scraper/dom-utils';
+import { createLogger } from '@/utils/logger';
+
+const fillerLog = createLogger('Filler', 'filler');
 
 // ============================================================================
 // TYPES
@@ -98,7 +101,7 @@ export async function dispatchEventChain(
     const event = new Event(eventName, eventOptions);
     element.dispatchEvent(event);
 
-    console.log(`[Filler] Dispatched: ${eventName}`);
+    fillerLog.debug(`[Filler] Dispatched: ${eventName}`);
 
     if (delayMs > 0) {
       await sleep(delayMs);
@@ -172,18 +175,18 @@ export async function fillTextField(
     }
 
     if (isFieldReadonly(element)) {
-      console.warn(`[Filler] Skipped readonly: ${selector}`);
+      fillerLog.warn(`[Filler] Skipped readonly: ${selector}`);
       return { success: false, field, value, method: 'direct', error: 'Field is readonly' };
     }
 
     if (isFieldCsrf(element)) {
-      console.warn(`[Filler] Skipped CSRF field: ${selector}`);
+      fillerLog.warn(`[Filler] Skipped CSRF field: ${selector}`);
       return { success: false, field, value, method: 'direct', error: 'CSRF field protected' };
     }
 
     // SKIP if field already has value (user manual input - don't overwrite)
     if (element.value && element.value.trim().length > 0) {
-      console.log(`[Filler] Skipped (has value): ${selector} = "${element.value.substring(0, 20)}..."`);
+      fillerLog.debug(`[Filler] Skipped (has value): ${selector} = "${element.value.substring(0, 20)}..."`);
       return { success: true, field, value: element.value, method: 'direct' };
     }
 
@@ -196,11 +199,11 @@ export async function fillTextField(
     // Visual feedback - yellow highlight
     highlightField(element);
 
-    console.log(`[Filler] ✓ Text filled: ${selector} = "${value}"`);
+    fillerLog.debug(`[Filler] ✓ Text filled: ${selector} = "${value}"`);
     return { success: true, field, value, method: 'direct' };
 
   } catch (error) {
-    console.error(`[Filler] Error filling text ${selector}:`, error);
+    fillerLog.error(`[Filler] Error filling text ${selector}:`, error);
     return { success: false, field, value, method: 'direct', error: String(error) };
   }
 }
@@ -214,19 +217,19 @@ export async function fillNumberField(
   selector: string,
   value: number
 ): Promise<FillResult> {
-  console.log('🔴🔴🔴 SENTRA DEBUG: fillNumberField CALLED for', selector, '=', value);
+  fillerLog.debug('fillNumberField called for', selector, '=', value);
   const field = 'number:' + selector;
 
   try {
     const element = await waitForElement(selector, 3000);
 
     if (!element || !(element instanceof HTMLInputElement)) {
-      console.warn(`[Filler] Element NOT FOUND for: ${selector}`);
+      fillerLog.warn(`[Filler] Element NOT FOUND for: ${selector}`);
       return { success: false, field, value, method: 'direct', error: 'Element not found or wrong type' };
     }
 
     // DEBUG: Log which element was found
-    console.log(`[Filler] Found element: id="${element.id}", name="${element.name}", currentValue="${element.value}"`);
+    fillerLog.debug(`[Filler] Found element: id="${element.id}", name="${element.name}", currentValue="${element.value}"`);
 
     if (isFieldReadonly(element)) {
       return { success: false, field, value, method: 'direct', error: 'Field is readonly' };
@@ -235,12 +238,12 @@ export async function fillNumberField(
     // SKIP if field already has value (user manual input - don't overwrite)
     const currentValue = element.value?.trim() || '';
     if (currentValue.length > 0) {
-      console.log(`[Filler] ⏭️ SKIPPED (has value): ${selector} = "${currentValue}" - NOT overwriting`);
+      fillerLog.debug(`[Filler] ⏭️ SKIPPED (has value): ${selector} = "${currentValue}" - NOT overwriting`);
       return { success: true, field, value: Number(currentValue), method: 'direct' };
     }
 
     // Set value (field is empty)
-    console.log(`[Filler] Field empty, filling: ${selector} = ${value}`);
+    fillerLog.debug(`[Filler] Field empty, filling: ${selector} = ${value}`);
     element.value = String(value);
 
     // Dispatch event chain
@@ -248,11 +251,11 @@ export async function fillNumberField(
 
     highlightField(element);
 
-    console.log(`[Filler] ✓ Number filled: ${selector} = ${value}`);
+    fillerLog.debug(`[Filler] ✓ Number filled: ${selector} = ${value}`);
     return { success: true, field, value, method: 'direct' };
 
   } catch (error) {
-    console.error(`[Filler] Error filling number ${selector}:`, error);
+    fillerLog.error(`[Filler] Error filling number ${selector}:`, error);
     return { success: false, field, value, method: 'direct', error: String(error) };
   }
 }
@@ -295,7 +298,7 @@ export async function fillSelect(
     const currentVal = element.value;
     const firstOption = element.options[0]?.value || '';
     if (currentVal && currentVal !== '' && currentVal !== '0' && currentVal !== firstOption) {
-      console.log(`[Filler] Skipped (has value): ${selector} = "${currentVal}"`);
+      fillerLog.debug(`[Filler] Skipped (has value): ${selector} = "${currentVal}"`);
       return { success: true, field, value: currentVal, method: 'select' };
     }
 
@@ -307,11 +310,11 @@ export async function fillSelect(
 
     highlightField(element);
 
-    console.log(`[Filler] ✓ Select filled: ${selector} = "${value}"`);
+    fillerLog.debug(`[Filler] ✓ Select filled: ${selector} = "${value}"`);
     return { success: true, field, value, method: 'select' };
 
   } catch (error) {
-    console.error(`[Filler] Error filling select ${selector}:`, error);
+    fillerLog.error(`[Filler] Error filling select ${selector}:`, error);
     return { success: false, field, value, method: 'select', error: String(error) };
   }
 }
@@ -335,7 +338,7 @@ export async function fillCheckbox(
 
     // Skip if already in desired state
     if (element.checked === checked) {
-      console.log(`[Filler] Checkbox already ${checked ? 'checked' : 'unchecked'}: ${selector}`);
+      fillerLog.debug(`[Filler] Checkbox already ${checked ? 'checked' : 'unchecked'}: ${selector}`);
       return { success: true, field, value: checked, method: 'checkbox' };
     }
 
@@ -345,11 +348,11 @@ export async function fillCheckbox(
     // Dispatch click + change
     await dispatchEventChain(element, ['click', 'change']);
 
-    console.log(`[Filler] ✓ Checkbox ${checked ? 'checked' : 'unchecked'}: ${selector}`);
+    fillerLog.debug(`[Filler] ✓ Checkbox ${checked ? 'checked' : 'unchecked'}: ${selector}`);
     return { success: true, field, value: checked, method: 'checkbox' };
 
   } catch (error) {
-    console.error(`[Filler] Error filling checkbox ${selector}:`, error);
+    fillerLog.error(`[Filler] Error filling checkbox ${selector}:`, error);
     return { success: false, field, value: checked, method: 'checkbox', error: String(error) };
   }
 }
@@ -374,7 +377,7 @@ export async function fillRadio(
 
     // Skip if already checked
     if (element.checked) {
-      console.log(`[Filler] Radio already checked: ${selector}`);
+      fillerLog.debug(`[Filler] Radio already checked: ${selector}`);
       return { success: true, field, value, method: 'radio' };
     }
 
@@ -389,11 +392,11 @@ export async function fillRadio(
       element.onchange(new Event('change'));
     }
 
-    console.log(`[Filler] ✓ Radio selected: ${selector}`);
+    fillerLog.debug(`[Filler] ✓ Radio selected: ${selector}`);
     return { success: true, field, value, method: 'radio' };
 
   } catch (error) {
-    console.error(`[Filler] Error filling radio ${selector}:`, error);
+    fillerLog.error(`[Filler] Error filling radio ${selector}:`, error);
     return { success: false, field, value, method: 'radio', error: String(error) };
   }
 }
@@ -444,28 +447,39 @@ export async function fillAutocomplete(
       await dispatchEventChain(input, ['focus'], 0);
 
       // 3. Simulate typing character by character
-      console.log(`[Filler] Typing: "${value}"`);
+      fillerLog.debug(`[Filler] Typing: "${value}"`);
       for (let i = 0; i < value.length; i++) {
-        input.value = value.substring(0, i + 1);
-        await dispatchEventChain(input, ['input'], typeDelay);
+        const current = value.substring(0, i + 1);
+        const typedChar = value[i] || '';
+        input.value = current;
+        await dispatchEventChain(input, ['input'], 0);
+        dispatchKeyboardEvent(
+          input,
+          'keyup',
+          typedChar || 'Unidentified',
+          typedChar ? typedChar.toUpperCase().charCodeAt(0) : 0,
+        );
+        if (typeDelay > 0) {
+          await sleep(typeDelay);
+        }
       }
 
       // 4. Trigger AJAX call with keydown
       dispatchKeyboardEvent(input, 'keydown', 'ArrowDown', 40);
 
       // 5. Wait for dropdown to appear
-      console.log(`[Filler] Waiting for dropdown (${timeout}ms)...`);
+      fillerLog.debug(`[Filler] Waiting for dropdown (${timeout}ms)...`);
       const dropdown = await waitForDropdown(dropdownSelector, timeout);
 
       if (!dropdown) {
         if (attempt < retries) {
-          console.warn(`[Filler] Dropdown not appeared, retry ${attempt + 1}/${retries}...`);
+          fillerLog.warn(`[Filler] Dropdown not appeared, retry ${attempt + 1}/${retries}...`);
           await sleep(300);
           continue;
         }
 
         // Fallback: try direct value set if dropdown doesn't appear
-        console.warn(`[Filler] Dropdown not appeared, using direct value`);
+        fillerLog.warn(`[Filler] Dropdown not appeared, using direct value`);
         await dispatchEventChain(input, ['change', 'blur']);
         highlightField(input, '#fef3c7'); // Yellow for fallback
         return { success: true, field, value, method: 'autocomplete' };
@@ -486,7 +500,7 @@ export async function fillAutocomplete(
       if (!matchedItem && items.length > 0) {
         // Take first item if no exact match
         matchedItem = items[0] as HTMLElement;
-        console.log(`[Filler] No exact match, using first item`);
+        fillerLog.debug(`[Filler] No exact match, using first item`);
       }
 
       if (!matchedItem) {
@@ -495,7 +509,7 @@ export async function fillAutocomplete(
 
       // 7. Click matched item
       matchedItem.click();
-      console.log(`[Filler] Clicked: "${matchedItem.textContent?.trim()}"`);
+      fillerLog.debug(`[Filler] Clicked: "${matchedItem.textContent?.trim()}"`);
 
       // 8. Wait for value to be set
       await sleep(200);
@@ -504,11 +518,11 @@ export async function fillAutocomplete(
       await dispatchEventChain(input, ['change', 'blur']);
       highlightField(input, '#d1fae5'); // Green for success
 
-      console.log(`[Filler] ✓ Autocomplete filled: ${selector} = "${input.value}"`);
+      fillerLog.debug(`[Filler] ✓ Autocomplete filled: ${selector} = "${input.value}"`);
       return { success: true, field, value: input.value, method: 'autocomplete' };
 
     } catch (error) {
-      console.error(`[Filler] Error in autocomplete attempt ${attempt + 1}:`, error);
+      fillerLog.error(`[Filler] Error in autocomplete attempt ${attempt + 1}:`, error);
       if (attempt === retries) {
         return { success: false, field, value, method: 'autocomplete', error: String(error) };
       }
@@ -606,7 +620,7 @@ function highlightField(element: HTMLElement, _color: string = '#3B82F6'): void 
   if (existingStyle) {
     existingStyle.remove(); // Remove old cached style
   }
-  if (true) { // Always inject fresh
+  { // Always inject fresh
     const style = document.createElement('style');
     style.id = 'sentra-autosen-animation';
     style.textContent = `
@@ -691,7 +705,7 @@ export async function fillRangeSlider(
     // 2. Find range slider
     const rangeSlider = document.querySelector(sliderSelector) as HTMLInputElement | null;
 
-    console.log(`[Filler] Range slider - hidden: ${!!hiddenInput}, slider: ${!!rangeSlider}`);
+    fillerLog.debug(`[Filler] Range slider - hidden: ${!!hiddenInput}, slider: ${!!rangeSlider}`);
 
     if (!hiddenInput && !rangeSlider) {
       return { success: false, field, value, method: 'direct', error: 'Neither hidden nor slider found' };
@@ -701,7 +715,7 @@ export async function fillRangeSlider(
     if (hiddenInput) {
       hiddenInput.value = String(value);
       await dispatchEventChain(hiddenInput, ['input', 'change']);
-      console.log(`[Filler] ✓ Hidden input set: ${hiddenSelector} = ${value}`);
+      fillerLog.debug(`[Filler] ✓ Hidden input set: ${hiddenSelector} = ${value}`);
     }
 
     // 4. Set value on range slider and trigger visual update
@@ -720,13 +734,13 @@ export async function fillRangeSlider(
       rangeSlider.style.background = `linear-gradient(to right, rgb(112, 214, 53) 0%, rgb(168, 224, 68) ${percentage}%, rgb(255, 255, 255) ${percentage}%, white 100%)`;
 
       highlightField(rangeSlider);
-      console.log(`[Filler] ✓ Range slider set: ${sliderSelector} = ${value}`);
+      fillerLog.debug(`[Filler] ✓ Range slider set: ${sliderSelector} = ${value}`);
     }
 
     return { success: true, field, value, method: 'direct' };
 
   } catch (error) {
-    console.error(`[Filler] Error filling range slider:`, error);
+    fillerLog.error(`[Filler] Error filling range slider:`, error);
     return { success: false, field, value, method: 'direct', error: String(error) };
   }
 }
@@ -756,7 +770,7 @@ export async function activateCheckboxWithOnclick(
 
     // Skip if already in desired state
     if (element.checked === shouldCheck) {
-      console.log(`[Filler] Checkbox already ${shouldCheck ? 'checked' : 'unchecked'}: ${selector}`);
+      fillerLog.debug(`[Filler] Checkbox already ${shouldCheck ? 'checked' : 'unchecked'}: ${selector}`);
       return { success: true, field, value: shouldCheck, method: 'checkbox' };
     }
 
@@ -774,11 +788,11 @@ export async function activateCheckboxWithOnclick(
     // Wait for any JS to process
     await sleep(100);
 
-    console.log(`[Filler] ✓ Checkbox activated: ${selector}`);
+    fillerLog.debug(`[Filler] ✓ Checkbox activated: ${selector}`);
     return { success: true, field, value: shouldCheck, method: 'checkbox' };
 
   } catch (error) {
-    console.error(`[Filler] Error activating checkbox ${selector}:`, error);
+    fillerLog.error(`[Filler] Error activating checkbox ${selector}:`, error);
     return { success: false, field, value: shouldCheck, method: 'checkbox', error: String(error) };
   }
 }
@@ -801,11 +815,18 @@ export async function fillFields(
   fields: FieldMapping[],
   delayBetweenFields: number = 100
 ): Promise<FillResult[]> {
-  console.log('🔴🔴🔴 SENTRA DEBUG: fillFields CALLED with', fields.length, 'fields');
+  fillerLog.debug('fillFields called with', fields.length, 'fields');
   const results: FillResult[] = [];
 
   for (const field of fields) {
-    console.log('🔴🔴🔴 SENTRA DEBUG: Processing field:', field.selector, 'type:', field.type, 'value:', field.value);
+    fillerLog.debug(
+      'Processing field:',
+      field.selector,
+      'type:',
+      field.type,
+      'value:',
+      field.value
+    );
     let result: FillResult;
 
     switch (field.type) {
@@ -841,3 +862,4 @@ export async function fillFields(
 
   return results;
 }
+

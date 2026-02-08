@@ -7,7 +7,7 @@
  * @module lib/services/audit-service
  */
 
-import { storage } from 'wxt/storage';
+import { storage } from '@wxt-dev/storage';
 
 // ============================================================================
 // TYPES
@@ -20,14 +20,14 @@ export interface AuditEntry {
   timestamp: string; // ISO-8601
   actor: AuditActor;
   action: string;
-  context: any; // Input data snapshot
-  outcome: any; // Output/Recommendation snapshot
+  context: unknown; // Input data snapshot
+  outcome: unknown; // Output/Recommendation snapshot
   previousHash: string; // Hash of the previous entry (integrity link)
   hash: string; // Hash of THIS entry
 }
 
 export interface AuditLogConfig {
-  storageKey: string;
+  storageKey: `local:${string}` | `session:${string}` | `sync:${string}` | `managed:${string}`;
   maxEntries: number;
 }
 
@@ -203,7 +203,7 @@ class AuditService {
     }
   }
 
-  private async calculateHash(data: any): Promise<string> {
+  private async calculateHash(data: unknown): Promise<string> {
     const json = JSON.stringify(data);
     const msgBuffer = new TextEncoder().encode(json);
     const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);

@@ -2,18 +2,17 @@
  * Runtime debug flags for targeted diagnostics.
  */
 
-const toBool = (value: unknown): boolean => String(value).toLowerCase() === 'true';
+import { isDebugScopeEnabled, logger } from './logger';
 
-export const isGlobalDebugEnabled = (): boolean => toBool(import.meta.env.VITE_DEBUG);
+export const isGlobalDebugEnabled = (): boolean => isDebugScopeEnabled('global');
 
 export const isRiwayatDebugEnabled = (): boolean =>
-  toBool(import.meta.env.VITE_DEBUG_RIWAYAT) || isGlobalDebugEnabled();
+  isDebugScopeEnabled('riwayat');
 
 export const riwayatDebugLog = (...args: unknown[]): void => {
-  if (isRiwayatDebugEnabled()) console.log(...args);
+  if (isRiwayatDebugEnabled()) logger.riwayat(...args);
 };
 
 export const riwayatDebugWarn = (...args: unknown[]): void => {
-  if (isRiwayatDebugEnabled()) console.warn(...args);
+  if (isRiwayatDebugEnabled()) logger.warn(...args);
 };
-

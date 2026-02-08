@@ -13,74 +13,27 @@
  * ARCHITECTURE:
  * 1. Anonymize (NEVER skip) → Strip PII before any processing
  * 2. Red Flag Check (FIRST) → Hardcoded rules, no API dependency
- * 3. RAG Query → Local IndexedDB ICD-10 search
- * 4. DeepSeek Inference → AI suggestions with RAG context
- * 5. Validation Pipeline → 5-layer verification
- * 6. Audit Log → Append-only trail (async, non-blocking)
+ * 3. v3 Inference Engine → Core risk/syndrome inference
+ * 4. Validation Pipeline → 5-layer verification (with conservative degraded mode)
+ * 5. Audit Log → Append-only trail (async, non-blocking)
  */
 
-import type { RAGSearchResult } from '@/lib/rag/types';
-import type { AlertSeverity, CDSSAlertType } from '@/types/api';
+import type { AlertSeverity, CDSSAlertType, DiagnosisRequestContext } from '@/types/api';
 import type { Encounter } from '~/utils/types';
 import type { RedFlag } from './red-flags';
 import type { ValidatedSuggestion, ValidationResult } from './validation/types';
 
 import type { AnonymizedClinicalContext } from '@/lib/api/deepseek-types';
-import { inferDiagnosis } from '@/lib/api/vertex-ai-client';
-
-/**
- * Browser-compatible fallback inference (no external API)
- * This replaces the Node.js-dependent vertex-ai-client
- */
-function localFallbackInference(
-  context: AnonymizedClinicalContext,
-  ragResults: RAGSearchResult[]
-): {
-  suggestions: Array<{
-    rank: number;
-    diagnosis_name: string;
-    icd10_code: string;
-    confidence: number;
-    reasoning: string;
-    red_flags: string[];
-    recommended_actions: string[];
-  }>;
-  model_version: string;
-  used_fallback: boolean;
-} {
-  // Use RAG results as primary source for suggestions
-  const suggestions = ragResults.slice(0, 5).map((result, index) => ({
-    rank: index + 1,
-    diagnosis_name: result.entry.name_id || result.entry.name_en,
-    icd10_code: result.entry.code,
-    confidence: Math.max(0.3, 1 - index * 0.15) * result.relevance_score,
-    reasoning: `Berdasarkan keluhan "${context.keluhan_utama}" dan kecocokan dengan database ICD-10.`,
-    red_flags: [] as string[],
-    recommended_actions: ['Konfirmasi dengan pemeriksaan fisik', 'Pertimbangkan diagnosis banding'],
-  }));
-
-  return {
-    suggestions,
-    model_version: 'local-rag-fallback-v1',
-    used_fallback: true,
-  };
-}
-
-/**
- * Vertex AI Inference integration
- */
-// Reusing the imported inferDiagnosis
-import { searchForDiagnosisSuggestions } from '@/lib/rag';
 import { anonymize, validateAnonymization } from './anonymizer';
 import {
   auditLogger,
   logDiagnosisRequest,
   logEngineError,
-  logFallbackUsed,
   logSuggestionDisplayed,
 } from './audit-logger';
 import { runRedFlagChecksFromContext } from './red-flags';
 import { runValidationPipeline } from './validation';
+import { runV3InferenceFromEncounter } from './v3-adapter';
 
 // =============================================================================
 // TYPES
@@ -115,13 +68,6 @@ export interface CDSSEngineResult {
     total_validated: number;
     unverified_codes: string[];
     warnings: string[];
-  };
-
-  /** RAG context used (for debugging) */
-  rag_context?: {
-    query: string;
-    result_count: number;
-    top_codes: string[];
   };
 }
 
@@ -264,20 +210,6 @@ function validationToAlerts(validation: ValidationResult): CDSSAlert[] {
   return alerts;
 }
 
-/**
- * Generate error alert
- */
-function createErrorAlert(error: Error, context: string): CDSSAlert {
-  return {
-    id: generateAlertId(),
-    type: 'api_error',
-    severity: 'medium',
-    title: 'Kesalahan Sistem',
-    message: `${context}: ${error.message}`,
-    action: 'Gunakan hasil fallback lokal',
-  };
-}
-
 // =============================================================================
 // MAIN ENGINE
 // =============================================================================
@@ -290,10 +222,9 @@ function createErrorAlert(error: Error, context: string): CDSSAlert {
  *
  * 1. ANONYMIZE — Strip all PII before processing
  * 2. RED FLAGS — Check hardcoded safety rules (no API)
- * 3. RAG QUERY — Search local ICD-10 database
- * 4. AI INFERENCE — Get suggestions from DeepSeek
- * 5. VALIDATION — 5-layer verification pipeline
- * 6. AUDIT — Log for governance (async)
+ * 3. V3 INFERENCE — Run v3 adapter for risk/syndrome output
+ * 4. VALIDATION — 5-layer verification pipeline
+ * 5. AUDIT — Log for governance (async)
  *
  * @param encounter - Patient encounter data
  * @param config - Engine configuration
@@ -301,23 +232,30 @@ function createErrorAlert(error: Error, context: string): CDSSAlert {
  */
 export async function runDiagnosisEngine(
   encounter: Encounter,
-  config: CDSSEngineConfig = DEFAULT_ENGINE_CONFIG
+  config: CDSSEngineConfig = DEFAULT_ENGINE_CONFIG,
+  requestContext?: DiagnosisRequestContext,
 ): Promise<CDSSEngineResult> {
   const startTime = Date.now();
   const sessionId = generateSessionId(encounter);
   const alerts: CDSSAlert[] = [];
-
-  let source: 'ai' | 'local' | 'error' = 'ai';
-  let modelVersion = 'gemini-1.5-flash-002';
 
   // =========================================================================
   // STEP 1: ANONYMIZE (CRITICAL — NEVER SKIP)
   // =========================================================================
 
   const anonymizedContext = anonymize(encounter);
+  const effectiveContext = mergeRequestContext(anonymizedContext, requestContext);
+
+  if (config.enableAudit) {
+    logDiagnosisRequest({
+      session_id: sessionId,
+      input_context: JSON.stringify(effectiveContext),
+      model_version: 'sentra-inference-v3.0.0',
+    }).catch(console.error);
+  }
 
   // Validate anonymization (paranoid check)
-  const anonValidation = validateAnonymization(anonymizedContext);
+  const anonValidation = validateAnonymization(effectiveContext);
   if (!anonValidation.valid) {
     console.error(
       '[CDSS Engine] CRITICAL: Anonymization validation failed!',
@@ -330,7 +268,7 @@ export async function runDiagnosisEngine(
   // STEP 2: RED FLAG CHECK (FIRST — NO API DEPENDENCY)
   // =========================================================================
 
-  const redFlags = runRedFlagChecksFromContext(anonymizedContext);
+  const redFlags = runRedFlagChecksFromContext(effectiveContext);
 
   if (redFlags.length > 0) {
     console.warn(`[CDSS Engine] ${redFlags.length} red flag(s) detected!`);
@@ -338,113 +276,41 @@ export async function runDiagnosisEngine(
   }
 
   // =========================================================================
-  // STEP 3: RAG QUERY (LOCAL INDEXEDDB)
+  // STEP 3: V3 INFERENCE ENGINE (NO LEGACY RUNTIME)
   // =========================================================================
-
-  let ragResults: RAGSearchResult[] = [];
-
-  try {
-    ragResults = await searchForDiagnosisSuggestions(
-      anonymizedContext.keluhan_utama,
-      anonymizedContext.keluhan_tambahan,
-      15 // Get more for context
-    );
-
-    console.log(`[CDSS Engine] RAG returned ${ragResults.length} results`);
-  } catch (error) {
-    console.error('[CDSS Engine] RAG search failed:', error);
-    // Continue with empty RAG — AI can still infer
-  }
-
-  // =========================================================================
-  // STEP 4: AI INFERENCE (OR FALLBACK)
-  // =========================================================================
-
-  let rawSuggestions: Array<{
-    rank: number;
-    diagnosis_name: string;
-    icd10_code: string;
-    confidence: number;
-    reasoning: string;
-    red_flags: string[];
-    recommended_actions: string[];
-  }> = [];
-
-  if (config.enableAI) {
-    // Log diagnosis request (async)
-    if (config.enableAudit) {
-      logDiagnosisRequest({
-        session_id: sessionId,
-        input_context: anonymizedContext.keluhan_utama,
-        model_version: modelVersion,
-      }).catch(console.error);
-    }
-
-    try {
-      const inferenceResult = await inferDiagnosis(anonymizedContext, ragResults);
-      rawSuggestions = inferenceResult.suggestions;
-      modelVersion = inferenceResult.model_version;
-
-      // Update source to AI since it succeeded
-      source = 'ai';
-
-      if (inferenceResult.used_fallback) {
-        console.log('[CDSS Engine] Using fallback inference');
-      }
-    } catch (error) {
-      console.warn('[CDSS Engine] AI inference failed, using local fallback:', error);
-
-      // Log error
-      if (config.enableAudit) {
-        logEngineError({
-          session_id: sessionId,
-          error_message: error instanceof Error ? error.message : 'Unknown error',
-          error_code: 'AI_INFERENCE_FAILED',
-        }).catch(console.error);
-      }
-
-      // Use local fallback
-      const fallbackResult = localFallbackInference(anonymizedContext, ragResults);
-      rawSuggestions = fallbackResult.suggestions;
-      source = 'local';
-      modelVersion = 'local-fallback';
-
-      // Log fallback usage
-      if (config.enableAudit) {
-        logFallbackUsed({
-          session_id: sessionId,
-          reason: error instanceof Error ? error.message : 'AI inference failed',
-        }).catch(console.error);
-      }
-
-      // Add alert
-      if (error instanceof Error) {
-        alerts.push(createErrorAlert(error, 'AI inference gagal'));
-      }
-    }
-  } else {
-    // AI disabled — use local fallback directly
-    const fallbackResult = localFallbackInference(anonymizedContext, ragResults);
-    rawSuggestions = fallbackResult.suggestions;
-    source = 'local';
-    modelVersion = 'local-fallback';
-  }
-
-  // =========================================================================
-  // STEP 5: VALIDATION PIPELINE (5 LAYERS)
-  // =========================================================================
-
+  const v3Result = runV3InferenceFromEncounter(encounter, effectiveContext, redFlags);
   const validationContext = {
-    patient_age: anonymizedContext.usia_tahun,
-    patient_gender: anonymizedContext.jenis_kelamin,
-    is_pregnant: anonymizedContext.is_pregnant || false,
-    keluhan_utama: anonymizedContext.keluhan_utama,
+    patient_age: effectiveContext.usia_tahun,
+    patient_gender: effectiveContext.jenis_kelamin,
+    is_pregnant: effectiveContext.is_pregnant || false,
+    keluhan_utama: effectiveContext.keluhan_utama,
     existing_red_flags: redFlags,
   };
+  let validationResult: ValidationResult;
 
-  const validationResult = await runValidationPipeline(rawSuggestions, validationContext);
+  try {
+    validationResult = await runValidationPipeline(v3Result.rawSuggestions, validationContext);
+  } catch (error) {
+    if (config.enableAudit) {
+      logEngineError({
+        session_id: sessionId,
+        error_message: error instanceof Error ? error.message : 'Unknown validation error',
+        error_code: 'V3_VALIDATION_FAILED',
+      }).catch(console.error);
+    }
+    alerts.push({
+      id: generateAlertId(),
+      type: 'validation_warning',
+      severity: 'high',
+      title: 'Validasi Klinis Terdegradasi',
+      message:
+        'Pipeline validasi tidak tersedia penuh. Tampilkan hasil v3 secara konservatif dan konfirmasi klinis manual.',
+      action: 'Verifikasi ulang diagnosis sebelum keputusan terapi.',
+    });
+    validationResult = buildConservativeValidationFallback(v3Result.rawSuggestions);
+  }
 
-  // Add validation alerts
+  alerts.push(...v3Result.alerts);
   alerts.push(...validationToAlerts(validationResult));
 
   // Filter by confidence and limit
@@ -482,7 +348,7 @@ export async function runDiagnosisEngine(
         confidence: s.confidence,
       })),
       red_flag_count: redFlags.length,
-      model_version: modelVersion,
+      model_version: v3Result.modelVersion,
       latency_ms: processingTime,
       validation_status: validationResult.valid
         ? 'PASS'
@@ -492,33 +358,115 @@ export async function runDiagnosisEngine(
     }).catch(console.error);
   }
 
-  console.log(`[CDSS Engine] Completed in ${processingTime}ms. Source: ${source}`);
-
-  // =========================================================================
-  // RETURN RESULT
-  // =========================================================================
-
   return {
     suggestions: filteredSuggestions,
     red_flags: redFlags,
     alerts,
     processing_time_ms: processingTime,
-    source,
-    model_version: modelVersion,
+    source: v3Result.source,
+    model_version: v3Result.modelVersion,
     validation_summary: {
-      total_raw: rawSuggestions.length,
+      total_raw: v3Result.rawSuggestions.length,
       total_validated: filteredSuggestions.length,
       unverified_codes: validationResult.unverified_codes,
-      warnings: validationResult.warnings,
+      warnings: [...validationResult.warnings, ...v3Result.dataQualityWarnings],
     },
-    rag_context:
-      ragResults.length > 0
-        ? {
-            query: anonymizedContext.keluhan_utama,
-            result_count: ragResults.length,
-            top_codes: ragResults.slice(0, 5).map((r) => r.entry.code),
-          }
-        : undefined,
+  };
+}
+
+function buildConservativeValidationFallback(
+  rawSuggestions: Array<{
+    rank: number;
+    diagnosis_name: string;
+    icd10_code: string;
+    confidence: number;
+    reasoning: string;
+    red_flags?: string[];
+    recommended_actions?: string[];
+  }>,
+): ValidationResult {
+  const filtered_suggestions = rawSuggestions.slice(0, 5).map((suggestion, index) => ({
+    ...suggestion,
+    rank: suggestion.rank || index + 1,
+    confidence: Math.min(0.5, suggestion.confidence),
+    rag_verified: false,
+    confidence_adjusted: true,
+    original_confidence: suggestion.confidence,
+    validation_flags: [
+      {
+        type: 'warning' as const,
+        code: 'VALIDATION_DEGRADED',
+        message: 'Pipeline validasi penuh tidak tersedia, confidence diturunkan konservatif.',
+      },
+    ],
+    red_flags: suggestion.red_flags || [],
+    recommended_actions: suggestion.recommended_actions || [],
+  }));
+
+  return {
+    valid: false,
+    layer_passed: 1,
+    filtered_suggestions,
+    unverified_codes: filtered_suggestions.map((s) => s.icd10_code),
+    red_flags: [],
+    warnings: ['Validation pipeline degraded: menggunakan fallback konservatif v3.'],
+    layer_results: [
+      {
+        layer: 1,
+        name: 'Syntax Validation',
+        passed: true,
+        affected_count: filtered_suggestions.length,
+        details: ['Fallback konservatif aktif, validasi lanjutan tidak dijalankan.'],
+      },
+    ],
+  };
+}
+
+function mergeRequestContext(
+  anonymizedContext: AnonymizedClinicalContext,
+  requestContext?: DiagnosisRequestContext,
+): AnonymizedClinicalContext {
+  if (!requestContext) return anonymizedContext;
+
+  const hasMeaningfulRequestContext =
+    Boolean(requestContext.keluhan_utama?.trim()) ||
+    Boolean(requestContext.keluhan_tambahan?.trim()) ||
+    (Number.isFinite(requestContext.patient_age) && requestContext.patient_age > 0) ||
+    Boolean(requestContext.vital_signs) ||
+    Boolean(requestContext.allergies?.length) ||
+    Boolean(requestContext.chronic_diseases?.length);
+
+  if (!hasMeaningfulRequestContext) {
+    return anonymizedContext;
+  }
+
+  const mappedGender = requestContext.patient_gender === 'F' ? 'P' : 'L';
+  const mergedVitals = requestContext.vital_signs
+    ? {
+        ...anonymizedContext.vital_signs,
+        ...requestContext.vital_signs,
+      }
+    : anonymizedContext.vital_signs;
+
+  return {
+    ...anonymizedContext,
+    keluhan_utama: requestContext.keluhan_utama || anonymizedContext.keluhan_utama,
+    keluhan_tambahan:
+      requestContext.keluhan_tambahan ?? anonymizedContext.keluhan_tambahan,
+    usia_tahun:
+      Number.isFinite(requestContext.patient_age) && requestContext.patient_age > 0
+        ? requestContext.patient_age
+        : anonymizedContext.usia_tahun,
+    jenis_kelamin: requestContext.patient_gender ? mappedGender : anonymizedContext.jenis_kelamin,
+    vital_signs: mergedVitals,
+    allergies:
+      requestContext.allergies && requestContext.allergies.length > 0
+        ? requestContext.allergies
+        : anonymizedContext.allergies,
+    chronic_diseases:
+      requestContext.chronic_diseases && requestContext.chronic_diseases.length > 0
+        ? requestContext.chronic_diseases
+        : anonymizedContext.chronic_diseases,
   };
 }
 
@@ -550,14 +498,14 @@ export async function getCDSSEngineStatus(): Promise<CDSSEngineStatus> {
     return {
       ready: stats.total_entries > 0,
       icd10_count: stats.total_entries,
-      model: 'gemini-1.5-flash-002',
+      model: 'sentra-inference-v3.0.0',
       audit_entries: auditCount,
     };
   } catch (error) {
     return {
       ready: false,
       icd10_count: 0,
-      model: 'gemini-1.5-flash-002',
+      model: 'sentra-inference-v3.0.0',
       audit_entries: 0,
       last_error: error instanceof Error ? error.message : 'Unknown error',
     };

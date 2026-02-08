@@ -8,13 +8,13 @@
  */
 
 import React, { useState } from 'react';
-import { CrisisAlert, RecommendationList } from './ClinicalAlert';
 import {
+  BPReading,
+  CAPTOPRIL_PROTOCOL,
   HMODRedFlags,
   triageHypertensiveCrisis,
-  CAPTOPRIL_PROTOCOL,
-  BPReading,
 } from '../../lib/inference/htn-classifier';
+import { CrisisAlert, RecommendationList } from './ClinicalAlert';
 
 // ============================================================================
 // TYPES
@@ -28,7 +28,7 @@ export interface HTNCrisisTriageProps {
 
 /**
  * HTNCrisisResult interface
- * 
+ *
  * @remarks
  * TODO: Add type description and property documentation
  * Auto-generated on 2026-02-04
@@ -358,7 +358,9 @@ function formatRedFlagName(key: string): string {
 
 export const htnCrisisTriageStyles = `
 .htn-crisis-triage {
-  background: var(--surface-primary);
+  background: var(--glass-bg, rgba(22, 24, 29, 0.95));
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   border: 2px solid var(--warning-primary);
   border-radius: 12px;
   padding: 20px;

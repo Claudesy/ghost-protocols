@@ -31,7 +31,15 @@
       "Bash(npx eslint:*)",
       "Bash(tasklist:*)",
       "Bash(npx wxt build:*)",
-      "Bash(python3:*)"
+      "Bash(python3:*)",
+      "Read(//d/sentrasolutions/aether/engine/memory_service/**)",
+      "Bash(test:*)",
+      "Bash(docker info:*)",
+      "Bash(claude mcp remove:*)",
+      "Bash(cursor --force --install-extension:*)",
+      "Bash(claude mcp list:*)"
     ]
-  }
+  },
+  "outputStyle": "Explanatory",
+  "prefersReducedMotion": true
 }

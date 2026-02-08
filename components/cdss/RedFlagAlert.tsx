@@ -94,6 +94,10 @@ const SEVERITY_CONFIG: Record<string, {
   },
 };
 
+function humanizeUiText(value: string): string {
+  return value.replace(/_/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
 // =============================================================================
 // COMPONENT
 // =============================================================================
@@ -136,7 +140,7 @@ export function RedFlagAlert({
               <span
                 className={`text-tiny font-semibold uppercase tracking-wider ${config.textClass}`}
               >
-                {flag.severity === 'emergency' ? '⚠️ DARURAT' : flag.severity.toUpperCase()}
+                {flag.severity === 'emergency' ? '⚠️ DARURAT' : humanizeUiText(flag.severity).toUpperCase()}
               </span>
               {acknowledged && (
                 <span className="text-tiny text-muted bg-carbon-800 px-1.5 py-0.5 rounded">
@@ -152,7 +156,7 @@ export function RedFlagAlert({
 
             {/* Brief rationale from criteria */}
             <p className="text-small text-platinum/80 mt-1 leading-snug">
-              {flag.criteria_met.join('; ')}
+              {flag.criteria_met.map((item) => humanizeUiText(item)).join('; ')}
             </p>
           </div>
         </div>

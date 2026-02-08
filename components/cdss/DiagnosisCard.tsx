@@ -19,6 +19,9 @@ import type { ValidatedSuggestion } from '@/lib/cdss/validation/types';
 // TYPES
 // =============================================================================
 
+const HIGH_CONFIDENCE_THRESHOLD = 0.85;
+const MEDIUM_CONFIDENCE_THRESHOLD = 0.65;
+
 interface DiagnosisCardProps {
   /** Diagnosis suggestion data */
   suggestion: ValidatedSuggestion;
@@ -45,9 +48,9 @@ interface DiagnosisCardProps {
  * Displays diagnosis suggestion with ICD-10 code, name, confidence, and reasoning
  *
  * Border color indicates confidence:
- * - High (>70%): border-safe
- * - Medium (40-70%): border-caution
- * - Low (<40%): border-status-info
+ * - High (>=85%): border-safe
+ * - Medium (65-84%): border-caution
+ * - Low (<65%): border-status-info
  */
 export function DiagnosisCard({
   suggestion,
@@ -62,9 +65,9 @@ export function DiagnosisCard({
 
   // Determine border color based on confidence
   const borderColor =
-    confidence >= 0.7
+    confidence >= HIGH_CONFIDENCE_THRESHOLD
       ? 'border-safe'
-      : confidence >= 0.4
+      : confidence >= MEDIUM_CONFIDENCE_THRESHOLD
         ? 'border-caution'
         : 'border-status-info';
 
@@ -180,6 +183,17 @@ export function DiagnosisCard({
               <ul className="text-small text-critical/80 list-disc list-inside">
                 {suggestion.red_flags.map((flag, idx) => (
                   <li key={idx}>{flag}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {suggestion.recommended_actions && suggestion.recommended_actions.length > 0 && (
+            <div className="mt-3">
+              <p className="text-caption text-safe mb-1">Rekomendasi:</p>
+              <ul className="text-small text-safe/80 list-disc list-inside">
+                {suggestion.recommended_actions.map((action, idx) => (
+                  <li key={idx}>{action}</li>
                 ))}
               </ul>
             </div>

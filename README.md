@@ -213,6 +213,8 @@ sentra-assist/
 - **Service Worker**: Chrome → Extensions → Sentra Assist → "service worker" link
 - **Content Script**: DevTools on ePuskesmas page → Console tab
 - **Side Panel**: Right-click panel → Inspect
+- **Scoped logs**: set `VITE_DEBUG=true` or channel-specific flags (`VITE_DEBUG_BACKGROUND`, `VITE_DEBUG_CONTENT`, `VITE_DEBUG_RIWAYAT`)
+- **Tab messaging timeout tuning**: adjust `VITE_MESSAGE_TIMEOUT_DEFAULT`, `VITE_MESSAGE_TIMEOUT_FILL`, `VITE_MESSAGE_TIMEOUT_SCRAPE`, `VITE_MESSAGE_TIMEOUT_VISIT_FETCH`, `VITE_MESSAGE_TIMEOUT_AI`
 
 ---
 

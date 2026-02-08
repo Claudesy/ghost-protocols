@@ -80,8 +80,8 @@ const getLabelValueGeneric = (root: ParentNode, keywords: readonly string[]): st
     if (parentText && parentText.length <= 220) {
       for (const key of keywords) {
         const escaped = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        const m = parentText.match(new RegExp(`${escaped}\\s*[:\\-]?\\s*(.+)$`, 'i'));
-        if (m?.[1]) return cleanText(m[1].replace(/^\:+/, ''));
+        const m = parentText.match(new RegExp(`${escaped}\\s*[:-]?\\s*(.+)$`, 'i'));
+        if (m?.[1]) return cleanText(m[1].replace(/^:+/, ''));
       }
     }
   }
@@ -94,7 +94,7 @@ const getLabelValueFromText = (root: ParentNode, keywords: readonly string[]): s
 
   for (const key of keywords) {
     const escaped = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const m = text.match(new RegExp(`${escaped}\\s*[:\\-]?\\s*([^\\n\\r]{1,120})`, 'i'));
+    const m = text.match(new RegExp(`${escaped}\\s*[:-]?\\s*([^\\n\\r]{1,120})`, 'i'));
     if (m?.[1]) return cleanText(m[1]);
   }
 

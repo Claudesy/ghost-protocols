@@ -17,8 +17,8 @@ import { piecesClient, type PiecesSnippet } from '../../lib/api';
 import { generateNarrative, getSuggestions } from '../../lib/inference/narrative-generator';
 import { playNotificationSound } from '../../utils/audio';
 import type { AnamnesaFillPayload, FillResult } from '../../utils/types';
+import { diagnosisSuggestionsStyles } from './DiagnosisSuggestions';
 import { PatientHeader, type MedicalHistoryItem } from './PatientHeader';
-import { DiagnosisSuggestions, diagnosisSuggestionsStyles } from './DiagnosisSuggestions';
 
 // ============================================================================
 // NATIVE CHROME MESSAGING (Bypass @webext-core/messaging for reliability)
@@ -93,6 +93,7 @@ export interface TTVFormState {
   glucose: string;
   symptomText: string;
   allergies: string[];
+  pregnancyStatus: boolean | null;
   autosenPreset: AutosenPreset;
 }
 
@@ -165,6 +166,8 @@ export interface TTVInferenceData {
     lama_sakit: string;
     is_akut: boolean;
   };
+  is_pregnant: boolean | null;
+  pregnancyStatus: boolean | null;
 }
 
 // ============================================================================
@@ -197,6 +200,7 @@ export const TTVInferenceUI = ({
     glucose: '',
     symptomText: '',
     allergies: [],
+    pregnancyStatus: null,
     autosenPreset: 'normal',
   };
 
@@ -228,6 +232,7 @@ export const TTVInferenceUI = ({
   const [localGlucose, setLocalGlucose] = useState<string>('');
   const [localSymptomText, setLocalSymptomText] = useState<string>('');
   const [localAllergies, setLocalAllergies] = useState<string[]>([]);
+  const [localPregnancyStatus, setLocalPregnancyStatus] = useState<boolean | null>(null);
   const [localAutosenPreset, setLocalAutosenPreset] = useState<AutosenPreset>('normal');
 
   // Derived values - use lifted or local state
@@ -239,6 +244,7 @@ export const TTVInferenceUI = ({
   const glucose = isLifted ? liftedState.glucose : localGlucose;
   const symptomText = isLifted ? liftedState.symptomText : localSymptomText;
   const allergies = isLifted ? liftedState.allergies : localAllergies;
+  const pregnancyStatus = isLifted ? liftedState.pregnancyStatus : localPregnancyStatus;
   const autosenPreset = isLifted ? liftedState.autosenPreset : localAutosenPreset;
 
   // Setter functions that update either lifted or local state
@@ -339,6 +345,17 @@ export const TTVInferenceUI = ({
         liftedSetterRef.current({ ...liftedStateRef.current, autosenPreset: value });
       } else {
         setLocalAutosenPreset(value);
+      }
+    },
+    [isLifted]
+  );
+
+  const setPregnancyStatus = useCallback(
+    (value: boolean | null) => {
+      if (isLifted) {
+        liftedSetterRef.current({ ...liftedStateRef.current, pregnancyStatus: value });
+      } else {
+        setLocalPregnancyStatus(value);
       }
     },
     [isLifted]
@@ -678,34 +695,36 @@ export const TTVInferenceUI = ({
           severity: 'critical',
           title: isSevere ? 'HIPOGLIKEMIA BERAT — ISPAD PROTOCOL' : 'HIPOGLIKEMIA — RULE OF 15',
           reasoning: `GDS ${glucoseNum} mg/dL ${isSevere ? '<54 (BERAT)' : '<70'}. Ref: ISPAD Clinical Practice Guidelines.`,
-          recommendations: isSevere ? [
-            '━━━ SEVERE HYPOGLYCEMIA ━━━',
-            'JIKA PASIEN TIDAK SADAR/KEJANG:',
-            '1. Bolus D40% 25ml IV (= 10g glukosa)',
-            '   ATAU Glucagon 1mg IM/SC',
-            '2. Jangan berikan apapun per oral!',
-            '3. Posisi recovery, jaga airway',
-            '━━━ SETELAH SADAR ━━━',
-            '4. Berikan 15g karbohidrat oral',
-            '5. Recheck GDS 15 menit',
-            '━━━ MONITORING ━━━',
-            'Observasi min 1 jam setelah normoglikemia',
-            'Cari penyebab: insulin error, missed meal',
-          ] : [
-            '━━━ RULE OF 15 (ISPAD) ━━━',
-            '1. Berikan 15g karbohidrat cepat serap:',
-            '   - 3-4 tablet glukosa (15g), ATAU',
-            '   - 150 mL jus buah, ATAU',
-            '   - 1 sdm madu/gula pasir',
-            '2. TUNGGU 15 MENIT',
-            '3. Re-check GDS',
-            '━━━ JIKA MASIH <70 ━━━',
-            '4. ULANGI 15g karbohidrat (max 3x)',
-            '━━━ SETELAH GDS >70 ━━━',
-            '5. Berikan snack/makanan ringan',
-            '━━━ INVESTIGASI ━━━',
-            'Penyebab: dosis insulin/OAD, missed meal, exercise',
-          ],
+          recommendations: isSevere
+            ? [
+                '━━━ SEVERE HYPOGLYCEMIA ━━━',
+                'JIKA PASIEN TIDAK SADAR/KEJANG:',
+                '1. Bolus D40% 25ml IV (= 10g glukosa)',
+                '   ATAU Glucagon 1mg IM/SC',
+                '2. Jangan berikan apapun per oral!',
+                '3. Posisi recovery, jaga airway',
+                '━━━ SETELAH SADAR ━━━',
+                '4. Berikan 15g karbohidrat oral',
+                '5. Recheck GDS 15 menit',
+                '━━━ MONITORING ━━━',
+                'Observasi min 1 jam setelah normoglikemia',
+                'Cari penyebab: insulin error, missed meal',
+              ]
+            : [
+                '━━━ RULE OF 15 (ISPAD) ━━━',
+                '1. Berikan 15g karbohidrat cepat serap:',
+                '   - 3-4 tablet glukosa (15g), ATAU',
+                '   - 150 mL jus buah, ATAU',
+                '   - 1 sdm madu/gula pasir',
+                '2. TUNGGU 15 MENIT',
+                '3. Re-check GDS',
+                '━━━ JIKA MASIH <70 ━━━',
+                '4. ULANGI 15g karbohidrat (max 3x)',
+                '━━━ SETELAH GDS >70 ━━━',
+                '5. Berikan snack/makanan ringan',
+                '━━━ INVESTIGASI ━━━',
+                'Penyebab: dosis insulin/OAD, missed meal, exercise',
+              ],
         });
       }
       // CRITICAL: Extreme Hyperglycemia (≥ 400 mg/dL) - ISPAD DKA/HHS Protocol
@@ -1310,7 +1329,6 @@ export const TTVInferenceUI = ({
     }
   };
 
-
   // Store screening alerts for Clinical Trajectory
   const [, setCurrentAlerts] = useState<ScreeningAlert[]>([]);
 
@@ -1431,6 +1449,8 @@ export const TTVInferenceUI = ({
   }, []);
 
   const handleComplete = async () => {
+    const resolvedPregnancyStatus = patientGender === 'L' ? false : pregnancyStatus;
+
     // Build TTVInferenceData for callback
     const data: TTVInferenceData = {
       vital_signs: {
@@ -1445,6 +1465,8 @@ export const TTVInferenceUI = ({
         lama_sakit: narrative.lama_sakit,
         is_akut: narrative.is_akut,
       },
+      is_pregnant: resolvedPregnancyStatus,
+      pregnancyStatus: resolvedPregnancyStatus,
     };
 
     // Build AnamnesaFillPayload for content script
@@ -1973,6 +1995,9 @@ export const TTVInferenceUI = ({
         bln: 0,
         hr: narrative.is_akut ? 3 : 30,
       },
+      ...(typeof resolvedPregnancyStatus === 'boolean'
+        ? { is_pregnant: resolvedPregnancyStatus }
+        : {}),
       riwayat_penyakit: generateRiwayatPenyakit(),
       alergi: generateRandomAlergi(),
       vital_signs: {
@@ -2099,7 +2124,10 @@ export const TTVInferenceUI = ({
         profileStatus={
           isLoadingPatient
             ? 'loading'
-            : patientName && patientName !== 'Memuat...' && patientName !== 'Data tidak ditemukan' && patientName !== 'Error memuat data'
+            : patientName &&
+                patientName !== 'Memuat...' &&
+                patientName !== 'Data tidak ditemukan' &&
+                patientName !== 'Error memuat data'
               ? 'loaded'
               : 'idle'
         }
@@ -2108,7 +2136,7 @@ export const TTVInferenceUI = ({
       {/* Main Content: Two Columns */}
       <div className="ttv-content">
         {/* LEFT COLUMN: Vital Signs */}
-        <div className="ttv-section">
+        <div className="ttv-section glass-card">
           <div className="ttv-section-header">
             <h3 className="ttv-section-title">Vital Signs</h3>
             <div className="ttv-autosen-controls">
@@ -2234,7 +2262,7 @@ export const TTVInferenceUI = ({
           </div>
 
           {/* GUIDELINES BAR - Di bawah Vital Signs */}
-          <div className="clinical-guidelines-bar">
+          <div className="clinical-guidelines-bar glass-panel">
             <span className="guidelines-label">Guidelines:</span>
             <span className="protocol-badge">FKTP 2024 HTN</span>
             <span className="protocol-separator">·</span>
@@ -2246,7 +2274,7 @@ export const TTVInferenceUI = ({
 
         {/* RIGHT COLUMN: Anamnesa + AI Narrative */}
         <div className="ttv-right-column">
-          <div className="ttv-section">
+          <div className="ttv-section glass-card">
             <h3 className="ttv-section-title">Anamnesa</h3>
 
             {/* Symptom Input */}
@@ -2340,9 +2368,35 @@ export const TTVInferenceUI = ({
               </div>
             </div>
 
+            <div className="ttv-allergy-inline">
+              <span className="ttv-allergy-label">Kehamilan:</span>
+              <div className="ttv-allergy-chips-inline">
+                {patientGender === 'L' ? (
+                  <span className="ttv-allergy-chip-sm ttv-allergy-chip-active">Tidak Hamil (Locked)</span>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setPregnancyStatus(false)}
+                      className={`ttv-allergy-chip-sm ${pregnancyStatus === false ? 'ttv-allergy-chip-active' : ''}`}
+                    >
+                      Tidak Hamil
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPregnancyStatus(true)}
+                      className={`ttv-allergy-chip-sm ${pregnancyStatus === true ? 'ttv-allergy-chip-active' : ''}`}
+                    >
+                      Hamil
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+
             {/* AI Generated Narrative */}
             {narrative.keluhan_utama && (
-              <div className="ttv-ai-narrative">
+              <div className="ttv-ai-narrative glass-panel">
                 <div className="ttv-ai-header">
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <h4 className="ttv-ai-title">Sentra Agent Narrative</h4>
@@ -2401,7 +2455,6 @@ export const TTVInferenceUI = ({
             )}
           </div>
         </div>
-
       </div>
 
       {/* Diagnosis Suggestions - ICD-10 (DISABLED per Chief request) */}
@@ -2422,15 +2475,13 @@ export const TTVInferenceUI = ({
       </div> */}
 
       {/* Action Button */}
-      <div className="ttv-actions">
+      <div className="ttv-actions glass-panel-bottom">
         <button
           onClick={handleComplete}
           disabled={!isFormValid || uplinkStatus === 'sending'}
           className={`ttv-btn ttv-btn-primary ttv-btn-uplink ${uplinkStatus === 'success' ? 'uplink-success' : ''} ${uplinkStatus === 'error' ? 'uplink-error' : ''}`}
         >
-          <span className={uplinkStatus === 'sending' ? 'text-scramble' : ''}>
-            {scrambleText}
-          </span>
+          <span className={uplinkStatus === 'sending' ? 'text-scramble' : ''}>{scrambleText}</span>
         </button>
       </div>
     </div>
@@ -2443,7 +2494,7 @@ export const TTVInferenceUI = ({
 
 export const ttvInferenceUIStyles = `
 .ttv-inference-ui {
-  background: var(--surface-primary);
+  background: radial-gradient(circle at top left, #1a1c23 0%, #131519 100%);
   min-height: 100vh;
   width: 100%;
 }
@@ -2456,10 +2507,12 @@ export const ttvInferenceUIStyles = `
 }
 
 .ttv-section {
-  background: var(--surface-secondary);
-  border-radius: 6px;
+  background: var(--glass-bg, rgba(255, 255, 255, 0.03));
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-radius: 12px;
   padding: 16px;
-  border: 1px solid var(--border-subtle);
+  border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.08));
 }
 
 .ttv-section-header {
@@ -2679,9 +2732,10 @@ export const ttvInferenceUIStyles = `
 }
 
 .ttv-ai-narrative {
-  background: var(--surface-primary);
+  background: var(--glass-bg, rgba(255, 255, 255, 0.03));
+  backdrop-filter: blur(12px);
   border: 1px solid var(--accent-primary);
-  border-radius: 4px;
+  border-radius: 12px;
   padding: 12px;
   margin-top: 12px;
 }
@@ -2789,10 +2843,13 @@ export const ttvInferenceUIStyles = `
   padding: 0 16px 16px;
   position: sticky;
   bottom: 0;
-  background: var(--surface-primary);
-  border-top: 1px solid var(--border-subtle);
+  background: rgba(22, 24, 29, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-top: 1px solid var(--glass-border, rgba(255, 255, 255, 0.08));
   padding-top: 12px;
   margin-top: 8px;
+  z-index: 100;
 }
 
 .ttv-btn {

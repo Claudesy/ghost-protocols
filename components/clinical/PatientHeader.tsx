@@ -7,20 +7,20 @@
  */
 
 import React from 'react';
-import { formatPatientName } from '../../utils/name-masking';
 import {
   classifyChronicDisease,
   type ChronicDiseaseClassification,
 } from '../../lib/cdss/chronic-disease-classifier';
+import { formatPatientName } from '../../utils/name-masking';
 
 // ============================================================================
 // TYPES
 // ============================================================================
 
 export interface MedicalHistoryItem {
-  code: string;           // ICD-10 code (e.g., 'I10')
-  description: string;    // Full description
-  shortLabel: string;     // Short display label (e.g., 'HT')
+  code: string; // ICD-10 code (e.g., 'I10')
+  description: string; // Full description
+  shortLabel: string; // Short display label (e.g., 'HT')
 }
 
 export type ProfileStatus = 'loading' | 'loaded' | 'error' | 'idle';
@@ -32,12 +32,12 @@ export interface PatientHeaderProps {
   rmNumber: string;
   masked?: boolean;
   // Extended patient info
-  dob?: string;           // Tanggal lahir (DD-MM-YYYY)
-  bloodType?: string;     // Golongan darah (A/B/AB/O +/-)
+  dob?: string; // Tanggal lahir (DD-MM-YYYY)
+  bloodType?: string; // Golongan darah (A/B/AB/O +/-)
   bpjsStatus?: 'aktif' | 'nonaktif' | 'mandiri' | null;
-  kelurahan?: string;     // Alamat kelurahan
+  kelurahan?: string; // Alamat kelurahan
   // Medical history
-  medicalHistory?: MedicalHistoryItem[];  // Detected from page
+  medicalHistory?: MedicalHistoryItem[]; // Detected from page
   // Refresh callback
   onRefresh?: () => void;
   isLoading?: boolean;
@@ -103,14 +103,14 @@ export const PatientHeader: React.FC<PatientHeaderProps> = ({
   const chronicDiseases = classifyAndDedupe();
 
   return (
-    <div className="patient-header-compact">
+    <div className="patient-header-compact glass-card">
       <span className="patient-name-compact">{displayName}</span>
       <span className="patient-age-compact">{age} th</span>
-      {simpleKelurahan && (
-        <span className="patient-location-compact">{simpleKelurahan}</span>
-      )}
+      {simpleKelurahan && <span className="patient-location-compact">{simpleKelurahan}</span>}
       {bpjsLabel && (
-        <span className={`patient-bpjs-compact ${bpjsStatus === 'aktif' ? 'bpjs-aktif' : bpjsStatus === 'nonaktif' ? 'bpjs-nonaktif' : 'bpjs-mandiri'}`}>
+        <span
+          className={`patient-bpjs-compact ${bpjsStatus === 'aktif' ? 'bpjs-aktif' : bpjsStatus === 'nonaktif' ? 'bpjs-nonaktif' : 'bpjs-mandiri'}`}
+        >
           {bpjsLabel}
         </span>
       )}
@@ -152,34 +152,52 @@ export const patientHeaderStyles = `
 .patient-header-compact {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   flex-wrap: wrap;
-  padding: 10px 14px;
-  background: linear-gradient(145deg, #151515 0%, #1a1a1a 100%);
-  border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.04);
-  margin-bottom: 16px;
+  padding: 12px 16px;
+  background: 
+    linear-gradient(135deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.015) 100%),
+    linear-gradient(145deg, #1a1a1e 0%, #1e1e22 100%);
+  border-radius: 11px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  margin-bottom: 18px;
   box-shadow:
-    inset 0 1px 3px rgba(0, 0, 0, 0.4),
-    0 1px 0 rgba(255, 255, 255, 0.02);
+    0 2px 6px rgba(0, 0, 0, 0.2),
+    0 4px 12px rgba(0, 0, 0, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.patient-header-compact::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08) 50%, transparent);
 }
 
 .patient-name-compact {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--text-primary);
-  letter-spacing: 0.3px;
+  letter-spacing: 0.2px;
 }
 
 .patient-age-compact {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 500;
   color: var(--text-secondary);
+  opacity: 0.9;
 }
 
 .patient-location-compact {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-tertiary);
+  opacity: 0.8;
 }
 
 .patient-bpjs-compact {
@@ -241,13 +259,19 @@ export const patientHeaderStyles = `
 .history-badge {
   font-size: 9px;
   font-weight: 700;
-  padding: 2px 6px;
-  border-radius: 3px;
+  padding: 3px 7px;
+  border-radius: 4px;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
-  font-family: 'JetBrains Mono', monospace;
-  background: rgba(239, 68, 68, 0.15);
+  letter-spacing: 0.4px;
+  font-family: 'Geist Mono', 'JetBrains Mono', monospace;
+  background: 
+    linear-gradient(135deg, rgba(239, 68, 68, 0.14) 0%, rgba(220, 38, 38, 0.1) 100%),
+    rgba(20, 20, 22, 0.5);
   color: #EF4444;
-  border: 1px solid rgba(239, 68, 68, 0.25);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  box-shadow: 
+    0 1px 3px rgba(239, 68, 68, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(8px);
 }
 `;

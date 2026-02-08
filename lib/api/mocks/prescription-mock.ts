@@ -121,6 +121,40 @@ export const HYPERTENSION_MEDICATIONS: MedicationRecommendation[] = [
 ];
 
 /**
+ * Suspected Angina / ACS Initial FKTP Bridge Therapy (I20/I21/I22/I24)
+ * This is initial stabilization support and does NOT replace definitive ACS protocol.
+ */
+export const ACS_INITIAL_MEDICATIONS: MedicationRecommendation[] = [
+  {
+    nama_obat: 'Aspirin 160-325mg',
+    dosis: 'Loading dose tunggal',
+    aturan_pakai: 'Saat makan',
+    durasi: 'Sekali segera',
+    rationale:
+      'Antiplatelet awal pada suspek ACS bila tidak ada kontraindikasi perdarahan/alergi.',
+    safety_check: 'caution',
+    contraindications: [
+      'Alergi aspirin/salisilat',
+      'Perdarahan aktif atau risiko perdarahan tinggi',
+    ],
+  },
+  {
+    nama_obat: 'Nitroglycerin SL 0.4mg',
+    dosis: '1 tablet SL, ulang tiap 5 menit bila perlu (maks 3 dosis)',
+    aturan_pakai: 'Jika diperlukan',
+    durasi: 'Saat nyeri dada akut',
+    rationale:
+      'Pereda gejala nyeri dada iskemik sambil menyiapkan evaluasi EKG dan rujukan emergensi.',
+    safety_check: 'caution',
+    contraindications: [
+      'SBP < 90 mmHg atau hipotensi',
+      'Penggunaan PDE5 inhibitor dalam 24-48 jam',
+      'Kecurigaan infark ventrikel kanan',
+    ],
+  },
+];
+
+/**
  * Diabetes Treatment (E11.9)
  */
 export const DIABETES_MEDICATIONS: MedicationRecommendation[] = [
@@ -194,8 +228,25 @@ export function getMockMedicationsByDiagnosis(icd_x: string): MedicationRecommen
   }
 
   // Hypertension
-  if (code.startsWith('I10') || code.startsWith('I11') || code.startsWith('I15')) {
+  if (
+    code.startsWith('I10') ||
+    code.startsWith('I11') ||
+    code.startsWith('I12') ||
+    code.startsWith('I13') ||
+    code.startsWith('I15') ||
+    code.startsWith('I16')
+  ) {
     return HYPERTENSION_MEDICATIONS;
+  }
+
+  // Suspected angina / acute coronary syndrome family
+  if (
+    code.startsWith('I20') ||
+    code.startsWith('I21') ||
+    code.startsWith('I22') ||
+    code.startsWith('I24')
+  ) {
+    return ACS_INITIAL_MEDICATIONS;
   }
 
   // Diabetes
@@ -208,8 +259,9 @@ export function getMockMedicationsByDiagnosis(icd_x: string): MedicationRecommen
     return SKIN_MEDICATIONS;
   }
 
-  // Default: ISPA medications (most common)
-  return ISPA_MEDICATIONS;
+  // Unknown diagnosis code: do not force generic medication package.
+  // Returning empty array is safer than an unrelated fallback regimen.
+  return [];
 }
 
 /**
@@ -267,6 +319,51 @@ export function buildMockPrescriptionResponse(
 ): CDSSResponse {
   const medications = getMockMedicationsByDiagnosis(icd_x);
   const alerts = generateAllergyAlerts(medications, allergies);
+  const normalizedCode = icd_x.toUpperCase().trim();
+  const isAcsLikeCode =
+    normalizedCode.startsWith('I20') ||
+    normalizedCode.startsWith('I21') ||
+    normalizedCode.startsWith('I22') ||
+    normalizedCode.startsWith('I24');
+
+  if (isAcsLikeCode) {
+    alerts.push({
+      id: generateAlertId(),
+      type: 'red_flag',
+      severity: 'emergency',
+      title: 'Suspek ACS: Stabilize and Refer',
+      message:
+        'Terapi farmakologi di FKTP bersifat stabilisasi awal. Evaluasi EKG 12 sadapan dan rujukan emergensi tetap prioritas.',
+      action:
+        'Lakukan monitoring serial TTV, pertimbangkan serial EKG, dan eskalasi rujukan segera bila nyeri menetap atau ada instabilitas.',
+    });
+  }
+
+  if (medications.length === 0) {
+    if (isAcsLikeCode) {
+      alerts.push({
+        id: generateAlertId(),
+        type: 'red_flag',
+        severity: 'emergency',
+        title: 'Kode Kardiak Risiko Tinggi',
+        message:
+          'Diagnosis kardiak akut/suspek ACS tidak diberikan paket farmakoterapi otomatis untuk mencegah rekomendasi yang tidak aman.',
+        action:
+          'Lakukan EKG 12 sadapan, monitoring serial TTV, dan rujuk emergensi bila nyeri dada menetap atau kondisi hemodinamik tidak stabil.',
+      });
+    } else {
+      alerts.push({
+        id: generateAlertId(),
+        type: 'validation_warning',
+        severity: 'info',
+        title: 'Paket Terapi Tidak Tersedia',
+        message:
+          'Belum ada paket terapi farmakologi terstruktur untuk kode ICD ini pada knowledge database aktif.',
+        action:
+          'Gunakan keputusan klinis dokter + formularium FKTP lokal, atau pilih diagnosis dengan paket terapi yang tersedia.',
+      });
+    }
+  }
 
   // Add chronic disease alerts
   if (chronicDiseases.includes('Hipertensi') && icd_x.startsWith('J')) {

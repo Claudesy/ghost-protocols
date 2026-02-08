@@ -9,11 +9,32 @@
  */
 
 import { getEncounter } from '@/utils/storage.ts';
+import { createLogger } from '@/utils/logger';
+import type { Encounter } from '@/utils/types';
 import {
   fillFields,
   type FillResult,
   type FieldMapping,
 } from '@/lib/filler/filler-core.ts';
+
+const fillerLog = createLogger('FillerCore', 'filler');
+
+interface DiagnosaEntryLike {
+  kode_icd?: string;
+}
+
+type EncounterLike = Partial<Omit<Encounter, 'diagnosa'>> & {
+  ruangan?: string;
+  vital_signs?: {
+    tekanan_darah_sistolik?: number;
+    tekanan_darah_diastolik?: number;
+    suhu?: number;
+    nadi?: number;
+    respirasi?: number;
+    gula_darah?: number;
+  };
+  diagnosa?: DiagnosaEntryLike[] | Encounter['diagnosa'];
+};
 
 /**
  * PulseFillResult interface
@@ -37,7 +58,7 @@ export interface PulseFillResult {
  */
 export const executePulseFill = async (): Promise<PulseFillResult> => {
   const startTime = Date.now();
-  console.log('[Filler] Initializing Pulse Sequence...');
+  fillerLog.debug('Initializing Pulse Sequence...');
 
   const result: PulseFillResult = {
     success: false,
@@ -54,17 +75,17 @@ export const executePulseFill = async (): Promise<PulseFillResult> => {
       throw new Error('No active encounter data found in storage!');
     }
 
-    console.log('[Filler] Encounter data loaded:', encounter);
+    fillerLog.debug('Encounter data loaded:', encounter);
 
     // 2. Detect current page type
     const pageType = detectPageType();
-    console.log(`[Filler] Detected page: ${pageType}`);
+    fillerLog.debug(`Detected page: ${pageType}`);
 
     // 3. Build field mappings based on page type
     const fieldMappings = buildFieldMappings(encounter, pageType);
 
     if (fieldMappings.length === 0) {
-      console.warn('[Filler] No field mappings for this page type');
+      fillerLog.warn('No field mappings for this page type');
       result.skipped.push('No mappings available');
       result.duration = Date.now() - startTime;
       return result;
@@ -85,13 +106,13 @@ export const executePulseFill = async (): Promise<PulseFillResult> => {
     result.success = result.failed.length === 0;
     result.duration = Date.now() - startTime;
 
-    console.log(`[Filler] Pulse Sequence Complete in ${result.duration}ms`);
-    console.log(`[Filler] Filled: ${result.filled.length}, Failed: ${result.failed.length}`);
+    fillerLog.debug(`Pulse Sequence Complete in ${result.duration}ms`);
+    fillerLog.debug(`Filled: ${result.filled.length}, Failed: ${result.failed.length}`);
 
     return result;
 
   } catch (error) {
-    console.error('[Filler] Pulse Sequence Failed:', error);
+    fillerLog.error('Pulse Sequence Failed:', error);
     result.failed.push({
       success: false,
       field: 'orchestrator',
@@ -120,7 +141,7 @@ function detectPageType(): 'anamnesa' | 'diagnosa' | 'resep' | 'unknown' {
 /**
  * Build field mappings based on encounter data and page type
  */
-function buildFieldMappings(encounter: any, pageType: string): FieldMapping[] {
+function buildFieldMappings(encounter: EncounterLike, pageType: string): FieldMapping[] {
   const mappings: FieldMapping[] = [];
 
   switch (pageType) {
@@ -137,7 +158,7 @@ function buildFieldMappings(encounter: any, pageType: string): FieldMapping[] {
       break;
 
     default:
-      console.warn(`[Filler] Unknown page type: ${pageType}`);
+      fillerLog.warn(`Unknown page type: ${pageType}`);
   }
 
   return mappings;
@@ -146,14 +167,15 @@ function buildFieldMappings(encounter: any, pageType: string): FieldMapping[] {
 /**
  * Build field mappings for Resep page
  */
-function buildResepMappings(encounter: any): FieldMapping[] {
+function buildResepMappings(encounter: EncounterLike): FieldMapping[] {
   const mappings: FieldMapping[] = [];
+  const alergiObat = encounter.anamnesa?.alergi?.obat;
 
   // Alergi field
-  if (encounter.anamnesa?.alergi?.obat?.length > 0) {
+  if (Array.isArray(alergiObat) && alergiObat.length > 0) {
     mappings.push({
       selector: 'textarea[name="alergi"], input[name="alergi"]',
-      value: encounter.anamnesa.alergi.obat.join(', '),
+      value: alergiObat.join(', '),
       type: 'textarea',
     });
   }
@@ -230,7 +252,7 @@ function buildResepMappings(encounter: any): FieldMapping[] {
 /**
  * Build field mappings for Diagnosa page
  */
-function buildDiagnosaMappings(encounter: any): FieldMapping[] {
+function buildDiagnosaMappings(encounter: EncounterLike): FieldMapping[] {
   const mappings: FieldMapping[] = [];
 
   // Diagnosis codes
@@ -255,7 +277,7 @@ function buildDiagnosaMappings(encounter: any): FieldMapping[] {
 /**
  * Build field mappings for Anamnesa page
  */
-function buildAnamnesaMappings(encounter: any): FieldMapping[] {
+function buildAnamnesaMappings(encounter: EncounterLike): FieldMapping[] {
   const mappings: FieldMapping[] = [];
 
   // Keluhan utama
@@ -403,3 +425,4 @@ export async function fillMedicationRow(
 
   return fillFields(mappings, 150);
 }
+

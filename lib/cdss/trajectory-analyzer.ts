@@ -1,55 +1,37 @@
 /**
  * Clinical Trajectory Analyzer
  *
- * Analyzes vital signs trends across multiple visits to detect:
- * - Improving / Declining / Stable trajectories
- * - Uncontrolled chronic conditions
- * - Clinical recommendations based on trend direction
+ * Deterministic trajectory scoring for the latest 5 visits.
+ * Baseline references:
+ * - FKTP 2024 for blood pressure and clinical urgency guardrails
+ * - PERKENI 2024 for glucose crisis interpretation
  *
- * References: FKTP 2024 HTN, PERKENI 2024 Glucose, WHO Vital Signs Guidelines
- *
- * @module lib/cdss/trajectory-analyzer
+ * Output is risk stratification support, not a definitive diagnosis.
  */
 
 import type { VisitRecord } from './visit-history-store';
 
-// ============================================================================
-// TYPES
-// ============================================================================
-
 export type TrendDirection = 'improving' | 'declining' | 'stable' | 'insufficient_data';
 export type RiskLevel = 'low' | 'moderate' | 'high' | 'critical';
+export type GlobalDeteriorationState = 'improving' | 'stable' | 'deteriorating' | 'critical';
+export type MortalityProxyTier = 'low' | 'moderate' | 'high' | 'very_high';
+export type ClinicalUrgencyTier = 'low' | 'moderate' | 'high' | 'immediate';
+export type StabilityLabel = 'true_stable' | 'pseudo_stable' | 'unstable';
+
+const MAX_VISITS = 5;
+const MAX_ETA_HOURS = 24 * 7;
 
 export interface VitalTrend {
-  parameter: string;
+  parameter: VitalKey;
   label: string;
   unit: string;
   values: number[];
   dates: string[];
   trend: TrendDirection;
-  /** Percentage change from first to last visit */
   changePercent: number;
-  /** Current value is in normal range */
   isNormal: boolean;
-  /** Risk assessment */
   risk: RiskLevel;
-  /** Clinical note */
   note: string;
-}
-
-export interface TrajectoryAnalysis {
-  /** Overall patient trajectory */
-  overallTrend: TrendDirection;
-  /** Overall risk level */
-  overallRisk: RiskLevel;
-  /** Individual vital trends */
-  vitalTrends: VitalTrend[];
-  /** Generated clinical recommendations */
-  recommendations: TrajectoryRecommendation[];
-  /** Summary sentence for display */
-  summary: string;
-  /** Number of visits analyzed */
-  visitCount: number;
 }
 
 export interface TrajectoryRecommendation {
@@ -58,9 +40,75 @@ export interface TrajectoryRecommendation {
   text: string;
 }
 
-// ============================================================================
-// NORMAL RANGES (Clinical Reference)
-// ============================================================================
+export interface GlobalDeterioration {
+  state: GlobalDeteriorationState;
+  deterioration_score: number;
+}
+
+export interface AcuteAttackRisk24h {
+  hypertensive_crisis_risk: number;
+  glycemic_crisis_risk: number;
+  sepsis_like_deterioration_risk: number;
+  shock_decompensation_risk: number;
+  stroke_acs_suspicion_risk: number;
+}
+
+export interface EarlyWarningBurden {
+  total_breaches_last5: number;
+  breach_frequency: number;
+  breach_breakdown: {
+    sbp_ge_160_count: number;
+    temp_ge_38_5_count: number;
+    gds_ge_300_count: number;
+    hr_extreme_count: number;
+    rr_extreme_count: number;
+  };
+}
+
+export interface TrajectoryVolatility {
+  volatility_index: number;
+  stability_label: StabilityLabel;
+}
+
+export interface TimeToCriticalEstimate {
+  sbp_hours_to_critical: number | null;
+  dbp_hours_to_critical: number | null;
+  gds_hours_to_critical: number | null;
+  temp_hours_to_critical: number | null;
+  hr_hours_to_critical: number | null;
+  rr_hours_to_critical: number | null;
+}
+
+export interface MortalityProxyRisk {
+  mortality_proxy_tier: MortalityProxyTier;
+  mortality_proxy_score: number;
+  clinical_urgency_tier: ClinicalUrgencyTier;
+}
+
+export interface ClinicalSafeOutput {
+  risk_tier: RiskLevel;
+  confidence: number;
+  drivers: string[];
+  missing_data: string[];
+  recommended_action: string;
+  review_window: '24h';
+}
+
+export interface TrajectoryAnalysis {
+  overallTrend: TrendDirection;
+  overallRisk: RiskLevel;
+  vitalTrends: VitalTrend[];
+  recommendations: TrajectoryRecommendation[];
+  summary: string;
+  visitCount: number;
+  global_deterioration: GlobalDeterioration;
+  acute_attack_risk_24h: AcuteAttackRisk24h;
+  early_warning_burden: EarlyWarningBurden;
+  trajectory_volatility: TrajectoryVolatility;
+  time_to_critical_estimate: TimeToCriticalEstimate;
+  mortality_proxy: MortalityProxyRisk;
+  clinical_safe_output: ClinicalSafeOutput;
+}
 
 const NORMAL_RANGES = {
   sbp: { min: 90, max: 139, label: 'Tekanan Darah Sistolik', unit: 'mmHg' },
@@ -73,24 +121,58 @@ const NORMAL_RANGES = {
 
 type VitalKey = keyof typeof NORMAL_RANGES;
 
-// ============================================================================
-// ANALYSIS FUNCTIONS
-// ============================================================================
+const CRITICAL_THRESHOLDS: Record<VitalKey, { high?: number; low?: number }> = {
+  sbp: { high: 180, low: 90 },
+  dbp: { high: 120, low: 50 },
+  hr: { high: 140, low: 45 },
+  rr: { high: 30, low: 8 },
+  temp: { high: 40, low: 35 },
+  glucose: { high: 400, low: 54 },
+};
 
-/**
- * Detect trend direction from a series of values.
- * Uses simple linear regression slope direction.
- */
+const STROKE_KEYWORDS = [
+  'pelo',
+  'mulut mencong',
+  'lemah sebelah',
+  'kebas',
+  'baal',
+  'bicara pelo',
+  'sakit kepala hebat',
+];
+
+const ACS_KEYWORDS = [
+  'nyeri dada',
+  'sesak',
+  'keringat dingin',
+  'nyeri menjalar',
+  'mual',
+  'dada berat',
+];
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
+}
+
+function round(value: number, digits = 2): number {
+  const factor = 10 ** digits;
+  return Math.round(value * factor) / factor;
+}
+
+function hasUsableVitalVisit(v: VisitRecord): boolean {
+  const vt = v.vitals;
+  return vt.sbp > 0 || vt.dbp > 0 || vt.hr > 0 || vt.rr > 0 || vt.temp > 0 || vt.glucose > 0;
+}
+
 function detectTrend(values: number[], normalMax: number): TrendDirection {
   if (values.length < 2) return 'insufficient_data';
+
   if (values.length === 2) {
     const diff = values[1] - values[0];
-    const threshold = normalMax * 0.05; // 5% of normal max as significance threshold
+    const threshold = normalMax * 0.05;
     if (Math.abs(diff) < threshold) return 'stable';
     return diff < 0 ? 'improving' : 'declining';
   }
 
-  // Linear regression slope
   const n = values.length;
   const xMean = (n - 1) / 2;
   const yMean = values.reduce((a, b) => a + b, 0) / n;
@@ -104,11 +186,8 @@ function detectTrend(values: number[], normalMax: number): TrendDirection {
 
   const slope = denominator !== 0 ? numerator / denominator : 0;
   const threshold = normalMax * 0.03;
-
   if (Math.abs(slope) < threshold) return 'stable';
 
-  // For BP/glucose: decreasing toward normal = improving
-  // Context: most values being high means decreasing = improving
   const lastValue = values[values.length - 1];
   if (lastValue > normalMax) {
     return slope < 0 ? 'improving' : 'declining';
@@ -116,52 +195,52 @@ function detectTrend(values: number[], normalMax: number): TrendDirection {
   return slope > 0 ? 'declining' : 'improving';
 }
 
-/**
- * Assess risk level for a vital parameter
- */
 function assessRisk(key: VitalKey, value: number): RiskLevel {
-  const range = NORMAL_RANGES[key];
-  if (value === 0) return 'low'; // No data
+  if (value === 0) return 'low';
 
   switch (key) {
     case 'sbp':
       if (value >= 180) return 'critical';
-      if (value >= 160) return 'high';
+      if (value >= 160 || value < 90) return 'high';
       if (value >= 140) return 'moderate';
-      if (value < 90) return 'high';
       return 'low';
     case 'dbp':
       if (value >= 120) return 'critical';
-      if (value >= 100) return 'high';
-      if (value >= 90) return 'moderate';
-      if (value < 60) return 'moderate';
+      if (value >= 100 || value < 50) return 'high';
+      if (value >= 90 || value < 60) return 'moderate';
       return 'low';
     case 'glucose':
-      if (value >= 400) return 'critical';
-      if (value >= 300) return 'high';
+      if (value >= 400 || value < 54) return 'critical';
+      if (value >= 300 || value < 70) return 'high';
       if (value >= 200) return 'moderate';
-      if (value < 70) return 'high';
       return 'low';
     case 'hr':
       if (value > 140 || value < 45) return 'critical';
       if (value > 120 || value < 50) return 'high';
       if (value > 100 || value < 60) return 'moderate';
       return 'low';
+    case 'rr':
+      if (value > 30 || value < 8) return 'critical';
+      if (value > 24 || value < 10) return 'high';
+      if (value > 20 || value < 12) return 'moderate';
+      return 'low';
     case 'temp':
-      if (value >= 40) return 'critical';
+      if (value >= 40 || value < 35) return 'critical';
       if (value >= 38.5) return 'high';
-      if (value >= 37.5) return 'moderate';
-      if (value < 36) return 'moderate';
+      if (value >= 37.5 || value < 36.1) return 'moderate';
       return 'low';
     default:
-      if (value < range.min || value > range.max) return 'moderate';
       return 'low';
   }
 }
 
-/**
- * Generate clinical note for a vital trend
- */
+function riskToScore(risk: RiskLevel): number {
+  if (risk === 'critical') return 1;
+  if (risk === 'high') return 0.75;
+  if (risk === 'moderate') return 0.45;
+  return 0.1;
+}
+
 function generateNote(key: VitalKey, trend: TrendDirection, lastValue: number, risk: RiskLevel): string {
   const range = NORMAL_RANGES[key];
 
@@ -178,94 +257,438 @@ function generateNote(key: VitalKey, trend: TrendDirection, lastValue: number, r
   if (trend === 'declining') {
     if (risk === 'critical') return `${range.label} memburuk — perlu intervensi segera.`;
     if (risk === 'high') return `${range.label} memburuk — evaluasi terapi.`;
-    return `${range.label} menunjukkan kecenderungan meningkat.`;
+    return `${range.label} menunjukkan kecenderungan memburuk.`;
   }
 
-  // stable
   if (isHigh || isLow) return `${range.label} stabil tapi di luar batas normal.`;
   return `${range.label} stabil dalam batas normal.`;
 }
 
-/**
- * Generate recommendations based on all vital trends
- */
-function generateRecommendations(trends: VitalTrend[]): TrajectoryRecommendation[] {
-  const recs: TrajectoryRecommendation[] = [];
+function calculateEarlyWarningBurden(visits: VisitRecord[]): EarlyWarningBurden {
+  const breakdown = {
+    sbp_ge_160_count: 0,
+    temp_ge_38_5_count: 0,
+    gds_ge_300_count: 0,
+    hr_extreme_count: 0,
+    rr_extreme_count: 0,
+  };
 
-  for (const t of trends) {
-    if (t.values.length === 0 || t.values.every((v) => v === 0)) continue;
+  for (const visit of visits) {
+    const v = visit.vitals;
+    if (v.sbp >= 160) breakdown.sbp_ge_160_count += 1;
+    if (v.temp >= 38.5) breakdown.temp_ge_38_5_count += 1;
+    if (v.glucose >= 300) breakdown.gds_ge_300_count += 1;
+    if (v.hr > 120 || (v.hr > 0 && v.hr < 50)) breakdown.hr_extreme_count += 1;
+    if (v.rr > 24 || (v.rr > 0 && v.rr < 10)) breakdown.rr_extreme_count += 1;
+  }
 
-    // Critical declining = action required
-    if (t.trend === 'declining' && (t.risk === 'critical' || t.risk === 'high')) {
-      recs.push({
-        category: 'action',
-        priority: 'high',
-        text: `${t.label}: Trend memburuk (${t.changePercent > 0 ? '+' : ''}${t.changePercent.toFixed(0)}%). Evaluasi ulang terapi dan pertimbangkan rujukan.`,
-      });
-    }
+  const total =
+    breakdown.sbp_ge_160_count +
+    breakdown.temp_ge_38_5_count +
+    breakdown.gds_ge_300_count +
+    breakdown.hr_extreme_count +
+    breakdown.rr_extreme_count;
 
-    // Improving = positive feedback
-    if (t.trend === 'improving' && !t.isNormal) {
-      recs.push({
-        category: 'improvement',
-        priority: 'medium',
-        text: `${t.label}: Membaik (${t.changePercent > 0 ? '+' : ''}${t.changePercent.toFixed(0)}%). Lanjutkan terapi saat ini. Target: ${NORMAL_RANGES[t.parameter as VitalKey]?.max || 'normal'} ${t.unit}.`,
-      });
-    }
+  const frequency = visits.length > 0 ? round(total / visits.length, 2) : 0;
 
-    // Stable but abnormal = concern
-    if (t.trend === 'stable' && !t.isNormal) {
-      recs.push({
-        category: 'concern',
-        priority: 'medium',
-        text: `${t.label}: Stabil tapi di luar target. Pertimbangkan eskalasi terapi atau perubahan obat.`,
-      });
-    }
+  return {
+    total_breaches_last5: total,
+    breach_frequency: frequency,
+    breach_breakdown: breakdown,
+  };
+}
 
-    // High risk monitoring
-    if (t.risk === 'high' || t.risk === 'critical') {
-      recs.push({
-        category: 'monitoring',
-        priority: 'high',
-        text: `Monitor ${t.label} lebih ketat. Nilai terakhir: ${t.values[t.values.length - 1]} ${t.unit} (${t.risk}).`,
-      });
+function seriesVolatility(values: number[]): { cv: number; signFlips: number } {
+  if (values.length < 2) return { cv: 0, signFlips: 0 };
+  const mean = values.reduce((a, b) => a + b, 0) / values.length;
+  if (mean === 0) return { cv: 0, signFlips: 0 };
+
+  const variance = values.reduce((acc, v) => acc + (v - mean) ** 2, 0) / values.length;
+  const std = Math.sqrt(variance);
+  const cv = (std / mean) * 100;
+
+  let signFlips = 0;
+  let prevSign = 0;
+  for (let i = 1; i < values.length; i++) {
+    const delta = values[i] - values[i - 1];
+    const sign = delta === 0 ? 0 : delta > 0 ? 1 : -1;
+    if (sign !== 0 && prevSign !== 0 && sign !== prevSign) signFlips += 1;
+    if (sign !== 0) prevSign = sign;
+  }
+
+  return { cv, signFlips };
+}
+
+function calculateTrajectoryVolatility(
+  vitalTrends: VitalTrend[],
+  overallTrend: TrendDirection,
+  burden: EarlyWarningBurden
+): TrajectoryVolatility {
+  const active = vitalTrends.filter((t) => t.values.length >= 2);
+  if (active.length === 0) {
+    return { volatility_index: 0, stability_label: 'unstable' };
+  }
+
+  const aggregate = active.reduce(
+    (acc, trend) => {
+      const { cv, signFlips } = seriesVolatility(trend.values);
+      acc.cv += clamp(cv, 0, 100);
+      acc.flips += signFlips;
+      return acc;
+    },
+    { cv: 0, flips: 0 }
+  );
+
+  const avgCV = aggregate.cv / active.length;
+  const flipPenalty = Math.min(20, aggregate.flips * 5);
+  const burdenPenalty = Math.min(20, burden.total_breaches_last5 * 2);
+  const volatility = clamp(round(avgCV + flipPenalty + burdenPenalty, 1), 0, 100);
+
+  let stability: StabilityLabel = 'unstable';
+  if (overallTrend === 'stable') {
+    stability = volatility <= 25 && burden.total_breaches_last5 <= 1 ? 'true_stable' : 'pseudo_stable';
+  }
+
+  return {
+    volatility_index: volatility,
+    stability_label: stability,
+  };
+}
+
+function containsAny(text: string, keywords: string[]): boolean {
+  const normalized = text.toLowerCase();
+  return keywords.some((keyword) => normalized.includes(keyword));
+}
+
+function calculateAcuteAttackRisk24h(
+  latestVisit: VisitRecord | null,
+  vitalTrends: VitalTrend[],
+  burden: EarlyWarningBurden
+): AcuteAttackRisk24h {
+  if (!latestVisit) {
+    return {
+      hypertensive_crisis_risk: 0,
+      glycemic_crisis_risk: 0,
+      sepsis_like_deterioration_risk: 0,
+      shock_decompensation_risk: 0,
+      stroke_acs_suspicion_risk: 0,
+    };
+  }
+
+  const vt = latestVisit.vitals;
+  const complaint = latestVisit.keluhan_utama || '';
+  const sbpTrend = vitalTrends.find((t) => t.parameter === 'sbp')?.trend ?? 'insufficient_data';
+  const dbpTrend = vitalTrends.find((t) => t.parameter === 'dbp')?.trend ?? 'insufficient_data';
+  const glucoseTrend = vitalTrends.find((t) => t.parameter === 'glucose')?.trend ?? 'insufficient_data';
+
+  let hypertensive = 15;
+  if (vt.sbp >= 180 || vt.dbp >= 120) hypertensive = 90;
+  else if (vt.sbp >= 160 || vt.dbp >= 100) hypertensive = 70;
+  else if (vt.sbp >= 140 || vt.dbp >= 90) hypertensive = 45;
+  if (sbpTrend === 'declining' || dbpTrend === 'declining') hypertensive += 10;
+  if (sbpTrend === 'improving' && dbpTrend === 'improving') hypertensive -= 8;
+  hypertensive += burden.breach_breakdown.sbp_ge_160_count * 3;
+
+  let glycemic = 15;
+  if (vt.glucose >= 400 || (vt.glucose > 0 && vt.glucose < 54)) glycemic = 92;
+  else if (vt.glucose >= 300 || (vt.glucose > 0 && vt.glucose < 70)) glycemic = 78;
+  else if (vt.glucose >= 200) glycemic = 55;
+  if (glucoseTrend === 'declining') glycemic += 8;
+  if (glucoseTrend === 'improving' && vt.glucose >= 200) glycemic -= 6;
+  glycemic += burden.breach_breakdown.gds_ge_300_count * 3;
+
+  let sepsisLike = 5;
+  if (vt.temp >= 38.5) sepsisLike += 28;
+  if (vt.temp < 36 && vt.temp > 0) sepsisLike += 20;
+  if (vt.hr > 100) sepsisLike += 20;
+  if (vt.rr >= 22) sepsisLike += 24;
+  if (vt.sbp > 0 && vt.sbp <= 100) sepsisLike += 18;
+
+  let shock = 5;
+  if (vt.sbp > 0 && vt.sbp < 90) shock += 45;
+  else if (vt.sbp > 0 && vt.sbp <= 100) shock += 22;
+  if (vt.hr > 120) shock += 20;
+  if (vt.rr > 24 || (vt.rr > 0 && vt.rr < 10)) shock += 18;
+  if (vt.temp > 0 && vt.temp < 36) shock += 10;
+
+  const hasStrokeKeyword = containsAny(complaint, STROKE_KEYWORDS);
+  const hasAcsKeyword = containsAny(complaint, ACS_KEYWORDS);
+  let strokeAcs = 10;
+  if (vt.sbp >= 180 || vt.dbp >= 120) strokeAcs += 32;
+  else if (vt.sbp >= 160 || vt.dbp >= 100) strokeAcs += 20;
+  if (hasStrokeKeyword) strokeAcs += 28;
+  if (hasAcsKeyword) strokeAcs += 28;
+  if (vt.hr > 120 || (vt.hr > 0 && vt.hr < 50)) strokeAcs += 10;
+
+  return {
+    hypertensive_crisis_risk: clamp(Math.round(hypertensive), 0, 100),
+    glycemic_crisis_risk: clamp(Math.round(glycemic), 0, 100),
+    sepsis_like_deterioration_risk: clamp(Math.round(sepsisLike), 0, 100),
+    shock_decompensation_risk: clamp(Math.round(shock), 0, 100),
+    stroke_acs_suspicion_risk: clamp(Math.round(strokeAcs), 0, 100),
+  };
+}
+
+function estimateTimeToCriticalForVital(
+  visits: VisitRecord[],
+  key: VitalKey
+): number | null {
+  const series = visits
+    .map((v) => ({ value: v.vitals[key], timestamp: new Date(v.timestamp).getTime() }))
+    .filter((point) => point.value > 0 && Number.isFinite(point.timestamp));
+
+  if (series.length < 2) return null;
+
+  const last = series[series.length - 1];
+  const prev = series[series.length - 2];
+  const thresholds = CRITICAL_THRESHOLDS[key];
+
+  if (thresholds.high !== undefined && last.value >= thresholds.high) return 0;
+  if (thresholds.low !== undefined && last.value <= thresholds.low) return 0;
+
+  const deltaHours = Math.max(1, (last.timestamp - prev.timestamp) / 3_600_000);
+  const slopePerHour = (last.value - prev.value) / deltaHours;
+
+  let eta: number | null = null;
+
+  if (slopePerHour > 0 && thresholds.high !== undefined && last.value < thresholds.high) {
+    eta = (thresholds.high - last.value) / slopePerHour;
+  } else if (slopePerHour < 0 && thresholds.low !== undefined && last.value > thresholds.low) {
+    eta = (thresholds.low - last.value) / slopePerHour;
+  }
+
+  if (eta === null || !Number.isFinite(eta) || eta < 0 || eta > MAX_ETA_HOURS) return null;
+  return round(eta, 1);
+}
+
+function calculateTimeToCriticalEstimate(visits: VisitRecord[]): TimeToCriticalEstimate {
+  return {
+    sbp_hours_to_critical: estimateTimeToCriticalForVital(visits, 'sbp'),
+    dbp_hours_to_critical: estimateTimeToCriticalForVital(visits, 'dbp'),
+    gds_hours_to_critical: estimateTimeToCriticalForVital(visits, 'glucose'),
+    temp_hours_to_critical: estimateTimeToCriticalForVital(visits, 'temp'),
+    hr_hours_to_critical: estimateTimeToCriticalForVital(visits, 'hr'),
+    rr_hours_to_critical: estimateTimeToCriticalForVital(visits, 'rr'),
+  };
+}
+
+function deriveMissingData(visits: VisitRecord[]): string[] {
+  const missing: string[] = [];
+  if (visits.length < 2) missing.push('insufficient_history_lt2');
+  if (visits.length < MAX_VISITS) missing.push('history_depth_lt5');
+  if (visits.length === 0) {
+    missing.push('no_visit_data');
+    return missing;
+  }
+
+  const latest = visits[visits.length - 1];
+  const latestVitals = latest.vitals;
+  const keys: VitalKey[] = ['sbp', 'dbp', 'hr', 'rr', 'temp', 'glucose'];
+
+  for (const key of keys) {
+    if (!latestVitals[key] || latestVitals[key] <= 0) {
+      missing.push(`latest_vital_${key}_missing`);
     }
   }
 
-  // Sort by priority
-  const priorityOrder = { high: 0, medium: 1, low: 2 };
-  recs.sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority]);
+  if (!latest.keluhan_utama || latest.keluhan_utama.trim().length === 0) {
+    missing.push('latest_keluhan_utama_missing');
+  }
+  if (!latest.diagnosa?.icd_x) {
+    missing.push('latest_diagnosa_missing');
+  }
 
-  return recs;
+  return missing;
 }
 
-// ============================================================================
-// MAIN ANALYSIS
-// ============================================================================
+function deriveConfidence(
+  visits: VisitRecord[],
+  missingData: string[],
+  volatility: TrajectoryVolatility
+): number {
+  const latest = visits[visits.length - 1];
+  const latestVitalCoverage = latest
+    ? (['sbp', 'dbp', 'hr', 'rr', 'temp', 'glucose'] as VitalKey[]).filter((k) => latest.vitals[k] > 0)
+        .length / 6
+    : 0;
 
-/**
- * Analyze clinical trajectory from visit records.
- * Visits should be ordered chronologically (oldest first).
- */
+  const temporalDepth = clamp(visits.length / MAX_VISITS, 0, 1);
+  const consistency = clamp(1 - volatility.volatility_index / 100, 0, 1);
+  const missingPenalty = clamp(missingData.length * 0.04, 0, 0.35);
+
+  const confidenceRaw = latestVitalCoverage * 0.45 + temporalDepth * 0.25 + consistency * 0.3 - missingPenalty;
+  return round(clamp(confidenceRaw, 0.1, 0.95), 2);
+}
+
+function deriveDrivers(
+  latestVisit: VisitRecord | null,
+  acuteRisk: AcuteAttackRisk24h,
+  burden: EarlyWarningBurden,
+  volatility: TrajectoryVolatility
+): string[] {
+  const drivers: string[] = [];
+  if (!latestVisit) return ['Data kunjungan tidak tersedia untuk menentukan driver risiko.'];
+
+  const vt = latestVisit.vitals;
+
+  if (vt.sbp >= 180 || vt.dbp >= 120) drivers.push('Tekanan darah berada pada zona krisis.');
+  else if (vt.sbp >= 160 || vt.dbp >= 100) drivers.push('Tekanan darah tinggi persisten pada rentang risiko tinggi.');
+
+  if (vt.glucose >= 300) drivers.push('Gula darah sewaktu sangat tinggi, risiko dekompensasi metabolik meningkat.');
+  else if (vt.glucose > 0 && vt.glucose < 70) drivers.push('Gula darah rendah meningkatkan risiko kejadian akut.');
+
+  if (vt.temp >= 38.5 && vt.hr > 100 && vt.rr >= 22) {
+    drivers.push('Pola demam + takikardi + takipnea mengarah ke perburukan sistemik.');
+  }
+
+  if (burden.total_breaches_last5 >= 4) {
+    drivers.push('Beban early-warning tinggi dalam 5 kunjungan terakhir.');
+  }
+
+  if (volatility.stability_label === 'pseudo_stable') {
+    drivers.push('Trajektori tampak stabil namun volatilitas tinggi (pseudo-stable).');
+  }
+
+  if (acuteRisk.stroke_acs_suspicion_risk >= 70) {
+    drivers.push('Kombinasi gejala + hemodinamik memberi kecurigaan stroke/ACS berbasis rule.');
+  }
+
+  if (drivers.length === 0) {
+    drivers.push('Tidak ada driver risiko dominan; lanjutkan monitoring berkala.');
+  }
+
+  return drivers.slice(0, 6);
+}
+
+function determineUrgency(tier: MortalityProxyTier): { urgency: ClinicalUrgencyTier; action: string; risk: RiskLevel } {
+  if (tier === 'very_high') {
+    return {
+      urgency: 'immediate',
+      action: 'EMERGENCY NOW: Stabilkan pasien segera, aktifkan rujukan emergensi, dan monitor ketat berkelanjutan.',
+      risk: 'critical',
+    };
+  }
+  if (tier === 'high') {
+    return {
+      urgency: 'high',
+      action: 'URGENT <6H: Evaluasi dokter segera (<6 jam), optimasi terapi, dan siapkan eskalasi rujukan.',
+      risk: 'high',
+    };
+  }
+  if (tier === 'moderate') {
+    return {
+      urgency: 'moderate',
+      action: 'REVIEW SAME DAY: Review klinis pada hari yang sama dan evaluasi respons intervensi.',
+      risk: 'moderate',
+    };
+  }
+  return {
+    urgency: 'low',
+    action: 'ROUTINE 24H: Monitoring rutin 24 jam dengan edukasi pasien dan follow-up terjadwal.',
+    risk: 'low',
+  };
+}
+
+function buildRecommendations(
+  globalState: GlobalDeteriorationState,
+  acuteRisk: AcuteAttackRisk24h,
+  safeOutput: ClinicalSafeOutput
+): TrajectoryRecommendation[] {
+  const recs: TrajectoryRecommendation[] = [];
+
+  recs.push({
+    category: 'action',
+    priority:
+      safeOutput.risk_tier === 'critical' || safeOutput.risk_tier === 'high' ? 'high' : 'medium',
+    text: safeOutput.recommended_action,
+  });
+
+  if (acuteRisk.hypertensive_crisis_risk >= 70) {
+    recs.push({
+      category: 'monitoring',
+      priority: 'high',
+      text: 'Risiko krisis hipertensi tinggi: ulangi pengukuran tekanan darah serial dan evaluasi terapi antihipertensi.',
+    });
+  }
+  if (acuteRisk.glycemic_crisis_risk >= 70) {
+    recs.push({
+      category: 'monitoring',
+      priority: 'high',
+      text: 'Risiko krisis glikemik tinggi: verifikasi glukosa ulang dan siapkan tata laksana korektif sesuai protokol.',
+    });
+  }
+  if (acuteRisk.sepsis_like_deterioration_risk >= 70) {
+    recs.push({
+      category: 'concern',
+      priority: 'high',
+      text: 'Terdapat pola perburukan sistemik; evaluasi infeksi dan perfusi segera.',
+    });
+  }
+  if (globalState === 'improving') {
+    recs.push({
+      category: 'improvement',
+      priority: 'low',
+      text: 'Tren membaik; pertahankan terapi dan monitoring sesuai jadwal.',
+    });
+  }
+
+  const priorityOrder = { high: 0, medium: 1, low: 2 };
+  return recs.sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority]);
+}
+
+function deriveOverallTrend(vitalTrends: VitalTrend[], visitCount: number): TrendDirection {
+  if (visitCount < 2) return 'insufficient_data';
+
+  const decliningCount = vitalTrends.filter((t) => t.trend === 'declining').length;
+  const improvingCount = vitalTrends.filter((t) => t.trend === 'improving').length;
+
+  if (decliningCount > improvingCount) return 'declining';
+  if (improvingCount > decliningCount) return 'improving';
+  return 'stable';
+}
+
+function deriveOverallRisk(vitalTrends: VitalTrend[]): RiskLevel {
+  const levels = vitalTrends.filter((t) => t.values.length > 0).map((t) => t.risk);
+  if (levels.includes('critical')) return 'critical';
+  if (levels.includes('high')) return 'high';
+  if (levels.includes('moderate')) return 'moderate';
+  return 'low';
+}
+
+function buildSummary(
+  global: GlobalDeterioration,
+  safeOutput: ClinicalSafeOutput,
+  burden: EarlyWarningBurden
+): string {
+  const stateText =
+    global.state === 'critical'
+      ? 'Kondisi klinis berada pada zona kritis.'
+      : global.state === 'deteriorating'
+        ? 'Kondisi klinis menunjukkan perburukan.'
+        : global.state === 'improving'
+          ? 'Kondisi klinis menunjukkan perbaikan.'
+          : 'Kondisi klinis relatif stabil.';
+
+  return `${stateText} Deterioration score ${Math.round(global.deterioration_score)}/100, ` +
+    `risk tier ${safeOutput.risk_tier}, early-warning burden ${burden.total_breaches_last5} event dalam 5 kunjungan.`;
+}
+
 export function analyzeTrajectory(visits: VisitRecord[]): TrajectoryAnalysis {
-  // Sort chronologically (oldest → newest)
-  const sorted = [...visits].sort(
-    (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
-  );
+  const sorted = [...visits]
+    .filter((v) => hasUsableVitalVisit(v))
+    .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+    .slice(-MAX_VISITS);
 
   const vitalKeys: VitalKey[] = ['sbp', 'dbp', 'hr', 'rr', 'temp', 'glucose'];
-  const vitalTrends: VitalTrend[] = [];
 
-  for (const key of vitalKeys) {
+  const vitalTrends: VitalTrend[] = vitalKeys.map((key) => {
     const range = NORMAL_RANGES[key];
-    const values = sorted.map((v) => v.vitals[key]).filter((v) => v > 0);
-    const dates = sorted
-      .filter((v) => v.vitals[key] > 0)
-      .map((v) => {
-        const d = new Date(v.timestamp);
-        return `${d.getDate()}/${d.getMonth() + 1}`;
-      });
-
+    const filtered = sorted.filter((v) => v.vitals[key] > 0);
+    const values = filtered.map((v) => v.vitals[key]);
+    const dates = filtered.map((v) => {
+      const d = new Date(v.timestamp);
+      return `${d.getDate()}/${d.getMonth() + 1}`;
+    });
     const lastValue = values.length > 0 ? values[values.length - 1] : 0;
     const firstValue = values.length > 0 ? values[0] : 0;
     const changePercent = firstValue > 0 ? ((lastValue - firstValue) / firstValue) * 100 : 0;
@@ -274,63 +697,110 @@ export function analyzeTrajectory(visits: VisitRecord[]): TrajectoryAnalysis {
     const risk = assessRisk(key, lastValue);
     const note = generateNote(key, trend, lastValue, risk);
 
-    vitalTrends.push({
+    return {
       parameter: key,
       label: range.label,
       unit: range.unit,
       values,
       dates,
       trend,
-      changePercent,
+      changePercent: round(changePercent, 1),
       isNormal,
       risk,
       note,
-    });
-  }
+    };
+  });
 
-  const recommendations = generateRecommendations(vitalTrends);
+  const overallTrend = deriveOverallTrend(vitalTrends, sorted.length);
+  const overallRisk = deriveOverallRisk(vitalTrends);
+  const burden = calculateEarlyWarningBurden(sorted);
+  const volatility = calculateTrajectoryVolatility(vitalTrends, overallTrend, burden);
+  const latest = sorted.length > 0 ? sorted[sorted.length - 1] : null;
+  const acuteRisk = calculateAcuteAttackRisk24h(latest, vitalTrends, burden);
 
-  // Overall assessment
-  const riskLevels = vitalTrends.filter((t) => t.values.length > 0).map((t) => t.risk);
-  const overallRisk: RiskLevel = riskLevels.includes('critical')
-    ? 'critical'
-    : riskLevels.includes('high')
-      ? 'high'
-      : riskLevels.includes('moderate')
-        ? 'moderate'
-        : 'low';
-
+  const avgVitalRisk =
+    vitalTrends.filter((t) => t.values.length > 0).reduce((acc, t) => acc + riskToScore(t.risk), 0) /
+      Math.max(1, vitalTrends.filter((t) => t.values.length > 0).length);
   const decliningCount = vitalTrends.filter((t) => t.trend === 'declining').length;
   const improvingCount = vitalTrends.filter((t) => t.trend === 'improving').length;
-  const overallTrend: TrendDirection =
-    sorted.length < 2
-      ? 'insufficient_data'
-      : decliningCount > improvingCount
-        ? 'declining'
-        : improvingCount > decliningCount
-          ? 'improving'
-          : 'stable';
+  const acutePeak = Math.max(
+    acuteRisk.hypertensive_crisis_risk,
+    acuteRisk.glycemic_crisis_risk,
+    acuteRisk.sepsis_like_deterioration_risk,
+    acuteRisk.shock_decompensation_risk,
+    acuteRisk.stroke_acs_suspicion_risk
+  );
 
-  // Summary
-  const summaryParts: string[] = [];
-  if (overallTrend === 'improving') summaryParts.push('Kondisi pasien menunjukkan perbaikan.');
-  else if (overallTrend === 'declining') summaryParts.push('Kondisi pasien menunjukkan penurunan.');
-  else if (overallTrend === 'stable') summaryParts.push('Kondisi pasien relatif stabil.');
-  else summaryParts.push('Data kunjungan belum cukup untuk analisis trend.');
+  let deteriorationScore = avgVitalRisk * 60;
+  deteriorationScore += decliningCount * 6;
+  deteriorationScore -= improvingCount * 4;
+  deteriorationScore += Math.min(20, burden.total_breaches_last5 * 3);
+  deteriorationScore += volatility.volatility_index * 0.2;
+  deteriorationScore += acutePeak * 0.15;
+  deteriorationScore = clamp(round(deteriorationScore, 1), 0, 100);
 
-  const abnormals = vitalTrends.filter((t) => !t.isNormal && t.values.length > 0);
-  if (abnormals.length > 0) {
-    summaryParts.push(
-      `Parameter di luar target: ${abnormals.map((t) => t.label).join(', ')}.`
-    );
+  let globalState: GlobalDeteriorationState = 'stable';
+  if (acutePeak >= 85 || deteriorationScore >= 80) globalState = 'critical';
+  else if (deteriorationScore >= 55) globalState = 'deteriorating';
+  else if (overallTrend === 'improving' && deteriorationScore <= 35) globalState = 'improving';
+
+  const globalDeterioration: GlobalDeterioration = {
+    state: globalState,
+    deterioration_score: deteriorationScore,
+  };
+
+  let mortalityScore =
+    deteriorationScore * 0.35 +
+    acutePeak * 0.35 +
+    Math.min(100, burden.total_breaches_last5 * 20) * 0.15 +
+    volatility.volatility_index * 0.15;
+  if (acuteRisk.shock_decompensation_risk >= 70 || acuteRisk.sepsis_like_deterioration_risk >= 70) {
+    mortalityScore += 10;
   }
+  mortalityScore = clamp(round(mortalityScore, 1), 0, 100);
+
+  let mortalityTier: MortalityProxyTier = 'low';
+  if (mortalityScore >= 75) mortalityTier = 'very_high';
+  else if (mortalityScore >= 50) mortalityTier = 'high';
+  else if (mortalityScore >= 25) mortalityTier = 'moderate';
+
+  const urgencyDecision = determineUrgency(mortalityTier);
+  const missingData = deriveMissingData(sorted);
+  const confidence = deriveConfidence(sorted, missingData, volatility);
+  const drivers = deriveDrivers(latest, acuteRisk, burden, volatility);
+
+  const clinicalSafeOutput: ClinicalSafeOutput = {
+    risk_tier: urgencyDecision.risk,
+    confidence,
+    drivers,
+    missing_data: missingData,
+    recommended_action: urgencyDecision.action,
+    review_window: '24h',
+  };
+
+  const mortalityProxy: MortalityProxyRisk = {
+    mortality_proxy_tier: mortalityTier,
+    mortality_proxy_score: mortalityScore,
+    clinical_urgency_tier: urgencyDecision.urgency,
+  };
+
+  const timeToCritical = calculateTimeToCriticalEstimate(sorted);
+  const recommendations = buildRecommendations(globalState, acuteRisk, clinicalSafeOutput);
+  const summary = buildSummary(globalDeterioration, clinicalSafeOutput, burden);
 
   return {
     overallTrend,
     overallRisk,
     vitalTrends,
     recommendations,
-    summary: summaryParts.join(' '),
+    summary,
     visitCount: sorted.length,
+    global_deterioration: globalDeterioration,
+    acute_attack_risk_24h: acuteRisk,
+    early_warning_burden: burden,
+    trajectory_volatility: volatility,
+    time_to_critical_estimate: timeToCritical,
+    mortality_proxy: mortalityProxy,
+    clinical_safe_output: clinicalSafeOutput,
   };
 }

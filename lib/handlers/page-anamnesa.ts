@@ -22,6 +22,9 @@
 
 import { fillFields, activateCheckboxWithOnclick, fillRangeSlider, type FieldMapping, type FillResult } from '@/lib/filler/filler-core';
 import type { AnamnesaFillPayload } from '@/utils/types';
+import { createLogger } from '@/utils/logger';
+
+const anamnesaLog = createLogger('AnamnesaHandler', 'content');
 
 /**
  * Fill Anamnesa form with TTV and clinical data
@@ -32,12 +35,13 @@ export async function fillAnamnesaForm(payload: AnamnesaFillPayload): Promise<{
   failed: FillResult[];
   skipped: string[];
 }> {
-  console.log('🔴🔴🔴 SENTRA DEBUG: fillAnamnesaForm CALLED');
-  console.log('🔴🔴🔴 SENTRA DEBUG: payload.vital_signs =', payload.vital_signs);
-  console.log('[Anamnesa Handler] Starting fill with payload:', payload);
+  anamnesaLog.debug('fillAnamnesaForm CALLED');
+  anamnesaLog.debug('payload.vital_signs =', payload.vital_signs);
+  anamnesaLog.debug('[Anamnesa Handler] Starting fill with payload:', payload);
 
   const mappings: FieldMapping[] = [];
   const skipped: string[] = [];
+  const hasField = (selector: string): boolean => Boolean(document.querySelector(selector));
 
   // ========================================
   // SECTION 1: ANAMNESA (Keluhan + Lama Sakit)
@@ -315,20 +319,31 @@ export async function fillAnamnesaForm(payload: AnamnesaFillPayload): Promise<{
 
     // Gula Darah / GDS (may not exist on all pages)
     if (vs.gula_darah) {
-      mappings.push({
-        selector: 'input#gula-darah, input[name="PeriksaFisik[gula_darah]"], input[name="gula_darah"]',
-        value: String(vs.gula_darah),
-        type: 'number',
-      });
+      const gulaDarahSelector =
+        'input#gula-darah, input[name="PeriksaFisik[gula_darah]"], input[name="gula_darah"]';
+      if (hasField(gulaDarahSelector)) {
+        mappings.push({
+          selector: gulaDarahSelector,
+          value: String(vs.gula_darah),
+          type: 'number',
+        });
+      } else {
+        skipped.push('gula_darah: field optional tidak tersedia di halaman ini');
+      }
     }
 
     // Kesadaran
     if (vs.kesadaran) {
-      mappings.push({
-        selector: 'select[name="PeriksaFisik[kesadaran]"]',
-        value: vs.kesadaran,
-        type: 'select',
-      });
+      const kesadaranSelector = 'select[name="PeriksaFisik[kesadaran]"]';
+      if (hasField(kesadaranSelector)) {
+        mappings.push({
+          selector: kesadaranSelector,
+          value: vs.kesadaran,
+          type: 'select',
+        });
+      } else {
+        skipped.push('kesadaran: field optional tidak tersedia di halaman ini');
+      }
     }
   }
 
@@ -479,16 +494,16 @@ export async function fillAnamnesaForm(payload: AnamnesaFillPayload): Promise<{
 
     // Skala Nyeri - SPECIAL HANDLING for range slider
     if (an.skala_nyeri !== undefined && an.skala_nyeri > 0) {
-      console.log(`[Anamnesa Handler] Filling skala nyeri slider with value: ${an.skala_nyeri}`);
+      anamnesaLog.debug(`[Anamnesa Handler] Filling skala nyeri slider with value: ${an.skala_nyeri}`);
       const sliderResult = await fillRangeSlider(
         'input#skala_nyeri, input[name="PeriksaFisik[skala_nyeri]"]',
         'input#range-slider, input[name="PeriksaFisik[skala_nyeri_slider]"]',
         an.skala_nyeri
       );
       if (sliderResult.success) {
-        console.log(`[Anamnesa Handler] ✓ Skala nyeri slider filled: ${an.skala_nyeri}`);
+        anamnesaLog.debug(`[Anamnesa Handler] ✓ Skala nyeri slider filled: ${an.skala_nyeri}`);
       } else {
-        console.warn(`[Anamnesa Handler] Skala nyeri slider failed:`, sliderResult.error);
+        anamnesaLog.warn(`[Anamnesa Handler] Skala nyeri slider failed:`, sliderResult.error);
       }
     }
   }
@@ -551,7 +566,7 @@ export async function fillAnamnesaForm(payload: AnamnesaFillPayload): Promise<{
     for (const area of areasToActivate) {
       if (kf[area] && checkboxMapping[area] !== undefined) {
         const checkboxIndex = checkboxMapping[area];
-        console.log(`[Anamnesa Handler] Activating checkbox for ${area} (index ${checkboxIndex})`);
+        anamnesaLog.debug(`[Anamnesa Handler] Activating checkbox for ${area} (index ${checkboxIndex})`);
         await activateCheckboxWithOnclick(
           `input#textareaFisik\\[${checkboxIndex}\\], input[id="textareaFisik[${checkboxIndex}]"]`,
           true
@@ -1054,10 +1069,10 @@ export async function fillAnamnesaForm(payload: AnamnesaFillPayload): Promise<{
     }
   }
 
-  console.log('[Anamnesa Handler] Built', mappings.length, 'field mappings');
+  anamnesaLog.debug('[Anamnesa Handler] Built', mappings.length, 'field mappings');
 
   if (mappings.length === 0) {
-    console.warn('[Anamnesa Handler] No mappings to fill!');
+    anamnesaLog.warn('[Anamnesa Handler] No mappings to fill!');
     return {
       success: [],
       failed: [],
@@ -1080,7 +1095,7 @@ export async function fillAnamnesaForm(payload: AnamnesaFillPayload): Promise<{
     }
   }
 
-  console.log('[Anamnesa Handler] Fill complete:', {
+  anamnesaLog.debug('[Anamnesa Handler] Fill complete:', {
     success: success.length,
     failed: failed.length,
     skipped: skipped.length,
@@ -1093,6 +1108,7 @@ export async function fillAnamnesaForm(payload: AnamnesaFillPayload): Promise<{
  * Initialize Anamnesa page (called when page loads)
  */
 export function initAnamnesaPage(): void {
-  console.log('[Anamnesa Handler] Page initialized');
+  anamnesaLog.debug('[Anamnesa Handler] Page initialized');
   // Future: Add mutation observer for dynamic content
 }
+

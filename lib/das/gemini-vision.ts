@@ -105,7 +105,7 @@ function sanitizeForPrompt(input: string | null | undefined, maxLength = 100): s
     // Remove newlines and carriage returns (prevent instruction injection)
     .replace(/[\n\r]/g, ' ')
     // Remove control characters
-    .replace(/[\x00-\x1F\x7F]/g, '')
+    .replace(/[\p{Cc}\p{Cf}]/gu, '')
     // Remove potential prompt delimiters
     .replace(/```/g, '')
     .replace(/---/g, '')
@@ -442,7 +442,7 @@ export function mapFieldsHeuristic(
   const unmapped: string[] = [];
 
   for (const payloadKey of Object.keys(payload)) {
-    const normalizedKey = payloadKey.toLowerCase().replace(/[_\-]/g, '');
+    const normalizedKey = payloadKey.toLowerCase().replace(/[_-]/g, '');
 
     // Try to find matching field
     let bestMatch: FieldSignature | null = null;
@@ -452,12 +452,12 @@ export function mapFieldsHeuristic(
       let score = 0;
 
       // Check name attribute
-      const name = field.attributes.name?.toLowerCase().replace(/[_\-\[\]]/g, '') || '';
+      const name = field.attributes.name?.toLowerCase().replace(/[_[\]-]/g, '') || '';
       if (name === normalizedKey) score = 0.95;
       else if (name.includes(normalizedKey) || normalizedKey.includes(name)) score = 0.75;
 
       // Check label
-      const label = field.label?.toLowerCase().replace(/[_\-]/g, '') || '';
+      const label = field.label?.toLowerCase().replace(/[_-]/g, '') || '';
       if (label === normalizedKey) score = Math.max(score, 0.90);
       else if (label.includes(normalizedKey)) score = Math.max(score, 0.70);
 
