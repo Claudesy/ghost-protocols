@@ -1,0 +1,1399 @@
+{
+  "rootFolder": "d:\\sentrasolutions\\assist",
+  "analyzedAt": "2026-02-06T07:46:30.986Z",
+  "rootStructure": [
+    {
+      "name": ".github",
+      "type": "dir"
+    },
+    {
+      "name": ".gitignore",
+      "type": "file",
+      "size": 519,
+      "lines": 43
+    },
+    {
+      "name": "archieved",
+      "type": "dir"
+    },
+    {
+      "name": "assets",
+      "type": "dir"
+    },
+    {
+      "name": "CLAUDE.md",
+      "type": "file",
+      "size": 4580,
+      "lines": 156
+    },
+    {
+      "name": "CODEX.md",
+      "type": "file",
+      "size": 2434,
+      "lines": 70
+    },
+    {
+      "name": "components",
+      "type": "dir"
+    },
+    {
+      "name": "cspell.json",
+      "type": "file",
+      "size": 1860,
+      "lines": 121
+    },
+    {
+      "name": "data",
+      "type": "dir"
+    },
+    {
+      "name": "docs",
+      "type": "dir"
+    },
+    {
+      "name": "entrypoints",
+      "type": "dir"
+    },
+    {
+      "name": "error.log",
+      "type": "file",
+      "size": 0,
+      "lines": 1
+    },
+    {
+      "name": "eslint.config.js",
+      "type": "file",
+      "size": 801,
+      "lines": 39
+    },
+    {
+      "name": "lib",
+      "type": "dir"
+    },
+    {
+      "name": "node_modules",
+      "type": "dir"
+    },
+    {
+      "name": "nul",
+      "type": "file",
+      "size": 0,
+      "lines": 1
+    },
+    {
+      "name": "output.log",
+      "type": "file",
+      "size": 305,
+      "lines": 11
+    },
+    {
+      "name": "package-lock.json",
+      "type": "file",
+      "size": 329198,
+      "lines": 12577
+    },
+    {
+      "name": "package.json",
+      "type": "file",
+      "size": 2386,
+      "lines": 75
+    },
+    {
+      "name": "playwright.config.ts",
+      "type": "file",
+      "size": 465,
+      "lines": 21
+    },
+    {
+      "name": "pnpm-lock.yaml",
+      "type": "file",
+      "size": 256876,
+      "lines": 8076
+    },
+    {
+      "name": "postcss.config.js",
+      "type": "file",
+      "size": 81,
+      "lines": 7
+    },
+    {
+      "name": "public",
+      "type": "dir"
+    },
+    {
+      "name": "README.md",
+      "type": "file",
+      "size": 9762,
+      "lines": 305
+    },
+    {
+      "name": "scripts",
+      "type": "dir"
+    },
+    {
+      "name": "tailwind.config.ts",
+      "type": "file",
+      "size": 3250,
+      "lines": 83
+    },
+    {
+      "name": "temp_styles.txt",
+      "type": "file",
+      "size": 8024,
+      "lines": 393
+    },
+    {
+      "name": "tsconfig.json",
+      "type": "file",
+      "size": 848,
+      "lines": 42
+    },
+    {
+      "name": "tsconfig.node.json",
+      "type": "file",
+      "size": 212,
+      "lines": 11
+    },
+    {
+      "name": "tsdoc.json",
+      "type": "file",
+      "size": 732,
+      "lines": 36
+    },
+    {
+      "name": "typedoc.json",
+      "type": "file",
+      "size": 1690,
+      "lines": 69
+    },
+    {
+      "name": "types",
+      "type": "dir"
+    },
+    {
+      "name": "types.ts",
+      "type": "file",
+      "size": 735,
+      "lines": 37
+    },
+    {
+      "name": "utils",
+      "type": "dir"
+    },
+    {
+      "name": "vitest.config.ts",
+      "type": "file",
+      "size": 348,
+      "lines": 18
+    },
+    {
+      "name": "wxt.config.ts",
+      "type": "file",
+      "size": 859,
+      "lines": 26
+    }
+  ],
+  "rootFileSnippets": {
+    "CLAUDE.md": [
+      "# CLAUDE.md — Sentra Assist",
+      "",
+      "## ⚠️ MANDATORY SOP — ALL AGENTS MUST FOLLOW",
+      "",
+      "---",
+      "",
+      "## 📖 START-OF-SESSION PROTOCOL",
+      "",
+      "**BEFORE doing ANY coding task, Claude Code MUST execute these steps IN ORDER:**",
+      ""
+    ],
+    "CODEX.md": [
+      "# CODEX.md — Sentra Assist (OpenAI Codex)",
+      "",
+      "## Identity",
+      "- AGENT_ID: `codex`",
+      "- PROJECT: `assist`",
+      "- Role: Code generation agent for Sentra Assist CDSS Chrome extension",
+      "",
+      "## Language",
+      "- Gunakan Bahasa Indonesia untuk komunikasi",
+      "- Technical terms dan code identifiers tetap dalam bahasa asli"
+    ],
+    "cspell.json": [
+      "{",
+      "\"version\": \"0.2\",",
+      "\"language\": \"en,id\",",
+      "\"words\": [",
+      "\"analgesik\",",
+      "\"Anamnesa\",",
+      "\"anamnesa\",",
+      "\"antipiretik\",",
+      "\"Asma\",",
+      "\"Balowerti\","
+    ],
+    "error.log": [
+      ""
+    ],
+    "eslint.config.js": [
+      "import js from '@eslint/js';",
+      "import tseslint from 'typescript-eslint';",
+      "import reactPlugin from 'eslint-plugin-react';",
+      "",
+      "export default [",
+      "{",
+      "ignores: [",
+      "'.output/**',",
+      "'.wxt/**',",
+      "'node_modules/**',"
+    ],
+    "nul": [
+      ""
+    ],
+    "output.log": [
+      "--- MENGHUBUNGKAN KE THE ABYSS UPLINK ---",
+      "",
+      "========================================",
+      ">>> PAIRING CODE ANDA: 1ZXR6F2B <<<",
+      "========================================",
+      "",
+      "Langkah di HP Chief:",
+      "1. Buka WA -> Linked Devices -> Link a Device",
+      "2. Pilih \"Link with phone number instead\"",
+      "3. Masukkan kode 8 digit di atas."
+    ],
+    "package-lock.json": [
+      "{",
+      "\"name\": \"sentra-assist\",",
+      "\"version\": \"1.0.0\",",
+      "\"lockfileVersion\": 3,",
+      "\"requires\": true,",
+      "\"packages\": {",
+      "\"\": {",
+      "\"name\": \"sentra-assist\",",
+      "\"version\": \"1.0.0\",",
+      "\"hasInstallScript\": true,"
+    ],
+    "package.json": [
+      "{",
+      "\"name\": \"sentra-assist\",",
+      "\"version\": \"1.0.1\",",
+      "\"description\": \"\",",
+      "\"main\": \"index.js\",",
+      "\"scripts\": {",
+      "\"dev\": \"wxt\",",
+      "\"dev:firefox\": \"wxt --browser firefox\",",
+      "\"build\": \"wxt build\",",
+      "\"build:firefox\": \"wxt build --browser firefox\","
+    ],
+    "playwright.config.ts": [
+      "import { defineConfig, devices } from '@playwright/test';",
+      "",
+      "export default defineConfig({",
+      "testDir: './tests/e2e',",
+      "fullyParallel: true,",
+      "forbidOnly: !!process.env.CI,",
+      "retries: process.env.CI ? 2 : 0,",
+      "workers: process.env.CI ? 1 : undefined,",
+      "reporter: 'html',",
+      "use: {"
+    ],
+    "pnpm-lock.yaml": [
+      "lockfileVersion: '9.0'",
+      "",
+      "settings:",
+      "autoInstallPeers: true",
+      "excludeLinksFromLockfile: false",
+      "",
+      "importers:",
+      "",
+      ".:",
+      "dependencies:"
+    ],
+    "postcss.config.js": [
+      "export default {",
+      "plugins: {",
+      "tailwindcss: {},",
+      "autoprefixer: {},",
+      "},",
+      "};",
+      ""
+    ],
+    "README.md": [
+      "# ⚡ Sentra Assist - ePuskesmas CDSS Widget",
+      "",
+      "**Version**: 1.0.0 (Phase 1 Complete)",
+      "**Status**: Active Development",
+      "**Spec**: SENTRA-SPEC-001 v1.2.0",
+      "",
+      "---",
+      "",
+      "## 🎯 Overview",
+      ""
+    ],
+    "tailwind.config.ts": [
+      "import type { Config } from 'tailwindcss';",
+      "import { fontFamily } from 'tailwindcss/defaultTheme';",
+      "",
+      "const config: Config = {",
+      "content: [",
+      "'./entrypoints/**/*.{js,ts,jsx,tsx}',",
+      "'./components/**/*.{js,ts,jsx,tsx}'",
+      "],",
+      "theme: {",
+      "extend: {"
+    ],
+    "temp_styles.txt": [
+      "",
+      "> export const ttvInferenceUIStyles = `",
+      ".ttv-inference-ui {",
+      "background: var(--surface-primary);",
+      "min-height: 100vh;",
+      "width: 100%;",
+      "}",
+      "",
+      ".ttv-content {",
+      "display: flex;"
+    ],
+    "tsconfig.json": [
+      "{",
+      "\"extends\": \"./.wxt/tsconfig.json\",",
+      "\"compilerOptions\": {",
+      "\"target\": \"ES2020\",",
+      "\"useDefineForClassFields\": true,",
+      "\"lib\": [\"ES2020\", \"DOM\", \"DOM.Iterable\"],",
+      "\"module\": \"ESNext\",",
+      "\"skipLibCheck\": true,",
+      "",
+      "/* Bundler mode */"
+    ],
+    "tsconfig.node.json": [
+      "{",
+      "\"compilerOptions\": {",
+      "\"composite\": true,",
+      "\"skipLibCheck\": true,",
+      "\"module\": \"ESNext\",",
+      "\"moduleResolution\": \"bundler\",",
+      "\"allowSyntheticDefaultImports\": true",
+      "},",
+      "\"include\": [\"wxt.config.ts\"]",
+      "}"
+    ],
+    "tsdoc.json": [
+      "{",
+      "\"$schema\": \"https://developer.microsoft.com/json-schemas/tsdoc/v0/tsdoc.schema.json\",",
+      "\"extends\": [],",
+      "\"noStandardTags\": false,",
+      "\"tagDefinitions\": [",
+      "{",
+      "\"tagName\": \"@alpha\",",
+      "\"syntaxKind\": \"modifier\"",
+      "},",
+      "{"
+    ],
+    "typedoc.json": [
+      "{",
+      "\"$schema\": \"https://typedoc.org/schema.json\",",
+      "\"entryPoints\": [\"./entrypoints\", \"./components\", \"./lib\", \"./utils\", \"./types\"],",
+      "\"entryPointStrategy\": \"expand\",",
+      "\"out\": \"./docs/api\",",
+      "\"exclude\": [",
+      "\"**/node_modules/**\",",
+      "\"**/*.test.ts\",",
+      "\"**/*.test.tsx\",",
+      "\"**/*.spec.ts\","
+    ],
+    "types.ts": [
+      "/**",
+      "* Precision-Architected. Future-Built by Docsyanpse",
+      "* Sentra Healthcare Artificial Intelligence",
+      "*/",
+      "",
+      "export interface EncounterData {",
+      "patientId: string;",
+      "encounterId?: string;",
+      "timestamp: string;",
+      ""
+    ],
+    "vitest.config.ts": [
+      "import { defineConfig } from 'vitest/config';",
+      "import react from '@vitejs/plugin-react';",
+      "import path from 'path';",
+      "",
+      "export default defineConfig({",
+      "plugins: [react()],",
+      "test: {",
+      "globals: true,",
+      "environment: 'jsdom',",
+      "setupFiles: ['./tests/setup.ts'],"
+    ],
+    "wxt.config.ts": [
+      "import { defineConfig } from 'wxt';",
+      "",
+      "export default defineConfig({",
+      "manifest: {",
+      "name: 'Sentra Assist - ePuskesmas CDSS',",
+      "description: 'Clinical Decision Support with Auto-Fill for ePuskesmas RME',",
+      "version: '1.0.1',",
+      "permissions: ['activeTab', 'storage', 'sidePanel', 'identity', 'scripting'],",
+      "host_permissions: ['https://kotakediri.epuskesmas.id/*', 'https://*.googleapis.com/*'],",
+      "action: {"
+    ]
+  },
+  "importantFolders": [
+    {
+      "path": ".genkit\\servers",
+      "category": "backend",
+      "fileCount": 0
+    },
+    {
+      "path": ".output",
+      "category": "build",
+      "fileCount": 6632,
+      "primaryLanguage": "JavaScript"
+    },
+    {
+      "path": ".output\\chrome-mv3\\assets",
+      "category": "assets",
+      "fileCount": 3
+    },
+    {
+      "path": ".output\\chrome-mv3\\content-scripts",
+      "category": "scripts",
+      "fileCount": 2,
+      "primaryLanguage": "JavaScript"
+    },
+    {
+      "path": ".output\\chrome-mv3\\plugins\\situ-design\\assets",
+      "category": "assets",
+      "fileCount": 1661
+    },
+    {
+      "path": ".output\\chrome-mv3\\plugins\\situ-design\\assets\\images",
+      "category": "assets",
+      "fileCount": 7
+    },
+    {
+      "path": ".output\\chrome-mv3-dev\\assets",
+      "category": "assets",
+      "fileCount": 2
+    },
+    {
+      "path": ".output\\chrome-mv3-dev\\content-scripts",
+      "category": "scripts",
+      "fileCount": 2,
+      "primaryLanguage": "JavaScript"
+    },
+    {
+      "path": ".output\\chrome-mv3-dev\\plugins\\situ-design\\assets",
+      "category": "assets",
+      "fileCount": 1661
+    },
+    {
+      "path": ".output\\chrome-mv3-dev\\plugins\\situ-design\\assets\\images",
+      "category": "assets",
+      "fileCount": 7
+    },
+    {
+      "path": ".taskmaster\\docs",
+      "category": "docs",
+      "fileCount": 1
+    },
+    {
+      "path": "archieved\\2026-02-03-cleanup\\unused-components",
+      "category": "frontend",
+      "fileCount": 5,
+      "primaryLanguage": "TypeScript"
+    },
+    {
+      "path": "assets",
+      "category": "assets",
+      "fileCount": 4
+    },
+    {
+      "path": "components",
+      "category": "frontend",
+      "fileCount": 23,
+      "primaryLanguage": "TypeScript"
+    },
+    {
+      "path": "docs",
+      "category": "docs",
+      "fileCount": 469,
+      "primaryLanguage": "JavaScript"
+    },
+    {
+      "path": "docs\\api",
+      "category": "backend",
+      "fileCount": 462,
+      "primaryLanguage": "JavaScript"
+    },
+    {
+      "path": "docs\\api\\assets",
+      "category": "assets",
+      "fileCount": 8,
+      "primaryLanguage": "JavaScript"
+    },
+    {
+      "path": "lib",
+      "category": "core",
+      "fileCount": 61,
+      "primaryLanguage": "TypeScript"
+    },
+    {
+      "path": "lib\\api",
+      "category": "backend",
+      "fileCount": 16,
+      "primaryLanguage": "TypeScript"
+    },
+    {
+      "path": "public",
+      "category": "assets",
+      "fileCount": 3309,
+      "primaryLanguage": "JavaScript"
+    },
+    {
+      "path": "public\\assets",
+      "category": "assets",
+      "fileCount": 2
+    },
+    {
+      "path": "public\\plugins\\situ-design\\assets",
+      "category": "assets",
+      "fileCount": 1661
+    },
+    {
+      "path": "public\\plugins\\situ-design\\assets\\images",
+      "category": "assets",
+      "fileCount": 7
+    },
+    {
+      "path": "scripts",
+      "category": "scripts",
+      "fileCount": 6,
+      "primaryLanguage": "JavaScript"
+    }
+  ],
+  "readmeParagraphs": {
+    "root": "# ⚡ Sentra Assist - ePuskesmas CDSS Widget"
+  },
+  "totals": {
+    "numFiles": 13966,
+    "numDirs": 119,
+    "totalSizeBytes": 110604266,
+    "totalLinesOfCode": 57552
+  },
+  "fileCategories": {
+    "other": 13736,
+    "documentation": 19,
+    "config": 32,
+    "source": 157,
+    "test": 22
+  },
+  "linesOfCodePerLanguage": {
+    "JavaScript": 14999,
+    "TypeScript": 42553
+  },
+  "filesPerLanguage": {
+    "JavaScript": 33,
+    "TypeScript": 124
+  },
+  "projectTypes": [
+    "JavaScript/Node.js"
+  ],
+  "frameworks": [
+    "React",
+    "Flask",
+    "FastAPI",
+    "Svelte",
+    "Express.js"
+  ],
+  "entryPoints": [
+    ".output\\chrome-mv3\\plugins\\situ-design\\717.situImport.bundle.js",
+    ".output\\chrome-mv3-dev\\plugins\\situ-design\\717.situImport.bundle.js",
+    "public\\plugins\\situ-design\\717.situImport.bundle.js",
+    "scripts\\auto-commit.js",
+    "scripts\\auto-document.js",
+    "scripts\\docs-all.js"
+  ],
+  "ciCdTools": [
+    "GitHub Actions"
+  ],
+  "packageManagers": [
+    "npm/yarn",
+    "pnpm"
+  ],
+  "topLevelDirectories": [
+    {
+      "name": "lib",
+      "numFiles": 61,
+      "totalLoc": 20324,
+      "dominantLanguage": "TypeScript"
+    },
+    {
+      "name": "components",
+      "numFiles": 23,
+      "totalLoc": 10144,
+      "dominantLanguage": "TypeScript"
+    },
+    {
+      "name": "archieved",
+      "numFiles": 3379,
+      "totalLoc": 3090,
+      "dominantLanguage": "TypeScript"
+    },
+    {
+      "name": "entrypoints",
+      "numFiles": 8,
+      "totalLoc": 2627,
+      "dominantLanguage": "TypeScript"
+    },
+    {
+      "name": "utils",
+      "numFiles": 8,
+      "totalLoc": 1756,
+      "dominantLanguage": "TypeScript"
+    },
+    {
+      "name": "scripts",
+      "numFiles": 6,
+      "totalLoc": 840,
+      "dominantLanguage": "JavaScript"
+    },
+    {
+      "name": "types",
+      "numFiles": 2,
+      "totalLoc": 634,
+      "dominantLanguage": "TypeScript"
+    },
+    {
+      "name": "data",
+      "numFiles": 21,
+      "totalLoc": 217,
+      "dominantLanguage": "TypeScript"
+    },
+    {
+      "name": "docs",
+      "numFiles": 469,
+      "totalLoc": 82,
+      "dominantLanguage": "JavaScript"
+    },
+    {
+      "name": "public",
+      "numFiles": 3309,
+      "totalLoc": 4,
+      "dominantLanguage": "JavaScript"
+    },
+    {
+      "name": "assets",
+      "numFiles": 4,
+      "totalLoc": 0
+    }
+  ],
+  "detailedDirectories": [
+    {
+      "path": "lib",
+      "name": "lib",
+      "level": 1,
+      "numFiles": 61,
+      "totalLoc": 20324,
+      "dominantLanguage": "TypeScript",
+      "category": "Library",
+      "description": "Library module with 61 files (TypeScript)",
+      "subdirectories": [
+        {
+          "path": "lib\\das",
+          "name": "das",
+          "level": 2,
+          "numFiles": 11,
+          "totalLoc": 4184,
+          "dominantLanguage": "TypeScript",
+          "category": "General",
+          "description": "General module with 11 files (TypeScript)",
+          "subdirectories": []
+        },
+        {
+          "path": "lib\\cdss",
+          "name": "cdss",
+          "level": 2,
+          "numFiles": 11,
+          "totalLoc": 3901,
+          "dominantLanguage": "TypeScript",
+          "category": "General",
+          "description": "General module with 11 files (TypeScript)",
+          "subdirectories": [
+            {
+              "path": "lib\\cdss\\validation",
+              "name": "validation",
+              "level": 3,
+              "numFiles": 2,
+              "totalLoc": 674,
+              "dominantLanguage": "TypeScript",
+              "category": "General",
+              "description": "General module with 2 files (TypeScript)",
+              "subdirectories": []
+            }
+          ]
+        },
+        {
+          "path": "lib\\api",
+          "name": "api",
+          "level": 2,
+          "numFiles": 16,
+          "totalLoc": 3605,
+          "dominantLanguage": "TypeScript",
+          "category": "Service",
+          "description": "Service module with 16 files (TypeScript)",
+          "subdirectories": [
+            {
+              "path": "lib\\api\\mocks",
+              "name": "mocks",
+              "level": 3,
+              "numFiles": 5,
+              "totalLoc": 1155,
+              "dominantLanguage": "TypeScript",
+              "category": "General",
+              "description": "General module with 5 files (TypeScript)",
+              "subdirectories": []
+            }
+          ]
+        },
+        {
+          "path": "lib\\handlers",
+          "name": "handlers",
+          "level": 2,
+          "numFiles": 3,
+          "totalLoc": 1970,
+          "dominantLanguage": "TypeScript",
+          "category": "Controllers",
+          "description": "Controllers module with 3 files (TypeScript)",
+          "subdirectories": []
+        },
+        {
+          "path": "lib\\filler",
+          "name": "filler",
+          "level": 2,
+          "numFiles": 2,
+          "totalLoc": 1250,
+          "dominantLanguage": "TypeScript",
+          "category": "General",
+          "description": "General module with 2 files (TypeScript)",
+          "subdirectories": []
+        }
+      ]
+    },
+    {
+      "path": "components",
+      "name": "components",
+      "level": 1,
+      "numFiles": 23,
+      "totalLoc": 10144,
+      "dominantLanguage": "TypeScript",
+      "category": "General",
+      "description": "General module with 23 files (TypeScript)",
+      "subdirectories": [
+        {
+          "path": "components\\clinical",
+          "name": "clinical",
+          "level": 2,
+          "numFiles": 11,
+          "totalLoc": 8120,
+          "dominantLanguage": "TypeScript",
+          "category": "General",
+          "description": "General module with 11 files (TypeScript)",
+          "subdirectories": []
+        },
+        {
+          "path": "components\\cdss",
+          "name": "cdss",
+          "level": 2,
+          "numFiles": 6,
+          "totalLoc": 1054,
+          "dominantLanguage": "TypeScript",
+          "category": "General",
+          "description": "General module with 6 files (TypeScript)",
+          "subdirectories": []
+        },
+        {
+          "path": "components\\medlink",
+          "name": "medlink",
+          "level": 2,
+          "numFiles": 5,
+          "totalLoc": 663,
+          "dominantLanguage": "TypeScript",
+          "category": "General",
+          "description": "General module with 5 files (TypeScript)",
+          "subdirectories": [
+            {
+              "path": "components\\medlink\\widgets",
+              "name": "widgets",
+              "level": 3,
+              "numFiles": 3,
+              "totalLoc": 410,
+              "dominantLanguage": "TypeScript",
+              "category": "General",
+              "description": "General module with 3 files (TypeScript)",
+              "subdirectories": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "archieved",
+      "name": "archieved",
+      "level": 1,
+      "numFiles": 3379,
+      "totalLoc": 3090,
+      "dominantLanguage": "TypeScript",
+      "category": "General",
+      "description": "General module with 3379 files (TypeScript)",
+      "subdirectories": [
+        {
+          "path": "archieved\\2026-02-03-cleanup",
+          "name": "2026-02-03-cleanup",
+          "level": 2,
+          "numFiles": 3379,
+          "totalLoc": 3090,
+          "dominantLanguage": "TypeScript",
+          "category": "General",
+          "description": "General module with 3379 files (TypeScript)",
+          "subdirectories": [
+            {
+              "path": "archieved\\2026-02-03-cleanup\\unused-icons",
+              "name": "unused-icons",
+              "level": 3,
+              "numFiles": 3363,
+              "totalLoc": 0,
+              "category": "General",
+              "description": "General module with 3363 files",
+              "subdirectories": []
+            },
+            {
+              "path": "archieved\\2026-02-03-cleanup\\unused-cdss-logic",
+              "name": "unused-cdss-logic",
+              "level": 3,
+              "numFiles": 4,
+              "totalLoc": 1615,
+              "dominantLanguage": "TypeScript",
+              "category": "General",
+              "description": "General module with 4 files (TypeScript)",
+              "subdirectories": []
+            },
+            {
+              "path": "archieved\\2026-02-03-cleanup\\unused-components",
+              "name": "unused-components",
+              "level": 3,
+              "numFiles": 5,
+              "totalLoc": 883,
+              "dominantLanguage": "TypeScript",
+              "category": "General",
+              "description": "General module with 5 files (TypeScript)",
+              "subdirectories": []
+            },
+            {
+              "path": "archieved\\2026-02-03-cleanup\\unused-hooks-utils",
+              "name": "unused-hooks-utils",
+              "level": 3,
+              "numFiles": 3,
+              "totalLoc": 404,
+              "dominantLanguage": "TypeScript",
+              "category": "Tools/Scripts",
+              "description": "Tools/Scripts module with 3 files (TypeScript)",
+              "subdirectories": []
+            },
+            {
+              "path": "archieved\\2026-02-03-cleanup\\duplicate-entries",
+              "name": "duplicate-entries",
+              "level": 3,
+              "numFiles": 3,
+              "totalLoc": 188,
+              "dominantLanguage": "TypeScript",
+              "category": "General",
+              "description": "General module with 3 files (TypeScript)",
+              "subdirectories": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "public",
+      "name": "public",
+      "level": 1,
+      "numFiles": 3309,
+      "totalLoc": 4,
+      "dominantLanguage": "JavaScript",
+      "category": "General",
+      "description": "General module with 3309 files (JavaScript)",
+      "subdirectories": [
+        {
+          "path": "public\\plugins",
+          "name": "plugins",
+          "level": 2,
+          "numFiles": 3291,
+          "totalLoc": 4,
+          "dominantLanguage": "JavaScript",
+          "category": "General",
+          "description": "General module with 3291 files (JavaScript)",
+          "subdirectories": [
+            {
+              "path": "public\\plugins\\situ-design",
+              "name": "situ-design",
+              "level": 3,
+              "numFiles": 3291,
+              "totalLoc": 4,
+              "dominantLanguage": "JavaScript",
+              "category": "General",
+              "description": "General module with 3291 files (JavaScript)",
+              "subdirectories": []
+            }
+          ]
+        },
+        {
+          "path": "public\\data",
+          "name": "data",
+          "level": 2,
+          "numFiles": 5,
+          "totalLoc": 0,
+          "category": "Data",
+          "description": "Data module with 5 files",
+          "subdirectories": []
+        },
+        {
+          "path": "public\\icon",
+          "name": "icon",
+          "level": 2,
+          "numFiles": 5,
+          "totalLoc": 0,
+          "category": "General",
+          "description": "General module with 5 files",
+          "subdirectories": []
+        },
+        {
+          "path": "public\\assets",
+          "name": "assets",
+          "level": 2,
+          "numFiles": 2,
+          "totalLoc": 0,
+          "category": "General",
+          "description": "General module with 2 files",
+          "subdirectories": [
+            {
+              "path": "public\\assets\\sounds",
+              "name": "sounds",
+              "level": 3,
+              "numFiles": 2,
+              "totalLoc": 0,
+              "category": "General",
+              "description": "General module with 2 files",
+              "subdirectories": []
+            }
+          ]
+        },
+        {
+          "path": "public\\icons",
+          "name": "icons",
+          "level": 2,
+          "numFiles": 1,
+          "totalLoc": 0,
+          "category": "General",
+          "description": "General module with 1 files",
+          "subdirectories": []
+        }
+      ]
+    },
+    {
+      "path": "entrypoints",
+      "name": "entrypoints",
+      "level": 1,
+      "numFiles": 8,
+      "totalLoc": 2627,
+      "dominantLanguage": "TypeScript",
+      "category": "General",
+      "description": "General module with 8 files (TypeScript)",
+      "subdirectories": [
+        {
+          "path": "entrypoints\\sidepanel",
+          "name": "sidepanel",
+          "level": 2,
+          "numFiles": 5,
+          "totalLoc": 528,
+          "dominantLanguage": "TypeScript",
+          "category": "General",
+          "description": "General module with 5 files (TypeScript)",
+          "subdirectories": []
+        }
+      ]
+    },
+    {
+      "path": "utils",
+      "name": "utils",
+      "level": 1,
+      "numFiles": 8,
+      "totalLoc": 1756,
+      "dominantLanguage": "TypeScript",
+      "category": "Tools/Scripts",
+      "description": "Tools/Scripts module with 8 files (TypeScript)",
+      "subdirectories": []
+    },
+    {
+      "path": "scripts",
+      "name": "scripts",
+      "level": 1,
+      "numFiles": 6,
+      "totalLoc": 840,
+      "dominantLanguage": "JavaScript",
+      "category": "Tools/Scripts",
+      "description": "Tools/Scripts module with 6 files (JavaScript)",
+      "subdirectories": []
+    },
+    {
+      "path": "types",
+      "name": "types",
+      "level": 1,
+      "numFiles": 2,
+      "totalLoc": 634,
+      "dominantLanguage": "TypeScript",
+      "category": "General",
+      "description": "General module with 2 files (TypeScript)",
+      "subdirectories": []
+    },
+    {
+      "path": "docs",
+      "name": "docs",
+      "level": 1,
+      "numFiles": 469,
+      "totalLoc": 82,
+      "dominantLanguage": "JavaScript",
+      "category": "Documentation",
+      "description": "Documentation module with 469 files (JavaScript)",
+      "subdirectories": [
+        {
+          "path": "docs\\api",
+          "name": "api",
+          "level": 2,
+          "numFiles": 462,
+          "totalLoc": 82,
+          "dominantLanguage": "JavaScript",
+          "category": "Service",
+          "description": "Service module with 462 files (JavaScript)",
+          "subdirectories": [
+            {
+              "path": "docs\\api\\functions",
+              "name": "functions",
+              "level": 3,
+              "numFiles": 166,
+              "totalLoc": 0,
+              "category": "General",
+              "description": "General module with 166 files",
+              "subdirectories": []
+            },
+            {
+              "path": "docs\\api\\interfaces",
+              "name": "interfaces",
+              "level": 3,
+              "numFiles": 138,
+              "totalLoc": 0,
+              "category": "General",
+              "description": "General module with 138 files",
+              "subdirectories": []
+            },
+            {
+              "path": "docs\\api\\assets",
+              "name": "assets",
+              "level": 3,
+              "numFiles": 8,
+              "totalLoc": 82,
+              "dominantLanguage": "JavaScript",
+              "category": "General",
+              "description": "General module with 8 files (JavaScript)",
+              "subdirectories": []
+            },
+            {
+              "path": "docs\\api\\modules",
+              "name": "modules",
+              "level": 3,
+              "numFiles": 60,
+              "totalLoc": 0,
+              "category": "General",
+              "description": "General module with 60 files",
+              "subdirectories": []
+            },
+            {
+              "path": "docs\\api\\classes",
+              "name": "classes",
+              "level": 3,
+              "numFiles": 3,
+              "totalLoc": 0,
+              "category": "General",
+              "description": "General module with 3 files",
+              "subdirectories": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "data",
+      "name": "data",
+      "level": 1,
+      "numFiles": 21,
+      "totalLoc": 217,
+      "dominantLanguage": "TypeScript",
+      "category": "Data",
+      "description": "Data module with 21 files (TypeScript)",
+      "subdirectories": [
+        {
+          "path": "data\\ddi",
+          "name": "ddi",
+          "level": 2,
+          "numFiles": 16,
+          "totalLoc": 0,
+          "category": "General",
+          "description": "General module with 16 files",
+          "subdirectories": []
+        }
+      ]
+    },
+    {
+      "path": "assets",
+      "name": "assets",
+      "level": 1,
+      "numFiles": 4,
+      "totalLoc": 0,
+      "category": "General",
+      "description": "General module with 4 files",
+      "subdirectories": [
+        {
+          "path": "assets\\sounds",
+          "name": "sounds",
+          "level": 2,
+          "numFiles": 2,
+          "totalLoc": 0,
+          "category": "General",
+          "description": "General module with 2 files",
+          "subdirectories": []
+        },
+        {
+          "path": "assets\\styles",
+          "name": "styles",
+          "level": 2,
+          "numFiles": 1,
+          "totalLoc": 0,
+          "category": "General",
+          "description": "General module with 1 files",
+          "subdirectories": []
+        }
+      ]
+    }
+  ],
+  "architecturalInsights": {
+    "coreApplications": [],
+    "entryPointDetails": [
+      {
+        "path": "C:\\Users\\docsy\\AppData\\Local\\Programs\\Antigravity\\.output\\chrome-mv3\\plugins\\situ-design\\717.situImport.bundle.js",
+        "type": "Unknown",
+        "description": ""
+      },
+      {
+        "path": "C:\\Users\\docsy\\AppData\\Local\\Programs\\Antigravity\\.output\\chrome-mv3-dev\\plugins\\situ-design\\717.situImport.bundle.js",
+        "type": "Unknown",
+        "description": ""
+      },
+      {
+        "path": "C:\\Users\\docsy\\AppData\\Local\\Programs\\Antigravity\\public\\plugins\\situ-design\\717.situImport.bundle.js",
+        "type": "Unknown",
+        "description": ""
+      },
+      {
+        "path": "C:\\Users\\docsy\\AppData\\Local\\Programs\\Antigravity\\scripts\\auto-commit.js",
+        "type": "Unknown",
+        "description": ""
+      },
+      {
+        "path": "C:\\Users\\docsy\\AppData\\Local\\Programs\\Antigravity\\scripts\\auto-document.js",
+        "type": "Unknown",
+        "description": ""
+      },
+      {
+        "path": "C:\\Users\\docsy\\AppData\\Local\\Programs\\Antigravity\\scripts\\docs-all.js",
+        "type": "Unknown",
+        "description": ""
+      }
+    ],
+    "serviceArchitecture": {
+      "microservices": [],
+      "monoliths": [],
+      "libraries": [
+        "lib"
+      ]
+    },
+    "layeredArchitecture": {
+      "presentation": [],
+      "business": [],
+      "data": [
+        "data"
+      ],
+      "infrastructure": []
+    }
+  },
+  "largeFiles": [
+    {
+      "path": "data\\ddi\\ddinter_merged.csv",
+      "sizeMb": 13.07
+    },
+    {
+      "path": "data\\ddi-database.json",
+      "sizeMb": 9.36
+    },
+    {
+      "path": "data\\ddi\\ddinter_downloads_code_N.csv",
+      "sizeMb": 4.98
+    },
+    {
+      "path": "data\\ddi\\ddinter_downloads_code_L.csv",
+      "sizeMb": 3.71
+    },
+    {
+      "path": "data\\ddi\\ddinter_downloads_code_C.csv",
+      "sizeMb": 3.29
+    },
+    {
+      "path": "data\\ddi\\ddinter_downloads_code_A.csv",
+      "sizeMb": 3.19
+    },
+    {
+      "path": ".output\\chrome-mv3-dev\\background.js",
+      "sizeMb": 2.82
+    },
+    {
+      "path": "data\\ddi-database.min.json",
+      "sizeMb": 2.71
+    },
+    {
+      "path": "data\\ddi\\ddinter_downloads_code_J.csv",
+      "sizeMb": 2.44
+    },
+    {
+      "path": ".output\\chrome-mv3\\data\\icd10.json",
+      "sizeMb": 2.4
+    },
+    {
+      "path": ".output\\chrome-mv3-dev\\data\\icd10.json",
+      "sizeMb": 2.4
+    },
+    {
+      "path": "public\\data\\icd10.json",
+      "sizeMb": 2.4
+    },
+    {
+      "path": ".output\\chrome-mv3\\background.js",
+      "sizeMb": 2.19
+    },
+    {
+      "path": "data\\ddi-clinical.json",
+      "sizeMb": 2.09
+    },
+    {
+      "path": "data\\ddi\\ddinter_downloads_code_G.csv",
+      "sizeMb": 1.9
+    },
+    {
+      "path": "data\\ddi\\ddinter_downloads_code_S.csv",
+      "sizeMb": 1.84
+    },
+    {
+      "path": "data\\ddi\\ddinter_downloads_code_R.csv",
+      "sizeMb": 1.71
+    },
+    {
+      "path": ".output\\chrome-mv3\\plugins\\situ-design\\assets\\icons\\vs-code.svg",
+      "sizeMb": 1.5
+    },
+    {
+      "path": ".output\\chrome-mv3-dev\\plugins\\situ-design\\assets\\icons\\vs-code.svg",
+      "sizeMb": 1.5
+    },
+    {
+      "path": "public\\plugins\\situ-design\\assets\\icons\\vs-code.svg",
+      "sizeMb": 1.5
+    },
+    {
+      "path": ".output\\chrome-mv3\\chunks\\sidepanel-DLYyI4aR.js",
+      "sizeMb": 1.48
+    },
+    {
+      "path": "data\\ddi\\ddinter_downloads_code_D.csv",
+      "sizeMb": 1.45
+    },
+    {
+      "path": ".output\\chrome-mv3\\sentra.png",
+      "sizeMb": 1.24
+    },
+    {
+      "path": ".output\\chrome-mv3-dev\\sentra.png",
+      "sizeMb": 1.24
+    },
+    {
+      "path": "public\\sentra.png",
+      "sizeMb": 1.24
+    },
+    {
+      "path": "data\\ddi\\ddinter_downloads_code_M.csv",
+      "sizeMb": 1.21
+    }
+  ],
+  "dependencies": {
+    "production": [
+      "@google-cloud/vertexai",
+      "@pieces.app/pieces-os-client",
+      "apexcharts",
+      "lucide-react",
+      "react-apexcharts",
+      "zustand"
+    ],
+    "development": [
+      "@eslint/js",
+      "@playwright/test",
+      "@testing-library/jest-dom",
+      "@testing-library/react",
+      "@types/chrome",
+      "@types/node",
+      "@types/react",
+      "@types/react-dom",
+      "@vitest/ui",
+      "@webext-core/messaging",
+      "@wxt-dev/module-react",
+      "autoprefixer",
+      "eslint",
+      "eslint-plugin-react",
+      "jsdom",
+      "playwright",
+      "postcss",
+      "prettier",
+      "react",
+      "react-dom",
+      "sharp",
+      "tailwindcss",
+      "typedoc",
+      "typescript",
+      "typescript-eslint",
+      "vite",
+      "vitest",
+      "wxt"
+    ],
+    "total": 34
+  },
+  "complexity": {
+    "averageFileSize": 4.120864957754547,
+    "maxFileSize": 137048.8832,
+    "nestedDepth": 0,
+    "estimatedComplexity": "very high"
+  },
+  "gitRepo": {
+    "firstCommitDate": "2026-02-04",
+    "totalCommits": 7,
+    "numContributors": 0,
+    "currentBranch": "master",
+    "remoteUrls": []
+  }
+}

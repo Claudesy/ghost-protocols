@@ -92,3 +92,36 @@ export {
 } from './audit-logger';
 
 export type { AuditEntry, AuditAction } from './audit-logger';
+
+// =============================================================================
+// CHRONIC DISEASE CLASSIFIER EXPORTS
+// =============================================================================
+
+export {
+  classifyChronicDisease,
+  getBadgeConfig,
+  getBadgeConfigForDisease,
+  isChronicDisease,
+  getSupportedDiseaseTypes,
+  getDiseaseFullName,
+  ChronicDiseaseType,
+} from './chronic-disease-classifier';
+
+export type {
+  ChronicDiseaseSeverity,
+  ChronicDiseaseClassification,
+  BadgeConfig,
+} from './chronic-disease-classifier';
+
+// =============================================================================
+// DDI (DRUG-DRUG INTERACTION) CHECKER EXPORTS
+// =============================================================================
+
+export {
+  loadDDIDatabase,
+  getDDIStatus,
+  checkDrugInteractions,
+  hasBlockingInteractions,
+  getSeverityLabel,
+  getSeverityColor,
+} from './ddi-checker';

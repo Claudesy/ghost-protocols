@@ -1,0 +1,26 @@
+/**
+ * Precision-Architected. Future-Built by Docsyanpse
+ * Sentra Healthcare Artificial Intelligence
+ */
+
+/**
+ * Pieces Integration Types
+ */
+
+export interface PiecesSnippet {
+  id?: string;
+  title: string;
+  content: string;
+  classification: 'markdown' | 'plaintext' | 'typescript';
+  tags?: string[];
+  created?: Date;
+}
+
+export interface PiecesConfig {
+  baseUrl: string; // Default: http://localhost:1000
+}
+
+export interface PiecesSearchResponse {
+  snippets: PiecesSnippet[];
+  total: number;
+}

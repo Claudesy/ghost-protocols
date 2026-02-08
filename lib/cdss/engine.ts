@@ -25,7 +25,51 @@ import type { Encounter } from '~/utils/types';
 import type { RedFlag } from './red-flags';
 import type { ValidatedSuggestion, ValidationResult } from './validation/types';
 
-import { inferDiagnosis, localFallbackInference } from '@/lib/api/vertex-ai-client';
+import type { AnonymizedClinicalContext } from '@/lib/api/deepseek-types';
+import { inferDiagnosis } from '@/lib/api/vertex-ai-client';
+
+/**
+ * Browser-compatible fallback inference (no external API)
+ * This replaces the Node.js-dependent vertex-ai-client
+ */
+function localFallbackInference(
+  context: AnonymizedClinicalContext,
+  ragResults: RAGSearchResult[]
+): {
+  suggestions: Array<{
+    rank: number;
+    diagnosis_name: string;
+    icd10_code: string;
+    confidence: number;
+    reasoning: string;
+    red_flags: string[];
+    recommended_actions: string[];
+  }>;
+  model_version: string;
+  used_fallback: boolean;
+} {
+  // Use RAG results as primary source for suggestions
+  const suggestions = ragResults.slice(0, 5).map((result, index) => ({
+    rank: index + 1,
+    diagnosis_name: result.entry.name_id || result.entry.name_en,
+    icd10_code: result.entry.code,
+    confidence: Math.max(0.3, 1 - index * 0.15) * result.relevance_score,
+    reasoning: `Berdasarkan keluhan "${context.keluhan_utama}" dan kecocokan dengan database ICD-10.`,
+    red_flags: [] as string[],
+    recommended_actions: ['Konfirmasi dengan pemeriksaan fisik', 'Pertimbangkan diagnosis banding'],
+  }));
+
+  return {
+    suggestions,
+    model_version: 'local-rag-fallback-v1',
+    used_fallback: true,
+  };
+}
+
+/**
+ * Vertex AI Inference integration
+ */
+// Reusing the imported inferDiagnosis
 import { searchForDiagnosisSuggestions } from '@/lib/rag';
 import { anonymize, validateAnonymization } from './anonymizer';
 import {

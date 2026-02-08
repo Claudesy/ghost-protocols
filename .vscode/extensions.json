@@ -3,6 +3,9 @@
     "mintlify.document",
     "dbaeumer.vscode-eslint",
     "esbenp.prettier-vscode",
+    "piecesapp.pieces-vscode",
+    "openai.chatgpt",
+    "laurids.agent-skills-sh",
     "bradlc.vscode-tailwindcss",
     "ms-vscode.vscode-typescript-next"
   ]

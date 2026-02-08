@@ -7,28 +7,28 @@
 // Based on SENTRA-SPEC-001 v1.2.0 Section 4.4
 // Uses @webext-core/messaging for compile-time type safety
 
-import { defineExtensionMessaging } from '@webext-core/messaging';
+import type { CDSSEngineStatus } from '@/lib/cdss/engine';
 import type {
-  ResepFillPayload,
-  AnamnesaFillPayload,
-  DiagnosaFillPayload,
-  FillResult,
-  PageReadyInfo,
-  ScrapePayload,
-  ScrapeRequest,
-  Encounter,
-} from './types';
-import type {
+  APIResponse,
+  CDSSAlert,
   CDSSResponse,
   DiagnosisRequestContext,
-  PrescriptionRequestContext,
   DrugInteraction,
-  CDSSAlert,
   PediatricDose,
   PediatricDoseRequest,
-  APIResponse,
+  PrescriptionRequestContext,
 } from '@/types/api';
-import type { CDSSEngineStatus } from '@/lib/cdss/engine';
+import { defineExtensionMessaging } from '@webext-core/messaging';
+import type {
+  AnamnesaFillPayload,
+  DiagnosaFillPayload,
+  Encounter,
+  FillResult,
+  PageReadyInfo,
+  ResepFillPayload,
+  ScrapePayload,
+  ScrapeRequest,
+} from './types';
 
 // Message protocol interface
 // All messages between Panel ↔ Worker ↔ Content
@@ -67,7 +67,10 @@ interface ProtocolMap {
   getSuggestions(context: DiagnosisRequestContext): Promise<APIResponse<CDSSResponse>>;
   getRecommendations(context: PrescriptionRequestContext): Promise<APIResponse<CDSSResponse>>;
   checkInteractions(drugs: string[]): Promise<APIResponse<DrugInteraction[]>>;
-  checkAllergies(context: { medications: string[]; allergies: string[] }): Promise<APIResponse<CDSSAlert[]>>;
+  checkAllergies(context: {
+    medications: string[];
+    allergies: string[];
+  }): Promise<APIResponse<CDSSAlert[]>>;
   calculatePediatricDose(context: PediatricDoseRequest): Promise<APIResponse<PediatricDose>>;
 
   // ========================================
@@ -75,6 +78,74 @@ interface ProtocolMap {
   // ========================================
   getCDSSStatus(data: undefined): Promise<CDSSEngineStatus>;
   initializeCDSS(data: undefined): Promise<boolean>;
+
+  // ========================================
+  // Panel → Worker → Content (Diagnostic)
+  // ========================================
+  scanFields(data: undefined): Promise<{
+    success: boolean;
+    error?: string;
+    fields: Array<{
+      tag: string;
+      type: string;
+      name: string;
+      id: string;
+      placeholder: string;
+      className: string;
+    }>;
+  }>;
+
+  // Panel → Worker → Content (Medical History Scan)
+  scanMedicalHistory(data: undefined): Promise<{
+    success: boolean;
+    error?: string;
+    history: Array<{
+      code: string;
+      description: string;
+      shortLabel: string;
+    }>;
+  }>;
+
+  // Panel → Worker → Content (Visit History Scan)
+  scanVisitHistory(data: undefined): Promise<{
+    success: boolean;
+    error?: string;
+    diagnostics?: string[];
+    visits: Array<{
+      encounter_id: string;
+      date: string;
+      vitals: {
+        sbp: number;
+        dbp: number;
+        hr: number;
+        rr: number;
+        temp: number;
+        glucose: number;
+      };
+      keluhan_utama: string;
+      diagnosa: { icd_x: string; nama: string } | null;
+    }>;
+  }>;
+
+  // Content → Worker → Panel (Visit History Scraped Acknowledgment)
+  visitHistoryScraped(data: {
+    visits: Array<{
+      encounter_id: string;
+      date: string;
+      vitals: {
+        sbp: number;
+        dbp: number;
+        hr: number;
+        rr: number;
+        temp: number;
+        glucose: number;
+      };
+      keluhan_utama: string;
+      diagnosa: { icd_x: string; nama: string } | null;
+    }>;
+    timestamp: number;
+    patientRM: string;
+  }): Promise<void>;
 }
 
 // Export typed messaging functions
@@ -93,7 +164,7 @@ export function isResepPayload(payload: unknown): payload is ResepFillPayload {
 
 /**
  * isAnamnesaPayload
- * 
+ *
  * @remarks
  * TODO: Add detailed description, parameters, and examples
  * Auto-generated on 2026-02-04
@@ -110,7 +181,7 @@ export function isAnamnesaPayload(payload: unknown): payload is AnamnesaFillPayl
 
 /**
  * isDiagnosaPayload
- * 
+ *
  * @remarks
  * TODO: Add detailed description, parameters, and examples
  * Auto-generated on 2026-02-04
@@ -118,9 +189,6 @@ export function isAnamnesaPayload(payload: unknown): payload is AnamnesaFillPayl
 
 export function isDiagnosaPayload(payload: unknown): payload is DiagnosaFillPayload {
   return (
-    typeof payload === 'object' &&
-    payload !== null &&
-    'icd_x' in payload &&
-    'jenis' in payload
+    typeof payload === 'object' && payload !== null && 'icd_x' in payload && 'jenis' in payload
   );
 }

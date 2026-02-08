@@ -22,7 +22,16 @@
       "Bash(timeout:*)",
       "Bash(taskkill:*)",
       "Bash(netstat:*)",
-      "Bash(findstr:*)"
+      "Bash(findstr:*)",
+      "Bash(npm install:*)",
+      "Bash(claude mcp add:*)",
+      "Bash(npx tsc:*)",
+      "Bash(ls:*)",
+      "Bash(curl:*)",
+      "Bash(npx eslint:*)",
+      "Bash(tasklist:*)",
+      "Bash(npx wxt build:*)",
+      "Bash(python3:*)"
     ]
   }
 }

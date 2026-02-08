@@ -3,15 +3,8 @@
  * Sentra Healthcare Artificial Intelligence
  */
 
-/**
- * Vertex AI Client
- * Google Cloud Integration for CDSS Diagnosis Engine
- *
- * @module lib/api/vertex-ai-client
- * @version 1.0.0
- */
+/// <reference types="chrome" />
 
-import { VertexAI } from '@google-cloud/vertexai';
 import type { RAGSearchResult } from '../rag/types';
 import type { AIDiagnosisSuggestion, AnonymizedClinicalContext } from './deepseek-types';
 import { buildMessages, parseAIResponse } from './prompt-templates';
@@ -27,9 +20,6 @@ import {
 
 const CONFIG_STORAGE_KEY = 'sentra:vertex:config';
 
-/**
- * Get API configuration from storage
- */
 async function getStoredConfig(): Promise<Partial<VertexAIConfig>> {
   try {
     const result = await browser.storage.sync.get(CONFIG_STORAGE_KEY);
@@ -39,18 +29,6 @@ async function getStoredConfig(): Promise<Partial<VertexAIConfig>> {
   }
 }
 
-/**
- * Save API configuration to storage
- */
-export async function saveConfig(config: Partial<VertexAIConfig>): Promise<void> {
-  await browser.storage.sync.set({
-    [CONFIG_STORAGE_KEY]: config,
-  });
-}
-
-/**
- * Get merged configuration (defaults + stored)
- */
 async function getConfig(): Promise<VertexAIConfig> {
   const stored = await getStoredConfig();
   return {
@@ -60,31 +38,27 @@ async function getConfig(): Promise<VertexAIConfig> {
 }
 
 // =============================================================================
-// CLIENT INITIALIZATION
+// AUTHENTICATION
 // =============================================================================
 
-let vertexAIInstance: VertexAI | null = null;
-let currentProjectId: string | null = null;
-let currentLocation: string | null = null;
-
 /**
- * Get or initialize Vertex AI instance
- * Re-initializes if config changes
+ * Get OAuth2 token via chrome.identity
  */
-function getVertexAI(config: VertexAIConfig): VertexAI {
-  if (
-    !vertexAIInstance ||
-    currentProjectId !== config.projectId ||
-    currentLocation !== config.location
-  ) {
-    vertexAIInstance = new VertexAI({
-      project: config.projectId,
-      location: config.location,
+async function getAuthToken(): Promise<string> {
+  return new Promise((resolve, reject) => {
+    chrome.identity.getAuthToken({ interactive: true }, (result) => {
+      if (chrome.runtime.lastError) {
+        reject(new Error(chrome.runtime.lastError.message));
+        return;
+      }
+      const token = typeof result === 'object' ? result.token : result;
+      if (!token) {
+        reject(new Error('Failed to retrieve OAuth token'));
+        return;
+      }
+      resolve(token);
     });
-    currentProjectId = config.projectId;
-    currentLocation = config.location;
-  }
-  return vertexAIInstance;
+  });
 }
 
 // =============================================================================
@@ -92,7 +66,7 @@ function getVertexAI(config: VertexAIConfig): VertexAI {
 // =============================================================================
 
 /**
- * Run diagnosis inference with Vertex AI (Gemini)
+ * Run diagnosis inference with Vertex AI (Gemini) via REST API
  */
 export async function inferDiagnosis(
   context: AnonymizedClinicalContext,
@@ -102,38 +76,56 @@ export async function inferDiagnosis(
   const config = await getConfig();
 
   try {
-    const vertexAI = getVertexAI(config);
+    // 1. Get Auth Token
+    const token = await getAuthToken();
 
-    // Initialize model with grounding tools if enabled
-    const tools = config.enableSearchGrounding ? [{ googleSearchRetrieval: {} }] : [];
-
-    // Build user prompt (reusing existing template logic for now)
+    // 2. Prepare Request
     const messages = buildMessages(context, ragResults);
-
-    // For Gemini, system instruction is better passed in model config
     const systemPrompt = messages.find((m) => m.role === 'system')?.content || '';
     const userPrompt = messages.find((m) => m.role === 'user')?.content || '';
 
-    const modelWithSystem = vertexAI.getGenerativeModel({
-      model: config.model,
-      systemInstruction: systemPrompt,
+    // Vertex AI Generative AI REST API endpoint
+    // Format: https://{location}-aiplatform.googleapis.com/v1/projects/{project}/locations/{location}/publishers/google/models/{model}:generateContent
+    const url = `https://${config.location}-aiplatform.googleapis.com/v1/projects/${config.projectId}/locations/${config.location}/publishers/google/models/${config.model}:generateContent`;
+
+    const requestBody = {
+      systemInstruction: {
+        parts: [{ text: systemPrompt }],
+      },
+      contents: [
+        {
+          role: 'user',
+          parts: [{ text: userPrompt }],
+        },
+      ],
       generationConfig: {
         maxOutputTokens: config.maxTokens,
         temperature: config.temperature,
         responseMimeType: 'application/json',
       },
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      tools: tools as any,
+      tools: config.enableSearchGrounding ? [{ googleSearchRetrieval: {} }] : [],
+    };
+
+    // 3. Execute Request
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        'x-goog-user-project': config.projectId, // Essential for billing
+      },
+      body: JSON.stringify(requestBody),
     });
 
-    const result = await modelWithSystem.generateContent({
-      contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
-    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Vertex AI API error (${response.status}): ${errorText}`);
+    }
 
-    const response = await result.response;
-    const responseText = response.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    const data = await response.json();
 
-    // Parse response using common logic
+    // 4. Parse Response (Gemini REST format)
+    const responseText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
     const parsed = parseAIResponse(responseText);
 
     if (!parsed.success || !parsed.data) {
@@ -141,9 +133,9 @@ export async function inferDiagnosis(
         suggestions: [],
         raw_response: responseText,
         token_usage: {
-          input: response.usageMetadata?.promptTokenCount || 0,
-          output: response.usageMetadata?.candidatesTokenCount || 0,
-          total: response.usageMetadata?.totalTokenCount || 0,
+          input: data.usageMetadata?.promptTokenCount || 0,
+          output: data.usageMetadata?.candidatesTokenCount || 0,
+          total: data.usageMetadata?.totalTokenCount || 0,
         },
         latency_ms: Date.now() - startTime,
         model_version: config.model,
@@ -155,11 +147,11 @@ export async function inferDiagnosis(
     return {
       suggestions: parsed.data.suggestions as AIDiagnosisSuggestion[],
       raw_response: responseText,
-      grounding_metadata: response.candidates?.[0]?.groundingMetadata,
+      grounding_metadata: data.candidates?.[0]?.groundingMetadata,
       token_usage: {
-        input: response.usageMetadata?.promptTokenCount || 0,
-        output: response.usageMetadata?.candidatesTokenCount || 0,
-        total: response.usageMetadata?.totalTokenCount || 0,
+        input: data.usageMetadata?.promptTokenCount || 0,
+        output: data.usageMetadata?.candidatesTokenCount || 0,
+        total: data.usageMetadata?.totalTokenCount || 0,
       },
       latency_ms: Date.now() - startTime,
       model_version: config.model,
@@ -171,9 +163,5 @@ export async function inferDiagnosis(
     throw error;
   }
 }
-
-// =============================================================================
-// FALLBACK
-// =============================================================================
 
 export { localFallbackInference } from './deepseek-client';

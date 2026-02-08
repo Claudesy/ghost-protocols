@@ -62,7 +62,7 @@ export default defineBackground(() => {
   // ========================================
   const sidePanel = getSidePanel();
   console.log('[Background] sidePanel object:', sidePanel);
-   
+
   console.log(
     '[Background] chrome object:',
     typeof (globalThis as any).chrome !== 'undefined' ? 'exists' : 'undefined'
@@ -142,8 +142,10 @@ export default defineBackground(() => {
   });
 
   // Panel → Worker: Fill command
-  onMessage('fillResep', async (payload) => {
-    console.log('[Background] Fill Resep request:', payload);
+  onMessage('fillResep', async (message) => {
+    // Extract actual payload from message.data (webext-core/messaging wraps it)
+    const resepPayload = message.data;
+    console.log('[Background] Fill Resep request:', resepPayload);
 
     // Get active tab
     const tabs = await browser.tabs.query({ active: true, currentWindow: true });
@@ -166,7 +168,7 @@ export default defineBackground(() => {
         type: 'execFill',
         data: {
           type: 'resep',
-          encounter: payload,
+          encounter: resepPayload,
         },
       });
       console.log('[Background] Fill result:', result);
@@ -181,7 +183,82 @@ export default defineBackground(() => {
     }
   });
 
-  // Similar handlers for fillAnamnesa and fillDiagnosa would follow
+  // Panel → Worker: Fill Anamnesa command (TTV + Keluhan)
+  onMessage('fillAnamnesa', async (message) => {
+    // Extract actual payload from message.data (webext-core/messaging wraps it)
+    const anamnesaPayload = message.data;
+    console.log('[Background] Fill Anamnesa request:', anamnesaPayload);
+
+    // Get active tab
+    const tabs = await browser.tabs.query({ active: true, currentWindow: true });
+    const tabId = tabs[0]?.id;
+
+    if (!tabId) {
+      console.error('[Background] No active tab found');
+      return {
+        success: [],
+        failed: [{ field: 'all', error: 'No active tab' }],
+        skipped: [],
+      };
+    }
+
+    console.log('[Background] Forwarding Anamnesa fill to tab:', tabId);
+
+    // Forward to content script using native tabs.sendMessage
+    try {
+      const result = await browser.tabs.sendMessage(tabId, {
+        type: 'execFill',
+        data: {
+          type: 'anamnesa',
+          encounter: anamnesaPayload,
+        },
+      });
+      console.log('[Background] Anamnesa fill result:', result);
+      return result;
+    } catch (error) {
+      console.error('[Background] Anamnesa fill failed:', error);
+      return {
+        success: [],
+        failed: [{ field: 'all', error: String(error) }],
+        skipped: [],
+      };
+    }
+  });
+
+  // Panel → Worker: Fill Diagnosa command
+  onMessage('fillDiagnosa', async (message) => {
+    // Extract actual payload from message.data (webext-core/messaging wraps it)
+    const diagnosaPayload = message.data;
+    console.log('[Background] Fill Diagnosa request:', diagnosaPayload);
+
+    const tabs = await browser.tabs.query({ active: true, currentWindow: true });
+    const tabId = tabs[0]?.id;
+
+    if (!tabId) {
+      return {
+        success: [],
+        failed: [{ field: 'all', error: 'No active tab' }],
+        skipped: [],
+      };
+    }
+
+    try {
+      const result = await browser.tabs.sendMessage(tabId, {
+        type: 'execFill',
+        data: {
+          type: 'diagnosa',
+          encounter: diagnosaPayload,
+        },
+      });
+      return result;
+    } catch (error) {
+      return {
+        success: [],
+        failed: [{ field: 'all', error: String(error) }],
+        skipped: [],
+      };
+    }
+  });
 
   // ========================================
   // CDSS AI API Handlers
@@ -205,13 +282,30 @@ export default defineBackground(() => {
       }
 
       // Ensure encounter has anamnesa data for AI analysis
+      // If encounter storage is missing keluhan but context has it, inject from context
+      if (!encounter.anamnesa?.keluhan_utama && context.keluhan_utama) {
+        console.log('[Background] Injecting keluhan_utama from request context into encounter');
+        if (!encounter.anamnesa) {
+          encounter.anamnesa = {
+            keluhan_utama: context.keluhan_utama,
+            keluhan_tambahan: '',
+            lama_sakit: { thn: 0, bln: 0, hr: 0 },
+            riwayat_penyakit: null,
+            alergi: { obat: [], makanan: [], udara: [], lainnya: [] },
+          };
+        } else {
+          encounter.anamnesa.keluhan_utama = context.keluhan_utama;
+        }
+        await saveEncounter(encounter);
+      }
+
       if (!encounter.anamnesa?.keluhan_utama) {
-        console.warn('[Background] Encounter missing keluhan_utama');
+        console.warn('[Background] Encounter missing keluhan_utama and no context fallback');
         return {
           success: false,
           error: {
             code: 'MISSING_DATA',
-            message: 'Keluhan utama tidak tersedia. Scrape halaman anamnesa terlebih dahulu.',
+            message: 'Keluhan utama tidak tersedia. Isi keluhan di form anamnesa.',
           },
         };
       }
@@ -347,6 +441,136 @@ export default defineBackground(() => {
   });
 
   // ========================================
+  // Field Diagnostic Handler
+  // ========================================
+
+  // Panel → Worker: Scan fields on current page
+  onMessage('scanFields', async () => {
+    console.log('[Background] Scan fields request');
+
+    const tabs = await browser.tabs.query({ active: true, currentWindow: true });
+    const tabId = tabs[0]?.id;
+
+    if (!tabId) {
+      return { success: false, error: 'No active tab', fields: [] };
+    }
+
+    try {
+      const result = await browser.tabs.sendMessage(tabId, {
+        type: 'scanFields',
+      });
+      console.log('[Background] Scan result:', result);
+      return result;
+    } catch (error) {
+      console.error('[Background] Scan failed:', error);
+      return { success: false, error: String(error), fields: [] };
+    }
+  });
+
+  // Panel → Content: Scan medical history from page
+  onMessage('scanMedicalHistory', async () => {
+    console.log('[Background] Scan medical history request');
+
+    const tabs = await browser.tabs.query({ active: true, currentWindow: true });
+    const tabId = tabs[0]?.id;
+
+    if (!tabId) {
+      return { success: false, error: 'No active tab', history: [] };
+    }
+
+    try {
+      const result = await browser.tabs.sendMessage(tabId, {
+        type: 'scanMedicalHistory',
+      });
+      console.log('[Background] Medical history result:', result);
+      return result;
+    } catch (error) {
+      console.error('[Background] Medical history scan failed:', error);
+      return { success: false, error: String(error), history: [] };
+    }
+  });
+
+  // Panel → Content: Scan visit history from ePuskesmas page
+  onMessage('scanVisitHistory', async () => {
+    const bgDiag: string[] = [];
+    const d = (msg: string) => {
+      bgDiag.push(msg);
+      console.log('[BG:scanVisitHistory]', msg);
+    };
+
+    // 3-strategy tab finding (same robust approach as scanMedicalHistory)
+    let tabId: number | undefined;
+    let tabUrl = 'unknown';
+
+    // Strategy 1: Active tab if it's ePuskesmas
+    const activeTabs = await browser.tabs.query({ active: true, currentWindow: true });
+    d(`S1: activeTabs=${activeTabs.length} url=${activeTabs[0]?.url?.slice(0, 60) || 'none'}`);
+    if (activeTabs[0]?.url?.includes('epuskesmas.id')) {
+      tabId = activeTabs[0].id;
+      tabUrl = activeTabs[0].url || 'unknown';
+      d(`S1_HIT: epuskesmas tab=${tabId}`);
+    }
+
+    // Strategy 2: Search ALL tabs for ePuskesmas
+    if (!tabId) {
+      const epTabs = await browser.tabs.query({ url: '*://*.epuskesmas.id/*' });
+      d(`S2: epuskesmas tabs found=${epTabs.length}`);
+      if (epTabs[0]?.id) {
+        tabId = epTabs[0].id;
+        tabUrl = epTabs[0].url || 'unknown';
+        d(`S2_HIT: tab=${tabId} url=${tabUrl.slice(0, 60)}`);
+      }
+    }
+
+    // Strategy 3: Fallback to any active tab
+    if (!tabId && activeTabs[0]?.id) {
+      tabId = activeTabs[0].id;
+      tabUrl = activeTabs[0].url || 'unknown';
+      d(`S3_FALLBACK: tab=${tabId}`);
+    }
+
+    if (!tabId) {
+      d('NO_TAB: all 3 strategies failed');
+      return { success: false, error: 'No ePuskesmas tab found', visits: [], diagnostics: bgDiag };
+    }
+
+    try {
+      d(`SEND: tab=${tabId} url=${tabUrl.slice(0, 60)}`);
+      const result = await browser.tabs.sendMessage(tabId, {
+        type: 'scanVisitHistory',
+        timestamp: Date.now(),
+      });
+      d(`RECV: success=${result?.success} visits=${result?.visits?.length ?? 0}`);
+      return {
+        ...result,
+        diagnostics: [...bgDiag, ...(result?.diagnostics || [])],
+      };
+    } catch (error) {
+      d(`SEND_ERROR: ${String(error)}`);
+      return {
+        success: false,
+        error: String(error),
+        visits: [],
+        diagnostics: [...bgDiag, 'Content script unreachable or threw'],
+      };
+    }
+  });
+
+  // Content → Worker → Panel: Visit history scraped acknowledgment
+  onMessage('visitHistoryScraped', async (message) => {
+    const data = message.data;
+    console.log(`[Background] visitHistoryScraped received: ${data.visits?.length || 0} visits`);
+
+    try {
+      // Forward to side panel
+      await sendMessage('visitHistoryScraped', data);
+      console.log('[Background] visitHistoryScraped forwarded to panel');
+    } catch (error) {
+      console.error('[Background] Failed to forward visitHistoryScraped:', error);
+    }
+  });
+
+  // ========================================
   // CDSS Engine Status Handlers
   // ========================================
 
@@ -384,5 +608,157 @@ export default defineBackground(() => {
     }
   });
 
-  console.log('[Background] Message handlers registered (including CDSS Engine)');
+  // ========================================
+  // NATIVE MESSAGE LISTENER (for sidepanel native chrome.runtime.sendMessage)
+  // ========================================
+  browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    const msg = message as { type?: string; data?: unknown };
+    console.log('[Background] Native message received:', msg.type, 'from:', sender.url);
+
+    // Handle scanFields
+    if (msg.type === 'scanFields') {
+      (async () => {
+        const tabs = await browser.tabs.query({ active: true, currentWindow: true });
+        const tabId = tabs[0]?.id;
+        if (!tabId) {
+          sendResponse({ success: false, error: 'No active tab', fields: [] });
+          return;
+        }
+        try {
+          const result = await browser.tabs.sendMessage(tabId, { type: 'scanFields' });
+          sendResponse(result);
+        } catch (error) {
+          sendResponse({ success: false, error: String(error), fields: [] });
+        }
+      })();
+      return true; // Keep channel open for async
+    }
+
+    // Handle scanMedicalHistory
+    if (msg.type === 'scanMedicalHistory') {
+      (async () => {
+        console.log('[Background] scanMedicalHistory received');
+
+        // Try multiple strategies to find ePuskesmas tab
+        let tabId: number | undefined;
+
+        // Strategy 1: Active tab in current window
+        const activeTabs = await browser.tabs.query({ active: true, currentWindow: true });
+        if (activeTabs[0]?.url?.includes('epuskesmas.id')) {
+          tabId = activeTabs[0].id;
+          console.log('[Background] Found ePuskesmas in active tab:', tabId);
+        }
+
+        // Strategy 2: Search all tabs for ePuskesmas
+        if (!tabId) {
+          const allTabs = await browser.tabs.query({ url: '*://*.epuskesmas.id/*' });
+          if (allTabs[0]?.id) {
+            tabId = allTabs[0].id;
+            console.log('[Background] Found ePuskesmas tab by URL:', tabId);
+          }
+        }
+
+        // Strategy 3: Fall back to any active tab
+        if (!tabId && activeTabs[0]?.id) {
+          tabId = activeTabs[0].id;
+          console.log('[Background] Fallback to active tab:', tabId);
+        }
+
+        if (!tabId) {
+          console.error('[Background] No ePuskesmas tab found');
+          sendResponse({ success: false, error: 'No ePuskesmas tab found', history: [] });
+          return;
+        }
+
+        try {
+          console.log('[Background] Sending scanMedicalHistory to tab:', tabId);
+          const result = await browser.tabs.sendMessage(tabId, { type: 'scanMedicalHistory' });
+          console.log('[Background] scanMedicalHistory result:', result);
+          sendResponse(result);
+        } catch (error) {
+          console.error('[Background] scanMedicalHistory failed:', error);
+          sendResponse({ success: false, error: String(error), history: [] });
+        }
+      })();
+      return true; // Keep channel open for async
+    }
+
+    // Handle fillAnamnesa
+    if (msg.type === 'fillAnamnesa') {
+      (async () => {
+        console.log('🔴🔴🔴 SENTRA DEBUG: Background received fillAnamnesa');
+        console.log('[Background] Native fillAnamnesa request:', msg.data);
+        const tabs = await browser.tabs.query({ active: true, currentWindow: true });
+        const tabId = tabs[0]?.id;
+        console.log('🔴🔴🔴 SENTRA DEBUG: Active tab ID:', tabId);
+        if (!tabId) {
+          console.log('🔴🔴🔴 SENTRA DEBUG: No active tab found!');
+          sendResponse({
+            success: [],
+            failed: [{ field: 'all', error: 'No active tab' }],
+            skipped: [],
+          });
+          return;
+        }
+        try {
+          console.log('🔴🔴🔴 SENTRA DEBUG: Sending execFill to tab', tabId);
+          const result = await browser.tabs.sendMessage(tabId, {
+            type: 'execFill',
+            data: { type: 'anamnesa', encounter: msg.data },
+          });
+          console.log('🔴🔴🔴 SENTRA DEBUG: Content script returned:', result);
+          console.log('[Background] Native fillAnamnesa result:', result);
+          sendResponse(result);
+        } catch (error) {
+          console.error('[Background] Native fillAnamnesa failed:', error);
+          sendResponse({
+            success: [],
+            failed: [{ field: 'all', error: String(error) }],
+            skipped: [],
+          });
+        }
+      })();
+      return true; // Keep channel open for async
+    }
+
+    // Handle triggerRiwayatClick — calls showRiwayatPelayanan() in page's MAIN world
+    // Content script cannot call page functions due to isolated world + CSP blocking
+    // chrome.scripting.executeScript with world: 'MAIN' is the official bypass
+    if (msg.type === 'triggerRiwayatClick') {
+      const { dataId } = msg as { type: string; dataId: string };
+      (async () => {
+        const tabs = await browser.tabs.query({ active: true, currentWindow: true });
+        const tabId = tabs[0]?.id;
+        if (!tabId) {
+          sendResponse({ success: false, error: 'No active tab' });
+          return;
+        }
+        try {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const chrome = (globalThis as any).chrome;
+          await chrome.scripting.executeScript({
+            target: { tabId },
+            world: 'MAIN',
+            func: (id: string) => {
+              const el = document.querySelector(`a[data-id="${id}"]`);
+              if (el && typeof (window as any).showRiwayatPelayanan === 'function') {
+                (window as any).showRiwayatPelayanan(el);
+              }
+            },
+            args: [dataId],
+          });
+          console.log(`[Background] triggerRiwayatClick executed for data-id=${dataId}`);
+          sendResponse({ success: true });
+        } catch (error) {
+          console.error('[Background] triggerRiwayatClick failed:', error);
+          sendResponse({ success: false, error: String(error) });
+        }
+      })();
+      return true;
+    }
+
+    return false; // Not handled
+  });
+
+  console.log('[Background] Message handlers registered (including CDSS Engine + Native listener)');
 });

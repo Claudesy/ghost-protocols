@@ -7,17 +7,17 @@
  * @module components/clinical/OccultShockDetector
  */
 
-import React, { useState, useMemo } from 'react';
-import { CrisisAlert, ReasoningDisplay, ReasoningStep } from './ClinicalAlert';
+import React, { useMemo, useState } from 'react';
 import {
-  detectOccultShock,
+  AcuteSymptoms,
   assessPerfusion,
   calculateMAP,
+  detectOccultShock,
   HistoricalBP,
-  ShockAssessmentVitals,
-  AcuteSymptoms,
   PerfusionAssessment,
+  ShockAssessmentVitals,
 } from '../../lib/inference/occult-shock-detector';
+import { CrisisAlert, ReasoningDisplay, ReasoningStep } from './ClinicalAlert';
 
 // ============================================================================
 // TYPES
@@ -34,7 +34,7 @@ export interface OccultShockDetectorProps {
 
 /**
  * OccultShockDetectorResult interface
- * 
+ *
  * @remarks
  * TODO: Add type description and property documentation
  * Auto-generated on 2026-02-04
@@ -95,22 +95,22 @@ export const OccultShockDetector: React.FC<OccultShockDetectorProps> = ({
     setStep('RESULT');
   };
 
+  const vitals: ShockAssessmentVitals = {
+    current_sbp: currentBP.sbp,
+    current_dbp: currentBP.dbp,
+    glucose,
+  };
+
+  const shockResult = detectOccultShock({
+    vitals,
+    last_3_visits: bpHistory,
+    symptoms,
+    known_htn: knownHTN,
+  });
+
+  const perfusionResult = assessPerfusion(perfusion);
+
   const handleComplete = () => {
-    const vitals: ShockAssessmentVitals = {
-      current_sbp: currentBP.sbp,
-      current_dbp: currentBP.dbp,
-      glucose,
-    };
-
-    const shockResult = detectOccultShock({
-      vitals,
-      last_3_visits: bpHistory,
-      symptoms,
-      known_htn: knownHTN,
-    });
-
-    const perfusionResult = assessPerfusion(perfusion);
-
     onComplete({
       risk_level: shockResult.risk_level,
       triggers: shockResult.triggers,
@@ -120,7 +120,6 @@ export const OccultShockDetector: React.FC<OccultShockDetectorProps> = ({
   };
 
   const hasAnySymptom = Object.values(symptoms).some((s) => s);
-
   // Generate reasoning steps
   const reasoningSteps: ReasoningStep[] = useMemo(() => {
     const steps: ReasoningStep[] = [];
@@ -395,8 +394,6 @@ export const OccultShockDetector: React.FC<OccultShockDetectorProps> = ({
               symptoms,
               known_htn: knownHTN,
             });
-
-            const perfusionResult = assessPerfusion(perfusion);
 
             if (shockResult.risk_level === 'CRITICAL' || shockResult.risk_level === 'HIGH') {
               return (

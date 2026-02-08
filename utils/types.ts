@@ -127,19 +127,147 @@ export interface ResepFillPayload {
  */
 
 export interface AnamnesaFillPayload {
-  keluhan_utama: string;
-  keluhan_tambahan: string;
+  keluhan_utama: string; // Singkat
+  keluhan_tambahan: string; // Lengkap, minimum 3 baris
   lama_sakit: {
     thn: number;
     bln: number;
     hr: number;
   };
-  riwayat_penyakit: string | null;
+  // Riwayat Penyakit (MRiwayatPasien)
+  riwayat_penyakit?: {
+    sekarang: string; // RPS - Riwayat Penyakit Sekarang
+    dahulu: string; // RPD - Riwayat Penyakit Dulu
+    keluarga: string; // RPK - Riwayat Penyakit Keluarga
+  };
   alergi: {
     obat: string[];
     makanan: string[];
     udara: string[];
     lainnya: string[];
+  };
+  // Vital Signs (from TTV Inference)
+  vital_signs?: {
+    tekanan_darah_sistolik: number;
+    tekanan_darah_diastolik: number;
+    nadi: number;
+    respirasi: number;
+    suhu: number;
+    gula_darah?: number;
+    kesadaran?: 'COMPOS MENTIS' | 'SOMNOLEN' | 'SOPOR' | 'COMA';
+  };
+  // Periksa Fisik Extended (GCS, Anthropometrics, SpO2, Activity)
+  periksa_fisik?: {
+    // GCS - Glasgow Coma Scale (E4V5M6 = 15 normal)
+    gcs_membuka_mata: '4' | '3' | '2' | '1'; // 4=Spontan, 3=Dengan perintah, 2=Dengan rangsang nyeri, 1=Tidak ada
+    gcs_respon_verbal: '5' | '4' | '3' | '2' | '1'; // 5=Orientasi baik, 4=Bingung, 3=Kata tidak tepat, 2=Suara tanpa arti, 1=Tidak ada
+    gcs_respon_motorik: '6' | '5' | '4' | '3' | '2' | '1'; // 6=Mampu bergerak, 5=Melokalisir nyeri, 4=Menarik, 3=Fleksi abnormal, 2=Ekstensi, 1=Tidak ada
+    // Anthropometrics (Indonesian averages)
+    tinggi: number; // cm - Male: 165-170, Female: 155-160
+    berat: number; // kg - Male: 60-70, Female: 50-60
+    lingkar_perut: number; // cm - Male: 80-90, Female: 70-85
+    imt: number; // Calculated: berat / (tinggi/100)^2
+    hasil_imt: 'Kurus' | 'Normal' | 'BB Lebih' | 'Obesitas I' | 'Obesitas II';
+    // SpO2 / Saturasi Oksigen
+    saturasi: number; // % - Normal: 95-100
+    // Aktivitas Fisik / ADL Assessment (0=Mandiri, 1=Dibantu, 2=Tergantung)
+    mobilisasi: '0' | '1' | '2';
+    toileting: '0' | '1' | '2';
+    makan_minum: '0' | '1' | '2';
+    mandi: '0' | '1' | '2';
+    berpakaian: '0' | '1' | '2';
+    // Assessment Fungsional Textarea
+    aktifitas_fisik: string;
+  };
+  // Assesmen Resiko Jatuh (Get Up and Go)
+  resiko_jatuh?: {
+    cara_berjalan: '0' | '1'; // 0=Tidak, 1=Ya (sempoyongan/tidak seimbang)
+    penopang: '0' | '1'; // 0=Tidak, 1=Ya (memegang penopang saat duduk)
+  };
+  // Keadaan Fisik (Physical Examination - symptom-dependent)
+  keadaan_fisik?: {
+    // Each area has checkbox (enabled), inspeksi, and palpasi
+    kulit?: { inspeksi: string; palpasi: string };
+    kuku?: { inspeksi: string; palpasi: string };
+    kepala?: { inspeksi: string; palpasi: string };
+    wajah?: { inspeksi: string; palpasi: string };
+    mata?: { inspeksi: string };
+    telinga?: { inspeksi: string; palpasi: string };
+    hidung_sinus?: { inspeksi: string; palpasi_perkusi: string };
+    mulut_bibir?: { inspeksi_luar: string; inspeksi_dalam: string };
+    leher?: {
+      inspeksi: string;
+      auskultasi_karotis: string;
+      palpasi_tiroid: string;
+      auskultasi_bising: string;
+    };
+    dada_punggung?: {
+      inspeksi: string;
+      palpasi: string;
+      perkusi: string;
+      auskultasi: string;
+    };
+    kardiovaskuler?: {
+      inspeksi: string;
+      palpasi: string;
+      perkusi: string;
+      auskultasi: string;
+    };
+    dada_aksila?: {
+      inspeksi_dada: string;
+      palpasi_dada: string;
+      inspeksi_palpasi_aksila: string;
+    };
+    abdomen_perut?: {
+      inspeksi: string;
+      auskultasi: string;
+      perkusi_kuadran: string;
+      perkusi_hepar: string;
+      perkusi_limfa: string;
+      perkusi_ginjal: string;
+      palpasi_kuadran: string;
+    };
+    ekstremitas_atas?: { inspeksi: string; palpasi: string };
+    ekstremitas_bawah?: { inspeksi: string; palpasi: string };
+  };
+  // Assesmen Nyeri (Pain Assessment)
+  assesmen_nyeri?: {
+    merasakan_nyeri: '0' | '1'; // 0=Tidak, 1=Ya
+    skala_nyeri: number; // 0-10 (0=Tidak Nyeri, 1-3=Ringan, 4-6=Sedang, 7-10=Berat)
+  };
+  // Lainnya Section
+  lainnya?: {
+    terapi: string; // Terapi Obat yang dianjurkan (required)
+    terapi_non_obat: string; // Terapi Non Obat yang dianjurkan (required)
+    bmhp?: string; // BMHP yang digunakan
+    rencana_tindakan?: string; // Rencana
+    merokok: '0' | '1'; // 0=Tidak, 1=Ya
+    konsumsi_alkohol: '0' | '1'; // 0=Tidak, 1=Ya
+    kurang_sayur_buah: '0' | '1'; // 0=Tidak, 1=Ya
+    edukasi: string; // Edukasi (required)
+    askep?: string; // Deskripsi Askep
+    observasi?: string; // Observasi
+    keterangan?: string; // Keterangan
+    biopsikososial?: string; // Biopsikososial
+    tindakan_keperawatan?: string; // Tindakan Keperawatan
+  };
+  // Status Fisis/Neurologis/Mental, Biologis, Psikososiospiritual
+  status_psikososial?: {
+    alat_bantu_aktrifitas: '1' | '0';
+    kendala_komunikasi: '1' | '0';
+    merawat_dirumah: '1' | '0';
+    membutuhkan_bantuan: '1' | '0';
+    bahasa_digunakan: 'indonesia' | 'daerah' | 'lainnya';
+    tinggal_dengan: 'sendiri' | 'suami/istri' | 'orangtua' | 'lainnya';
+    sosial_ekonomi: 'baik' | 'cukup' | 'kurang';
+    gangguan_jiwa_dimasa_lalu: '1' | '0';
+    status_ekonomi: 'baik' | 'cukup' | 'kurang';
+    hubungan_keluarga?: 'harmonis' | 'tidak harmonis';
+  };
+  // Tenaga Medis
+  tenaga_medis?: {
+    dokter_nama: string;
+    perawat_nama: string;
   };
 }
 

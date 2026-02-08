@@ -319,6 +319,34 @@ function buildAnamnesaMappings(encounter: any): FieldMapping[] {
         type: 'number',
       });
     }
+
+    // Gula darah (GDS)
+    if (vs.gula_darah) {
+      mappings.push({
+        selector: 'input[name="gula_darah"], input[name="gds"], input[name="glukosa"]',
+        value: vs.gula_darah,
+        type: 'number',
+      });
+    }
+  }
+
+  // Alergi fields
+  if (encounter.anamnesa?.alergi) {
+    const alergi = encounter.anamnesa.alergi;
+    const allAllergies = [
+      ...(alergi.obat || []),
+      ...(alergi.makanan || []),
+      ...(alergi.udara || []),
+      ...(alergi.lainnya || []),
+    ].filter(Boolean);
+
+    if (allAllergies.length > 0) {
+      mappings.push({
+        selector: 'textarea[name="alergi"], input[name="alergi"]',
+        value: allAllergies.join(', '),
+        type: 'textarea',
+      });
+    }
   }
 
   return mappings;

@@ -38,6 +38,9 @@ import {
   combineAndSortAlerts,
 } from './mocks';
 
+// Import DDInter-based DDI checker (173K+ interactions)
+import { checkDrugInteractions as checkDDInterInteractions, loadDDIDatabase } from '@/lib/cdss/ddi-checker';
+
 // =============================================================================
 // CONFIGURATION
 // =============================================================================
@@ -319,6 +322,7 @@ export const SentraAPI = {
 
   /**
    * Check drug-drug interactions
+   * Uses DDInter 2.0 database (173K+ interactions) for local checking
    */
   async checkDrugInteractions(
     request: DDICheckRequest
@@ -332,20 +336,25 @@ export const SentraAPI = {
 
     log('checkDrugInteractions', request);
 
-    // Use mock if enabled
-    if (USE_MOCK) {
-      log('Using mock response for DDI check');
+    // Always use DDInter database (173K+ interactions) for comprehensive coverage
+    // This replaces the old 30-entry mock with clinical-grade data
+    try {
+      await loadDDIDatabase(); // Ensure database is loaded
+      const result = await checkDDInterInteractions(request.drugs);
+
+      log(`DDI check: ${result.stats.total} interactions found (${result.stats.major} major, ${result.stats.moderate} moderate)`);
+
+      return {
+        success: true,
+        data: result.interactions,
+      };
+    } catch (error) {
+      log('DDInter check failed, falling back to mock:', error);
+
+      // Fallback to old mock if DDInter fails
       const interactions = checkMockDDI(request.drugs);
       return { success: true, data: interactions };
     }
-
-    // Real API call
-    return withRetry(() =>
-      fetchWithTimeout<DrugInteraction[]>('/v1/cdss/check-ddi', {
-        method: 'POST',
-        body: request,
-      })
-    );
   },
 
   /**

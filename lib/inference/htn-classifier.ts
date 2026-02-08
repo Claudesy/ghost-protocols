@@ -328,7 +328,7 @@ export function triageHypertensiveCrisis(
  * @param bp - BP reading
  * @returns Array of recommendations
  */
-export function getHTNRecommendations(classification: HTNType, _bp: BPReading): string[] {
+export function getHTNRecommendations(classification: HTNType, bp: BPReading): string[] {
   switch (classification) {
     case 'NORMAL':
       return [
@@ -361,24 +361,55 @@ export function getHTNRecommendations(classification: HTNType, _bp: BPReading): 
         'Careful monitoring (fall risk)',
       ];
 
-    case 'HTN_URGENCY':
-      return [
-        '🚨 Captopril 12.5mg SL now',
-        'Reassess BP in 30 min',
-        'Repeat Captopril if DBP >100 (max 25mg total)',
-        'Amlodipine 10mg PO for maintenance',
-        'Monitor for hypoperfusion',
-        'Follow-up ≤7 days',
+    case 'HTN_URGENCY': {
+      // Dynamic recommendations based on actual DBP value
+      const recs: string[] = [
+        '━━━ ORDER SET (IGD) ━━━',
+        '1. Captopril 12.5 mg SL — NOW',
+        '2. Monitor TD q15 menit',
+        '3. Reassess TD pada +30 min:',
       ];
+
+      // Smart DBP-based guardrail
+      if (bp.dbp <= 100) {
+        recs.push(
+          `   DBP ${bp.dbp} sudah ≤100: SKIP repeat Captopril`,
+          '   Fokus: evaluasi gejala & perfusi, BUKAN angka'
+        );
+      } else {
+        recs.push(
+          `   Repeat Captopril 12.5 mg jika DBP masih >100 (max 25 mg total)`
+        );
+      }
+
+      recs.push(
+        '4. Maintenance: Amlodipine 10 mg PO (onset bertahap)',
+        '━━━ GUARDRAILS ━━━',
+        'Hindari penurunan cepat; target 24-48 jam bertahap',
+        'Repeat captopril HANYA jika DBP >100 pada +30 min',
+        'Evaluasi: gejala hipoperfusi, bukan angka tunggal',
+        '━━━ DISCHARGE ━━━',
+        'Stabil klinis, TD tren turun, tanpa hipoperfusi',
+        'Kontrol ≤7 hari untuk titrasi regimen'
+      );
+
+      return recs;
+    }
 
     case 'HTN_EMERGENCY':
       return [
-        '🚑 IMMEDIATE ER REFERRAL',
-        'IV access (2 lines)',
+        '━━━ IMMEDIATE ACTION ━━━',
+        'RUJUK IGD/ICU SEGERA',
+        'IV access 2 jalur',
         'Continuous monitoring',
-        'Call ambulance',
-        'Do NOT give oral antihypertensives',
-        'Target: ↓25% MAP in 1-2 hours (gradual!)',
+        'Panggil ambulance',
+        'JANGAN beri antihipertensi oral',
+        '━━━ TARGET ━━━',
+        'Turunkan ≤25% MAP dalam 1-2 jam (BERTAHAP)',
+        'Hindari penurunan >25% dalam jam pertama',
+        '━━━ EVALUASI HMOD ━━━',
+        'Nyeri dada, sesak, defisit neurologis',
+        'Funduskopi, EKG, fungsi ginjal',
       ];
 
     case 'RESISTANT_HTN':
@@ -425,11 +456,27 @@ export function getHTNReasoning(type: HTNType, bp: BPReading): string {
     case 'PRIMARY_HTN':
       return `TD ${sbp}/${dbp} memenuhi kriteria hipertensi (≥${BP_THRESHOLDS.STAGE1.sbp}/${BP_THRESHOLDS.STAGE1.dbp}). Tidak ada penyebab sekunder yang jelas.`;
 
-    case 'HTN_URGENCY':
-      return `TD ${sbp}/${dbp} ≥${BP_THRESHOLDS.CRISIS.sbp}/${BP_THRESHOLDS.CRISIS.dbp} TANPA kerusakan organ akut. Turunkan TD bertahap dengan Captopril SL.`;
+    case 'HTN_URGENCY': {
+      // Comprehensive reasoning with status and data
+      const crisisTag = sbp >= 180 ? '(SBP ≥180 = crisis-level)' : '';
+      const dbpNote = dbp <= 100
+        ? `DBP ${dbp} mmHg sudah ≤100 — jangan kejar target DBP lebih rendah.`
+        : `DBP ${dbp} mmHg — evaluasi ulang pada +30 min.`;
+
+      return [
+        `STATUS: URGENCY (tanpa red flags HMOD).`,
+        `TD final: ${sbp}/${dbp} mmHg ${crisisTag}.`,
+        dbpNote,
+        `Catatan: Hindari penurunan cepat; target penurunan bertahap 24-48 jam, follow-up ≤7 hari.`,
+      ].join(' ');
+    }
 
     case 'HTN_EMERGENCY':
-      return `TD ${sbp}/${dbp} ≥${BP_THRESHOLDS.CRISIS.sbp}/${BP_THRESHOLDS.CRISIS.dbp} DENGAN kerusakan organ akut (HMOD). RUJUK SEGERA ke ICU!`;
+      return [
+        `STATUS: EMERGENCY (dengan red flags HMOD).`,
+        `TD ${sbp}/${dbp} mmHg ≥${BP_THRESHOLDS.CRISIS.sbp}/${BP_THRESHOLDS.CRISIS.dbp} DENGAN kerusakan organ akut.`,
+        `RUJUK SEGERA ke IGD/ICU! Target: turunkan ≤25% MAP dalam 1-2 jam secara bertahap.`,
+      ].join(' ');
 
     case 'ISOLATED_SYSTOLIC_HTN':
       return `SBP ${sbp} ≥${BP_THRESHOLDS.STAGE1.sbp} tapi DBP ${dbp} <${BP_THRESHOLDS.STAGE1.dbp}. Umum pada lansia (kekakuan arteri).`;

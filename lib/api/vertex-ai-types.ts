@@ -27,6 +27,12 @@ export interface VertexAIConfig {
   /** Region for Vertex AI (e.g., 'us-central1') */
   location: string;
 
+  /** API Key (optional fallback) */
+  apiKey?: string;
+
+  /** Base URL for REST API */
+  baseUrl?: string;
+
   /** Model identifier (e.g., 'gemini-1.5-flash') */
   model: string;
 
@@ -79,7 +85,27 @@ export interface VertexAIInferenceResult {
   raw_response: string;
 
   /** Grounding metadata (if any) */
-  grounding_metadata?: any;
+  grounding_metadata?: {
+    searchEntryPoint?: {
+      htmlContent?: string;
+    };
+    groundingChunks?: Array<{
+      web?: {
+        uri?: string;
+        title?: string;
+      };
+    }>;
+    groundingSupports?: Array<{
+      segment?: {
+        startIndex?: number;
+        endIndex?: number;
+        text?: string;
+      };
+      groundingChunkIndices?: number[];
+      confidenceScores?: number[];
+    }>;
+    webSearchQueries?: string[];
+  };
 
   /** Token usage */
   token_usage: {

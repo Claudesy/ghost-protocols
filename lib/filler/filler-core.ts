@@ -24,7 +24,7 @@ export interface FillResult {
   success: boolean;
   field: string;
   value: string | number | boolean;
-  method: 'direct' | 'autocomplete' | 'select' | 'checkbox';
+  method: 'direct' | 'autocomplete' | 'select' | 'checkbox' | 'radio';
   error?: string;
 }
 
@@ -156,6 +156,7 @@ export function dispatchKeyboardEvent(
 /**
  * Fill a text input field
  * Event chain: input → change → blur
+ * SKIP if field already has value (user manual input)
  */
 export async function fillTextField(
   selector: string,
@@ -180,6 +181,12 @@ export async function fillTextField(
       return { success: false, field, value, method: 'direct', error: 'CSRF field protected' };
     }
 
+    // SKIP if field already has value (user manual input - don't overwrite)
+    if (element.value && element.value.trim().length > 0) {
+      console.log(`[Filler] Skipped (has value): ${selector} = "${element.value.substring(0, 20)}..."`);
+      return { success: true, field, value: element.value, method: 'direct' };
+    }
+
     // Set value
     element.value = value;
 
@@ -201,25 +208,39 @@ export async function fillTextField(
 /**
  * Fill a number input field
  * Event chain: input → change → blur
+ * SKIP if field already has value (user manual input)
  */
 export async function fillNumberField(
   selector: string,
   value: number
 ): Promise<FillResult> {
+  console.log('🔴🔴🔴 SENTRA DEBUG: fillNumberField CALLED for', selector, '=', value);
   const field = 'number:' + selector;
 
   try {
     const element = await waitForElement(selector, 3000);
 
     if (!element || !(element instanceof HTMLInputElement)) {
+      console.warn(`[Filler] Element NOT FOUND for: ${selector}`);
       return { success: false, field, value, method: 'direct', error: 'Element not found or wrong type' };
     }
+
+    // DEBUG: Log which element was found
+    console.log(`[Filler] Found element: id="${element.id}", name="${element.name}", currentValue="${element.value}"`);
 
     if (isFieldReadonly(element)) {
       return { success: false, field, value, method: 'direct', error: 'Field is readonly' };
     }
 
-    // Set value
+    // SKIP if field already has value (user manual input - don't overwrite)
+    const currentValue = element.value?.trim() || '';
+    if (currentValue.length > 0) {
+      console.log(`[Filler] ⏭️ SKIPPED (has value): ${selector} = "${currentValue}" - NOT overwriting`);
+      return { success: true, field, value: Number(currentValue), method: 'direct' };
+    }
+
+    // Set value (field is empty)
+    console.log(`[Filler] Field empty, filling: ${selector} = ${value}`);
     element.value = String(value);
 
     // Dispatch event chain
@@ -250,6 +271,7 @@ export async function fillTextarea(
 /**
  * Fill a select dropdown
  * Event chain: change only
+ * SKIP if field already has non-default value (user manual selection)
  */
 export async function fillSelect(
   selector: string,
@@ -266,6 +288,15 @@ export async function fillSelect(
 
     if (isFieldReadonly(element)) {
       return { success: false, field, value, method: 'select', error: 'Field is readonly' };
+    }
+
+    // SKIP if field already has value selected (not default/empty)
+    // Check if current value is meaningful (not empty, not "0", not first option placeholder)
+    const currentVal = element.value;
+    const firstOption = element.options[0]?.value || '';
+    if (currentVal && currentVal !== '' && currentVal !== '0' && currentVal !== firstOption) {
+      console.log(`[Filler] Skipped (has value): ${selector} = "${currentVal}"`);
+      return { success: true, field, value: currentVal, method: 'select' };
     }
 
     // Set value (must match <option value="...">)
@@ -320,6 +351,50 @@ export async function fillCheckbox(
   } catch (error) {
     console.error(`[Filler] Error filling checkbox ${selector}:`, error);
     return { success: false, field, value: checked, method: 'checkbox', error: String(error) };
+  }
+}
+
+/**
+ * Fill a radio button
+ * The selector should include the value, e.g., input[name="field"][value="option"]
+ * Event chain: click → change
+ */
+export async function fillRadio(
+  selector: string,
+  value: string
+): Promise<FillResult> {
+  const field = 'radio:' + selector;
+
+  try {
+    const element = await waitForElement(selector, 3000);
+
+    if (!element || !(element instanceof HTMLInputElement) || element.type !== 'radio') {
+      return { success: false, field, value, method: 'radio', error: 'Element not found or wrong type' };
+    }
+
+    // Skip if already checked
+    if (element.checked) {
+      console.log(`[Filler] Radio already checked: ${selector}`);
+      return { success: true, field, value, method: 'radio' };
+    }
+
+    // Click to select radio
+    element.checked = true;
+
+    // Dispatch click + change
+    await dispatchEventChain(element, ['click', 'change']);
+
+    // Trigger any onchange handler
+    if (typeof element.onchange === 'function') {
+      element.onchange(new Event('change'));
+    }
+
+    console.log(`[Filler] ✓ Radio selected: ${selector}`);
+    return { success: true, field, value, method: 'radio' };
+
+  } catch (error) {
+    console.error(`[Filler] Error filling radio ${selector}:`, error);
+    return { success: false, field, value, method: 'radio', error: String(error) };
   }
 }
 
@@ -515,16 +590,74 @@ function isVisible(element: HTMLElement): boolean {
 }
 
 /**
- * Highlight field with color (visual feedback)
+ * Highlight field with animation (AutoSen-style visual feedback)
+ * Creates a pulsing glow effect identical to the Sentra scanning animation
+ * NOTE: No scrollIntoView - user doesn't want page to move
  */
-function highlightField(element: HTMLElement, color: string = '#fef3c7'): void {
+function highlightField(element: HTMLElement, _color: string = '#3B82F6'): void {
   const originalBg = element.style.backgroundColor;
-  element.style.transition = 'background-color 0.3s ease';
-  element.style.backgroundColor = color;
+  const originalBoxShadow = element.style.boxShadow;
+  const originalOutline = element.style.outline;
+  const originalTransition = element.style.transition;
 
+  // Inject AutoSen-style keyframes - FORCE UPDATE (remove old, add new)
+  // Color scheme: Red → Orange (for RME page fill effects)
+  const existingStyle = document.getElementById('sentra-autosen-animation');
+  if (existingStyle) {
+    existingStyle.remove(); // Remove old cached style
+  }
+  if (true) { // Always inject fresh
+    const style = document.createElement('style');
+    style.id = 'sentra-autosen-animation';
+    style.textContent = `
+      @keyframes sentra-autosen-scan {
+        0% {
+          box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.8),
+                      0 0 10px rgba(239, 68, 68, 0.4),
+                      inset 0 0 5px rgba(239, 68, 68, 0.2);
+        }
+        25% {
+          box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.5),
+                      0 0 20px rgba(239, 68, 68, 0.6),
+                      inset 0 0 10px rgba(239, 68, 68, 0.3);
+        }
+        50% {
+          box-shadow: 0 0 0 6px rgba(249, 115, 22, 0.5),
+                      0 0 25px rgba(249, 115, 22, 0.6),
+                      inset 0 0 15px rgba(249, 115, 22, 0.3);
+        }
+        75% {
+          box-shadow: 0 0 0 4px rgba(249, 115, 22, 0.4),
+                      0 0 15px rgba(249, 115, 22, 0.4),
+                      inset 0 0 8px rgba(249, 115, 22, 0.2);
+        }
+        100% {
+          box-shadow: 0 0 0 0 rgba(249, 115, 22, 0),
+                      0 0 0 rgba(249, 115, 22, 0),
+                      inset 0 0 0 rgba(249, 115, 22, 0);
+        }
+      }
+      .sentra-autosen-active {
+        animation: sentra-autosen-scan 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards !important;
+        outline: 2px solid rgba(239, 68, 68, 0.8) !important;
+        outline-offset: 2px !important;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  // Apply AutoSen animation class (no scroll, no background change - just glow effect)
+  element.classList.add('sentra-autosen-active');
+  element.style.transition = 'all 0.2s ease';
+
+  // Remove animation class after completion
   setTimeout(() => {
+    element.classList.remove('sentra-autosen-active');
     element.style.backgroundColor = originalBg;
-  }, 2000);
+    element.style.boxShadow = originalBoxShadow;
+    element.style.outline = originalOutline;
+    element.style.transition = originalTransition;
+  }, 800);
 }
 
 /**
@@ -535,13 +668,129 @@ function sleep(ms: number): Promise<void> {
 }
 
 // ============================================================================
+// RANGE SLIDER FILLER (for ePuskesmas Skala Nyeri)
+// ============================================================================
+
+/**
+ * Fill a range slider with associated hidden input
+ * Used for ePuskesmas Skala Nyeri (pain scale) which has:
+ * - Hidden input: input#skala_nyeri (stores actual value)
+ * - Range slider: input#range-slider (visual slider 0-10)
+ */
+export async function fillRangeSlider(
+  hiddenSelector: string,
+  sliderSelector: string,
+  value: number
+): Promise<FillResult> {
+  const field = 'range-slider:' + hiddenSelector;
+
+  try {
+    // 1. Find hidden input
+    const hiddenInput = document.querySelector(hiddenSelector) as HTMLInputElement | null;
+
+    // 2. Find range slider
+    const rangeSlider = document.querySelector(sliderSelector) as HTMLInputElement | null;
+
+    console.log(`[Filler] Range slider - hidden: ${!!hiddenInput}, slider: ${!!rangeSlider}`);
+
+    if (!hiddenInput && !rangeSlider) {
+      return { success: false, field, value, method: 'direct', error: 'Neither hidden nor slider found' };
+    }
+
+    // 3. Set value on hidden input
+    if (hiddenInput) {
+      hiddenInput.value = String(value);
+      await dispatchEventChain(hiddenInput, ['input', 'change']);
+      console.log(`[Filler] ✓ Hidden input set: ${hiddenSelector} = ${value}`);
+    }
+
+    // 4. Set value on range slider and trigger visual update
+    if (rangeSlider) {
+      rangeSlider.value = String(value);
+
+      // Dispatch events to trigger visual update
+      await dispatchEventChain(rangeSlider, ['input', 'change']);
+
+      // Also trigger native event for React/jQuery listeners
+      const nativeInputEvent = new Event('input', { bubbles: true });
+      rangeSlider.dispatchEvent(nativeInputEvent);
+
+      // Update background gradient (ePuskesmas slider styling)
+      const percentage = (value / 10) * 100;
+      rangeSlider.style.background = `linear-gradient(to right, rgb(112, 214, 53) 0%, rgb(168, 224, 68) ${percentage}%, rgb(255, 255, 255) ${percentage}%, white 100%)`;
+
+      highlightField(rangeSlider);
+      console.log(`[Filler] ✓ Range slider set: ${sliderSelector} = ${value}`);
+    }
+
+    return { success: true, field, value, method: 'direct' };
+
+  } catch (error) {
+    console.error(`[Filler] Error filling range slider:`, error);
+    return { success: false, field, value, method: 'direct', error: String(error) };
+  }
+}
+
+// ============================================================================
+// CHECKBOX WITH ONCLICK HANDLER (for ePuskesmas aksiCheckMaster)
+// ============================================================================
+
+/**
+ * Activate checkbox that has onclick handler (like aksiCheckMaster)
+ * This is needed for ePuskesmas Keadaan Fisik checkboxes that enable textareas
+ * @param selector - Checkbox selector
+ * @param shouldCheck - Whether to check (true) or uncheck (false)
+ */
+export async function activateCheckboxWithOnclick(
+  selector: string,
+  shouldCheck: boolean = true
+): Promise<FillResult> {
+  const field = 'checkbox-onclick:' + selector;
+
+  try {
+    const element = await waitForElement(selector, 3000);
+
+    if (!element || !(element instanceof HTMLInputElement)) {
+      return { success: false, field, value: shouldCheck, method: 'checkbox', error: 'Element not found' };
+    }
+
+    // Skip if already in desired state
+    if (element.checked === shouldCheck) {
+      console.log(`[Filler] Checkbox already ${shouldCheck ? 'checked' : 'unchecked'}: ${selector}`);
+      return { success: true, field, value: shouldCheck, method: 'checkbox' };
+    }
+
+    // For ePuskesmas checkboxes with onchange="aksiCheckMaster(this,n)"
+    // We need to click first (which toggles and fires onchange), NOT set checked manually
+    // element.click() will: 1) toggle checked state, 2) fire onclick, 3) fire onchange
+    element.click();
+
+    // If click didn't achieve desired state (edge case), set it manually and fire change
+    if (element.checked !== shouldCheck) {
+      element.checked = shouldCheck;
+      await dispatchEventChain(element, ['change']);
+    }
+
+    // Wait for any JS to process
+    await sleep(100);
+
+    console.log(`[Filler] ✓ Checkbox activated: ${selector}`);
+    return { success: true, field, value: shouldCheck, method: 'checkbox' };
+
+  } catch (error) {
+    console.error(`[Filler] Error activating checkbox ${selector}:`, error);
+    return { success: false, field, value: shouldCheck, method: 'checkbox', error: String(error) };
+  }
+}
+
+// ============================================================================
 // BATCH FILL HELPER
 // ============================================================================
 
 export interface FieldMapping {
   selector: string;
   value: string | number | boolean;
-  type: 'text' | 'number' | 'textarea' | 'select' | 'checkbox' | 'autocomplete';
+  type: 'text' | 'number' | 'textarea' | 'select' | 'checkbox' | 'autocomplete' | 'radio';
   autocompleteOptions?: AutocompleteOptions;
 }
 
@@ -552,9 +801,11 @@ export async function fillFields(
   fields: FieldMapping[],
   delayBetweenFields: number = 100
 ): Promise<FillResult[]> {
+  console.log('🔴🔴🔴 SENTRA DEBUG: fillFields CALLED with', fields.length, 'fields');
   const results: FillResult[] = [];
 
   for (const field of fields) {
+    console.log('🔴🔴🔴 SENTRA DEBUG: Processing field:', field.selector, 'type:', field.type, 'value:', field.value);
     let result: FillResult;
 
     switch (field.type) {
@@ -570,6 +821,9 @@ export async function fillFields(
         break;
       case 'checkbox':
         result = await fillCheckbox(field.selector, Boolean(field.value));
+        break;
+      case 'radio':
+        result = await fillRadio(field.selector, String(field.value));
         break;
       case 'autocomplete':
         result = await fillAutocomplete(field.selector, String(field.value), field.autocompleteOptions);
