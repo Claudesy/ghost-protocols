@@ -20,6 +20,21 @@ export default defineContentScript({
   main() {
     riwayatDebugLog('[SentraMainWorld] Bridge script loaded in MAIN world');
 
+    // PHASE 1 DIAGNOSTIC: Check jQuery availability
+    const win = window as unknown as Record<string, unknown>;
+    const hasJQuery = typeof win.$ === 'function';
+    const hasJQueryUI = hasJQuery && typeof (win.$ as any).ui === 'object';
+
+    console.log('[MainWorld] ✅ jQuery available?', hasJQuery);
+    console.log('[MainWorld] ✅ jQuery UI available?', hasJQueryUI);
+
+    if (!hasJQuery) {
+      console.error('[MainWorld] ❌ CRITICAL: jQuery not available! Autocomplete filling will fail.');
+    }
+    if (!hasJQueryUI) {
+      console.warn('[MainWorld] ⚠️  WARNING: jQuery UI not detected. Autocomplete may not work properly.');
+    }
+
     const getPanelTextLength = (): number => {
       const panel =
         document.querySelector('#modal .modal-form') ||
@@ -324,8 +339,180 @@ export default defineContentScript({
       }
     });
 
+    // ================================================================
+    // FILL: jQuery-powered form filling from isolated world
+    // ================================================================
+
+    /**
+     * Fill a single field using jQuery (MAIN WORLD — has access to page's jQuery)
+     * Supports: text, select, autocomplete (jQuery UI)
+     */
+    const fillFieldJQ = async (
+      field: {
+        selector: string;
+        value: string;
+        type: 'text' | 'select' | 'autocomplete';
+        autocompleteTimeout?: number;
+      },
+      _requestId: string
+    ): Promise<{ success: boolean; field: string; value: string; error?: string; method: string }> => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const $ = (window as any).$ || (window as any).jQuery;
+      if (!$ || typeof $ !== 'function') {
+        return { success: false, field: field.selector, value: field.value, error: 'jQuery not available', method: 'jq-unavailable' };
+      }
+
+      const $el = $(field.selector);
+      if (!$el.length) {
+        return { success: false, field: field.selector, value: field.value, error: `Element not found: ${field.selector}`, method: 'jq-not-found' };
+      }
+
+      try {
+        if (field.type === 'select') {
+          // Strategy 1: Direct value match
+          $el.val(field.value);
+          if ($el.val() === field.value) {
+            $el.trigger('change');
+            return { success: true, field: field.selector, value: field.value, method: 'jq-select-value' };
+          }
+
+          // Strategy 2: Match by option text
+          const $options = $el.find('option');
+          let matched = false;
+          $options.each(function (this: HTMLOptionElement) {
+            const optText = ($(this).text() || '').trim().toUpperCase();
+            const target = field.value.trim().toUpperCase();
+            if (optText === target || optText.includes(target) || target.includes(optText)) {
+              $el.val($(this).val());
+              matched = true;
+              return false; // break
+            }
+          });
+          if (matched) {
+            $el.trigger('change');
+            return { success: true, field: field.selector, value: String($el.val()), method: 'jq-select-text' };
+          }
+
+          return { success: false, field: field.selector, value: field.value, error: 'No matching option', method: 'jq-select-fail' };
+        }
+
+        if (field.type === 'autocomplete') {
+          const timeout = field.autocompleteTimeout || 3000;
+
+          // Check if jQuery UI autocomplete is attached
+          const hasAutocomplete = typeof $el.autocomplete === 'function' && $el.data('ui-autocomplete');
+
+          if (hasAutocomplete) {
+            // Clear and set value
+            $el.val(field.value);
+            $el.autocomplete('search', field.value);
+
+            // Wait for dropdown to appear
+            const result = await new Promise<{ success: boolean; selectedValue: string }>((resolve) => {
+              let resolved = false;
+
+              // Listen for autocomplete select/response
+              const checkDropdown = () => {
+                const $menu = $('.ui-autocomplete:visible .ui-menu-item');
+                if ($menu.length > 0) {
+                  // Find best match
+                  let $best = $menu.first();
+                  const searchLower = field.value.toLowerCase();
+                  $menu.each(function (this: HTMLElement) {
+                    const text = ($(this).text() || '').toLowerCase();
+                    if (text.includes(searchLower)) {
+                      $best = $(this);
+                      return false; // break — found match
+                    }
+                  });
+                  // Click the item via jQuery UI menu
+                  $best.find('a, .ui-menu-item-wrapper').first().trigger('mouseenter').trigger('click');
+                  if (!resolved) {
+                    resolved = true;
+                    // Give time for hidden fields to populate
+                    setTimeout(() => {
+                      resolve({ success: true, selectedValue: String($el.val()) });
+                    }, 300);
+                  }
+                }
+              };
+
+              // Poll for dropdown
+              const interval = setInterval(checkDropdown, 200);
+
+              // Timeout
+              setTimeout(() => {
+                clearInterval(interval);
+                if (!resolved) {
+                  resolved = true;
+                  // Last resort: just trigger change on whatever we typed
+                  $el.trigger('change').trigger('blur');
+                  resolve({ success: false, selectedValue: String($el.val()) });
+                }
+              }, timeout);
+            });
+
+            if (result.success) {
+              return { success: true, field: field.selector, value: result.selectedValue, method: 'jq-autocomplete' };
+            }
+            return { success: false, field: field.selector, value: field.value, error: 'Autocomplete dropdown not appeared', method: 'jq-autocomplete-fail' };
+          }
+
+          // Fallback: no jQuery UI autocomplete, try direct val + events
+          $el.val(field.value).trigger('input').trigger('change').trigger('blur');
+          return { success: true, field: field.selector, value: field.value, method: 'jq-text-fallback' };
+        }
+
+        // Default: text field
+        $el.val(field.value).trigger('input').trigger('change').trigger('blur');
+        return { success: true, field: field.selector, value: field.value, method: 'jq-text' };
+      } catch (err) {
+        return { success: false, field: field.selector, value: field.value, error: String(err), method: 'jq-error' };
+      }
+    };
+
+    window.addEventListener('message', async (event) => {
+      if (event.source !== window) return;
+      const msg = event.data;
+      if (!msg || typeof msg !== 'object') return;
+
+      // ================================================================
+      // FILL FIELDS: Batch fill request from isolated world
+      // ================================================================
+      if (msg.type === 'sentra-fill-fields' && Array.isArray(msg.fields)) {
+        const requestId = msg.requestId || 'unknown';
+        riwayatDebugLog(`[SentraMainWorld] Fill request: ${msg.fields.length} fields, id=${requestId}`);
+
+        const results: Array<{ success: boolean; field: string; value: string; error?: string; method: string }> = [];
+        const delayMs = msg.delayBetweenFields || 150;
+
+        for (const field of msg.fields) {
+          const result = await fillFieldJQ(field, requestId);
+          results.push(result);
+          riwayatDebugLog(`[SentraMainWorld] Fill ${result.success ? '✓' : '✗'} ${field.selector} = "${field.value}" (${result.method})`);
+
+          // Delay between fields
+          if (delayMs > 0) {
+            await new Promise(r => setTimeout(r, delayMs));
+          }
+        }
+
+        const successCount = results.filter(r => r.success).length;
+        const failCount = results.filter(r => !r.success).length;
+        riwayatDebugLog(`[SentraMainWorld] Fill complete: ${successCount} success, ${failCount} failed`);
+
+        window.postMessage({
+          type: 'sentra-fill-fields-response',
+          requestId,
+          results,
+          successCount,
+          failCount,
+        }, '*');
+      }
+    });
+
     riwayatDebugLog(
-      '[SentraMainWorld] Bridge ready — listening for sentra-trigger-riwayat messages'
+      '[SentraMainWorld] Bridge ready — listening for sentra-trigger-riwayat + sentra-fill-fields messages'
     );
   },
 });

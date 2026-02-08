@@ -101,9 +101,9 @@
       -apple-system,
       BlinkMacSystemFont,
       sans-serif;
-    font-size: 13px;
+    font-size: 13px; /* Medical UI standard - compact & readable */
     font-weight: 400;
-    line-height: 1.5;
+    line-height: 1.5; /* Tighter line-height for density */
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
@@ -111,38 +111,39 @@
   #root {
     width: 100%;
     min-height: 100vh;
-    background: 
-      radial-gradient(ellipse 80% 50% at 50% 0%, rgba(255,107,53,0.03) 0%, transparent 60%),
+    background:
+      radial-gradient(ellipse 80% 50% at 50% 0%, rgba(255, 107, 53, 0.03) 0%, transparent 60%),
       linear-gradient(180deg, #1e1e24 0%, #16161a 100%);
   }
 
   .text-title {
-    font-size: 18px;
+    font-size: 13px; /* Section headers */
     font-weight: 600;
     line-height: 1.3;
+    letter-spacing: -0.01em;
   }
 
   .text-subtitle {
-    font-size: 14px;
+    font-size: 14px; /* Subsection headers */
     font-weight: 500;
     line-height: 1.4;
   }
 
   .text-body {
-    font-size: 13px;
+    font-size: 13px; /* Body text - readable */
     font-weight: 400;
     line-height: 1.5;
   }
 
   .text-caption {
-    font-size: 11px;
+    font-size: 12px; /* Labels */
     font-weight: 500;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.03em;
     text-transform: uppercase;
   }
 
   .text-small {
-    font-size: 12px;
+    font-size: 11px; /* Metadata, timestamps */
     font-weight: 400;
   }
 
@@ -177,7 +178,7 @@
       inset 0 1px 0 rgba(255, 255, 255, 0.03);
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   }
-  
+
   .neu-card:hover {
     border-color: var(--border-medium);
     box-shadow:
@@ -267,7 +268,7 @@
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     position: relative;
   }
-  
+
   .neu-tab:hover {
     background: rgba(255, 255, 255, 0.02);
   }
@@ -279,7 +280,7 @@
       inset 0 1px 2px rgba(0, 0, 0, 0.25),
       0 0 0 1px rgba(255, 107, 53, 0.15);
   }
-  
+
   .neu-tab-active::after {
     content: '';
     position: absolute;
@@ -392,12 +393,12 @@
   left: 0;
   right: 0;
   height: 50%;
-  background: linear-gradient(180deg, rgba(255,255,255,0.03) 0%, transparent 100%);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, transparent 100%);
   pointer-events: none;
 }
 
 .patient-avatar-text {
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 700;
   color: var(--accent-primary);
   letter-spacing: 0.3px;
@@ -410,7 +411,7 @@
 }
 
 .patient-name {
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--text-primary);
   margin: 0 0 4px 0;
@@ -517,7 +518,7 @@
   left: 0;
   right: 0;
   height: 50%;
-  background: linear-gradient(180deg, rgba(255,255,255,0.02) 0%, transparent 100%);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.02) 0%, transparent 100%);
   border-radius: 12px 12px 0 0;
   pointer-events: none;
 }
@@ -532,7 +533,7 @@
 }
 
 .ttv-section-title {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--text-secondary);
   margin: 0;
@@ -759,7 +760,7 @@
 }
 
 .ttv-label {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--text-tertiary);
   text-transform: uppercase;
@@ -861,7 +862,7 @@
   background: none;
   border: none;
   padding: 12px 0;
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--text-primary);
   outline: none;
@@ -886,7 +887,7 @@ input[type='number'] {
   border: 1px solid rgba(255, 255, 255, 0.04);
   border-radius: 10px;
   padding: 12px 6px;
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--text-primary);
   outline: none;
@@ -908,13 +909,13 @@ input[type='number'] {
 }
 
 .ttv-separator {
-  font-size: 16px;
+  font-size: 13px;
   font-weight: 700;
   color: var(--text-tertiary);
 }
 
 .ttv-unit {
-  font-size: 10px;
+  font-size: 12px;
   color: var(--text-tertiary);
   font-weight: 600;
   letter-spacing: 0.3px;
@@ -959,7 +960,7 @@ input[type='number'] {
 
 /* Blinking Red Prompt Indicator */
 .ttv-prompt-indicator {
-  font-size: 16px;
+  font-size: 13px;
   font-weight: 700;
   font-family: 'Geist Mono', monospace;
   color: #ef4444;
@@ -1068,7 +1069,7 @@ input[type='number'] {
 }
 
 .ttv-hint {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--cream);
   margin: 0;
   font-style: italic;
@@ -1098,7 +1099,7 @@ input[type='number'] {
 
 .ttv-ai-title {
   flex: 1;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--text-secondary);
   margin: 0;
@@ -1212,7 +1213,7 @@ input[type='number'] {
 }
 
 .ttv-allergy-label {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--text-secondary);
   text-transform: uppercase;
@@ -1267,7 +1268,7 @@ input[type='number'] {
   border: 1px solid rgba(255, 255, 255, 0.04);
   border-radius: 8px;
   padding: 8px 14px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--text-tertiary);
   cursor: pointer;
@@ -1441,7 +1442,7 @@ input[type='number'] {
 }
 
 .ttv-alert-critical {
-  background: 
+  background:
     linear-gradient(135deg, rgba(239, 68, 68, 0.12) 0%, rgba(220, 38, 38, 0.08) 100%),
     rgba(20, 20, 22, 0.6);
   border: 1px solid rgba(239, 68, 68, 0.3);
@@ -1453,7 +1454,7 @@ input[type='number'] {
 }
 
 .ttv-alert-warning {
-  background: 
+  background:
     linear-gradient(135deg, rgba(245, 158, 11, 0.12) 0%, rgba(217, 119, 6, 0.08) 100%),
     rgba(20, 20, 22, 0.6);
   border: 1px solid rgba(245, 158, 11, 0.3);
@@ -1570,7 +1571,7 @@ input[type='number'] {
 }
 
 .ttv-recommendations-title {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
   color: var(--text-secondary);
   text-transform: uppercase;
@@ -1588,7 +1589,7 @@ input[type='number'] {
 }
 
 .ttv-recommendations-list li {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-primary);
   line-height: 1.5;
   padding-left: 16px;
@@ -1605,7 +1606,7 @@ input[type='number'] {
 
 /* High severity alert (orange) */
 .ttv-alert-high {
-  background: 
+  background:
     linear-gradient(135deg, rgba(249, 115, 22, 0.12) 0%, rgba(234, 88, 12, 0.08) 100%),
     rgba(20, 20, 22, 0.6);
   border: 1px solid rgba(249, 115, 22, 0.3);
@@ -1692,7 +1693,7 @@ input[type='number'] {
 
 .emergency-header h2 {
   flex: 1;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--text-secondary);
   margin: 0;
@@ -1771,7 +1772,7 @@ input[type='number'] {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.5px;
   margin: 0 0 12px 0;
@@ -1902,7 +1903,7 @@ input[type='number'] {
 }
 
 .emergency-diagram-area h3 {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--text-secondary);
   text-transform: uppercase;
@@ -2044,7 +2045,7 @@ input[type='number'] {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
+  font-size: 13px;
 }
 
 .ct-back-btn:hover {
@@ -2140,7 +2141,7 @@ input[type='number'] {
 }
 
 .ct-complaint-label {
-  font-size: 10px;
+  font-size: 12px;
   color: var(--text-tertiary, #6b7280);
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -2218,7 +2219,7 @@ input[type='number'] {
 }
 
 .ct-selector label {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--text-tertiary, #6b7280);
   text-transform: uppercase;
@@ -2241,7 +2242,7 @@ input[type='number'] {
 
 .ct-section-title {
   font-family: 'Geist', sans-serif;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--text-tertiary, #6b7280);
   text-transform: uppercase;
@@ -2521,7 +2522,7 @@ input[type='number'] {
 }
 
 .ct-warning-title {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--text-tertiary, #6b7280);
   text-transform: uppercase;
@@ -2667,7 +2668,7 @@ input[type='number'] {
 }
 
 .ct-trend-arrow {
-  font-size: 16px;
+  font-size: 13px;
   font-weight: 700;
 }
 
@@ -2801,14 +2802,14 @@ input[type='number'] {
 
 /* ========== PREMIUM GLASSMORPHISM ========== */
 .glass-card {
-  background: 
+  background:
     linear-gradient(135deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0.02) 100%),
     rgba(30, 30, 36, 0.7);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border-radius: 12px;
   border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 
+  box-shadow:
     0 4px 12px rgba(0, 0, 0, 0.25),
     0 8px 24px rgba(0, 0, 0, 0.15),
     inset 0 1px 0 rgba(255, 255, 255, 0.05);
@@ -2824,16 +2825,16 @@ input[type='number'] {
   left: 0;
   right: 0;
   height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1) 50%, transparent);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1) 50%, transparent);
   opacity: 0.6;
 }
 
 .glass-card:hover {
-  background: 
+  background:
     linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.03) 100%),
     rgba(34, 34, 40, 0.75);
   border-color: rgba(255, 255, 255, 0.12);
-  box-shadow: 
+  box-shadow:
     0 6px 16px rgba(0, 0, 0, 0.3),
     0 12px 32px rgba(0, 0, 0, 0.2),
     inset 0 1px 0 rgba(255, 255, 255, 0.06);
@@ -2905,13 +2906,7 @@ input[type='number'] {
 .doctor-static-ui .ct-neu-cell,
 .doctor-static-ui .patient-header {
   transition-property:
-    transform,
-    opacity,
-    color,
-    background-color,
-    border-color,
-    box-shadow,
-    filter;
+    transform, opacity, color, background-color, border-color, box-shadow, filter;
   transition-duration: var(--motion-fast);
   transition-timing-function: var(--motion-ease);
 }
