@@ -117,6 +117,8 @@ export interface TTVInferenceUIProps {
   // Patient refresh
   onRefreshPatient?: () => void;
   isLoadingPatient?: boolean;
+  // Navigation
+  onNavigateToTrajectory?: () => void;
 }
 
 // Screening Alert Types (Integrated with Clinical Decision Workflow)
@@ -190,6 +192,7 @@ export const TTVInferenceUI = ({
   onTTVStateChange,
   onRefreshPatient,
   isLoadingPatient,
+  onNavigateToTrajectory,
 }: TTVInferenceUIProps) => {
   const defaultState: TTVFormState = {
     sbp: '',
@@ -1280,21 +1283,21 @@ export const TTVInferenceUI = ({
   const handleSymptomChange = useCallback((value: string) => {
     // Auto-correct: common spelling mistakes in Indonesian medical terms
     const spellingCorrections: { [key: string]: string } = {
-      'deman': 'demam',
-      'batux': 'batuk',
-      'panas': 'demam',
+      deman: 'demam',
+      batux: 'batuk',
+      panas: 'demam',
       'sakit kepla': 'sakit kepala',
-      'kepla': 'kepala',
-      'pilek': 'pilek',
-      'mencret': 'diare',
-      'mual2': 'mual',
-      'muntah2': 'muntah',
-      'pusing2': 'pusing',
-      'lemas': 'lemas',
-      'letih': 'lemas',
-      'nyri': 'nyeri',
-      'nyer': 'nyeri',
-      'saket': 'sakit',
+      kepla: 'kepala',
+      pilek: 'pilek',
+      mencret: 'diare',
+      mual2: 'mual',
+      muntah2: 'muntah',
+      pusing2: 'pusing',
+      lemas: 'lemas',
+      letih: 'lemas',
+      nyri: 'nyeri',
+      nyer: 'nyeri',
+      saket: 'sakit',
     };
 
     // Apply spelling corrections (case-insensitive)
@@ -1307,7 +1310,7 @@ export const TTVInferenceUI = ({
     // Auto-capitalize first letter of sentences (after ., ?, !, or at start)
     correctedValue = correctedValue
       .replace(/^\s*([a-z])/, (match, p1) => match.replace(p1, p1.toUpperCase()))
-      .replace(/([.!?]\s+)([a-z])/g, (match, p1, p2) => p1 + p2.toUpperCase());
+      .replace(/([.!?]\s+)([a-z])/g, (_match, p1, p2) => p1 + p2.toUpperCase());
 
     setSymptomText(correctedValue);
 
@@ -2403,7 +2406,9 @@ export const TTVInferenceUI = ({
               <span className="ttv-allergy-label">Kehamilan:</span>
               <div className="ttv-allergy-chips-inline">
                 {patientGender === 'L' ? (
-                  <span className="ttv-allergy-chip-sm ttv-allergy-chip-active">Tidak Hamil (Locked)</span>
+                  <span className="ttv-allergy-chip-sm ttv-allergy-chip-active">
+                    Tidak Hamil (Locked)
+                  </span>
                 ) : (
                   <>
                     <button
@@ -2423,6 +2428,29 @@ export const TTVInferenceUI = ({
                   </>
                 )}
               </div>
+            </div>
+
+            {/* Action Buttons - Relocated below KEHAMILAN */}
+            <div className="ttv-action-buttons-inline">
+              <button
+                onClick={handleComplete}
+                disabled={!isFormValid || uplinkStatus === 'sending'}
+                className={`ttv-action-btn-inline ttv-action-uplink ${uplinkStatus === 'success' ? 'uplink-success' : ''} ${uplinkStatus === 'error' ? 'uplink-error' : ''}`}
+              >
+                <span className={uplinkStatus === 'sending' ? 'text-scramble' : ''}>
+                  {scrambleText}
+                </span>
+              </button>
+              <button
+                onClick={() => {
+                  console.log('[TTVInferenceUI] Clinical Trajectory clicked');
+                  onNavigateToTrajectory?.();
+                }}
+                disabled={!isFormValid}
+                className="ttv-action-btn-inline ttv-action-trajectory"
+              >
+                Clinical Trajectory
+              </button>
             </div>
 
             {/* AI Generated Narrative */}
@@ -2505,16 +2533,6 @@ export const TTVInferenceUI = ({
         />
       </div> */}
 
-      {/* Action Button */}
-      <div className="ttv-actions glass-panel-bottom">
-        <button
-          onClick={handleComplete}
-          disabled={!isFormValid || uplinkStatus === 'sending'}
-          className={`ttv-btn ttv-btn-primary ttv-btn-uplink ${uplinkStatus === 'success' ? 'uplink-success' : ''} ${uplinkStatus === 'error' ? 'uplink-error' : ''}`}
-        >
-          <span className={uplinkStatus === 'sending' ? 'text-scramble' : ''}>{scrambleText}</span>
-        </button>
-      </div>
     </div>
   );
 };
@@ -2942,6 +2960,99 @@ export const ttvInferenceUIStyles = `
 
 .ttv-btn-uplink.uplink-error {
   background: linear-gradient(135deg, #7F1D1D 0%, #991B1B 100%);
+}
+
+/* Inline Action Buttons - Below KEHAMILAN */
+.ttv-action-buttons-inline {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 12px;
+}
+
+.ttv-action-btn-inline {
+  flex: 1;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+
+.ttv-action-btn-inline:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* UPLINK Button - Green with Blinking */
+.ttv-action-uplink {
+  background: #10B981;
+  color: white;
+  animation: blink-green 1.5s ease-in-out infinite;
+}
+
+.ttv-action-uplink:hover:not(:disabled) {
+  background: #059669;
+  animation: none;
+}
+
+.ttv-action-uplink.uplink-success {
+  background: #059669;
+  animation: none;
+}
+
+.ttv-action-uplink.uplink-error {
+  background: #DC2626;
+  animation: blink-red 1s ease-in-out infinite;
+}
+
+/* Clinical Trajectory Button - Pink with Blinking */
+.ttv-action-trajectory {
+  background: #EC4899;
+  color: white;
+  animation: blink-pink 1.5s ease-in-out infinite;
+}
+
+.ttv-action-trajectory:hover:not(:disabled) {
+  background: #DB2777;
+  animation: none;
+}
+
+/* Blinking Animations */
+@keyframes blink-green {
+  0%, 100% {
+    opacity: 1;
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4);
+  }
+  50% {
+    opacity: 0.7;
+    box-shadow: 0 0 8px 2px rgba(16, 185, 129, 0.6);
+  }
+}
+
+@keyframes blink-pink {
+  0%, 100% {
+    opacity: 1;
+    box-shadow: 0 0 0 0 rgba(236, 72, 153, 0.4);
+  }
+  50% {
+    opacity: 0.7;
+    box-shadow: 0 0 8px 2px rgba(236, 72, 153, 0.6);
+  }
+}
+
+@keyframes blink-red {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
 }
 
 /* Text Scramble - NO ANIMATION (professional for doctors) */

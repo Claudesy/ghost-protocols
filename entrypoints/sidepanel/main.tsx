@@ -267,7 +267,12 @@ function App() {
             />
           </div>
           <div>
-            <h1 className="text-platinum font-semibold tracking-tight" style={{ fontSize: '18px', lineHeight: '1.3' }}>Sentra Assist</h1>
+            <h1
+              className="text-platinum font-semibold tracking-tight"
+              style={{ fontSize: '18px', lineHeight: '1.3' }}
+            >
+              Sentra Assist
+            </h1>
             <p className="text-small text-muted mt-1 opacity-80">Clinical Decision Support</p>
           </div>
         </div>
@@ -344,6 +349,7 @@ function App() {
             onTTVStateChange={setTTVState}
             onRefreshPatient={fetchPatientData}
             isLoadingPatient={isLoadingPatient}
+            onNavigateToTrajectory={() => setViewState('trajectory')}
           />
         </div>
         <div className={activeTab === 'emergency' ? 'tab-panel-active' : 'tab-panel-hidden'}>
@@ -353,28 +359,6 @@ function App() {
           <DeveloperTools />
         </div>
       </div>
-
-      {/* Single Flow Entry */}
-      {hasTTVData && (
-        <button
-          onClick={() => setViewState('trajectory')}
-          className="motion-press motion-card w-full mt-4 py-3 px-4 rounded-xl text-body font-medium"
-          style={{
-            background:
-              'linear-gradient(135deg, rgba(168,85,247,0.1) 0%, rgba(217,70,239,0.1) 100%)',
-            border: '1px solid rgba(168,85,247,0.35)',
-            color: '#A855F7',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 8,
-          }}
-        >
-          <span style={{ fontSize: 16 }}>{'\u2197'}</span>
-          Clinical Trajectory
-        </button>
-      )}
 
       {/* Footer */}
       <footer className="mt-10 pt-5 border-t" style={{ borderColor: 'rgba(255,255,255,0.04)' }}>
