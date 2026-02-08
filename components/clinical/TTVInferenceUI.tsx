@@ -1278,10 +1278,41 @@ export const TTVInferenceUI = ({
 
   // Autocomplete suggestions
   const handleSymptomChange = useCallback((value: string) => {
-    setSymptomText(value);
+    // Auto-correct: common spelling mistakes in Indonesian medical terms
+    const spellingCorrections: { [key: string]: string } = {
+      'deman': 'demam',
+      'batux': 'batuk',
+      'panas': 'demam',
+      'sakit kepla': 'sakit kepala',
+      'kepla': 'kepala',
+      'pilek': 'pilek',
+      'mencret': 'diare',
+      'mual2': 'mual',
+      'muntah2': 'muntah',
+      'pusing2': 'pusing',
+      'lemas': 'lemas',
+      'letih': 'lemas',
+      'nyri': 'nyeri',
+      'nyer': 'nyeri',
+      'saket': 'sakit',
+    };
+
+    // Apply spelling corrections (case-insensitive)
+    let correctedValue = value;
+    for (const [wrong, correct] of Object.entries(spellingCorrections)) {
+      const regex = new RegExp(`\\b${wrong}\\b`, 'gi');
+      correctedValue = correctedValue.replace(regex, correct);
+    }
+
+    // Auto-capitalize first letter of sentences (after ., ?, !, or at start)
+    correctedValue = correctedValue
+      .replace(/^\s*([a-z])/, (match, p1) => match.replace(p1, p1.toUpperCase()))
+      .replace(/([.!?]\s+)([a-z])/g, (match, p1, p2) => p1 + p2.toUpperCase());
+
+    setSymptomText(correctedValue);
 
     // Get last word for suggestions
-    const words = value.split(/[,;\n]/);
+    const words = correctedValue.split(/[,;\n]/);
     const lastWord = words[words.length - 1].trim();
 
     if (lastWord.length >= 2) {
@@ -2894,14 +2925,14 @@ export const ttvInferenceUIStyles = `
   letter-spacing: 1.5px;
   font-weight: 700;
   font-size: 12px;
-  background: linear-gradient(135deg, #EF4444 0%, #F97316 100%);
-  border: 1px solid #F97316;
+  background: linear-gradient(135deg, #0891B2 0%, #06B6D4 100%);
+  border: 1px solid #0891B2;
   box-shadow: none;
 }
 
 .ttv-btn-uplink:hover:not(:disabled) {
-  background: linear-gradient(135deg, #DC2626 0%, #EA580C 100%);
-  box-shadow: 0 1px 3px rgba(239, 68, 68, 0.2);
+  background: linear-gradient(135deg, #0E7490 0%, #0891B2 100%);
+  box-shadow: 0 1px 3px rgba(8, 145, 178, 0.3);
 }
 
 .ttv-btn-uplink.uplink-success {
