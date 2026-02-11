@@ -1,36 +1,19 @@
 /**
- * Precision-Architected. Future-Built by Docsyanpse
- * Sentra Healthcare Artificial Intelligence
+ * @deprecated Legacy types — prefer '@/utils/types' for Encounter contracts.
+ * Kept for backward compatibility with lib/scraper/anamnesa.ts.
+ * Do NOT add new types here.
  */
 
 export interface EncounterData {
   patientId: string;
   encounterId?: string;
   timestamp: string;
-  
-  // Anamnesa Data
-  complaint?: string; // Keluhan Utama
-  history?: string[]; // Riwayat Penyakit
-  allergies?: string[]; // Alergi Obat
-  
-  // Diagnosa Data
+  complaint?: string;
+  history?: string[];
+  allergies?: string[];
   diagnosis?: {
-    code: string; // ICD-X
+    code: string;
     name: string;
     type: 'Primary' | 'Secondary';
   }[];
-}
-
-export interface FillStatus {
-  status: 'idle' | 'scanning' | 'injecting' | 'success' | 'error';
-  message?: string;
-  progress?: number;
-}
-
-export interface AuditLog {
-  id: string;
-  timestamp: string;
-  action: string;
-  details: string;
-  user: string;
 }

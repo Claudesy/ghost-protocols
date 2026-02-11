@@ -8,8 +8,8 @@
 // Handles: message routing, state management, side panel site-lock, CDSS API routing
 
 import { SentraAPI } from '@/lib/api/sentra-api';
-import { getCDSSEngineStatus, initCDSSEngine } from '@/lib/cdss';
-import { runGetSuggestionsFlow } from '@/lib/cdss/get-suggestions-flow';
+import { getCDSSEngineStatus, initCDSSEngine } from '@/lib/iskandar-diagnosis-engine';
+import { runGetSuggestionsFlow } from '@/lib/iskandar-diagnosis-engine/get-suggestions-flow';
 import { RMETransferOrchestrator } from '@/lib/rme/transfer-orchestrator';
 import { auditService } from '@/lib/services/audit-service';
 import type {
@@ -48,6 +48,16 @@ import type {
 
 const bgLog = createLogger('Background', 'background');
 const riwayatLog = createLogger('BG:scanVisitHistory', 'riwayat');
+
+// VERSION CHECK - Force service worker reload verification
+console.warn('═══════════════════════════════════════════════════');
+console.warn('🚀🚀🚀 SENTRA BACKGROUND SCRIPT LOADED 🚀🚀🚀');
+console.warn('📦 VERSION: 1.0.2');
+console.warn('🕐 BUILD: 2026-02-09 20:43:00');
+console.warn('═══════════════════════════════════════════════════');
+console.warn('✅ If you see this = extension using NEW code');
+console.warn('❌ If you do NOT see this = Chrome caching old worker');
+console.warn('═══════════════════════════════════════════════════');
 const transferLog = createLogger('BG:RMETransfer', 'background');
 const rmeTransferOrchestrator = new RMETransferOrchestrator();
 
@@ -93,6 +103,168 @@ type ScanVisitHistoryResponse = {
     diagnosa: { icd_x: string; nama: string } | null;
   }>;
 };
+
+type TenagaMedisSnapshot = {
+  dokterNama: string;
+  perawatNama: string;
+  source: string[];
+  capturedAt: string;
+};
+
+type ResolveTenagaMedisResponse = {
+  success: boolean;
+  error?: string;
+  tenagaMedis?: TenagaMedisSnapshot;
+};
+
+const TENAGA_MEDIS_CACHE_KEY = 'sentra:tenaga-medis-cache';
+
+function normalizeTenagaMedisName(value: unknown): string {
+  if (typeof value !== 'string') return '';
+  return value.replace(/\s+/g, ' ').trim();
+}
+
+function hasTenagaMedisValue(snapshot: Partial<TenagaMedisSnapshot> | null | undefined): boolean {
+  if (!snapshot) return false;
+  return Boolean(
+    normalizeTenagaMedisName(snapshot.dokterNama) || normalizeTenagaMedisName(snapshot.perawatNama),
+  );
+}
+
+async function readTenagaMedisCache(): Promise<TenagaMedisSnapshot | null> {
+  try {
+    const raw = await browser.storage.local.get(TENAGA_MEDIS_CACHE_KEY);
+    const cached = raw[TENAGA_MEDIS_CACHE_KEY] as Partial<TenagaMedisSnapshot> | undefined;
+    if (!hasTenagaMedisValue(cached)) return null;
+    return {
+      dokterNama: normalizeTenagaMedisName(cached?.dokterNama),
+      perawatNama: normalizeTenagaMedisName(cached?.perawatNama),
+      source: Array.isArray(cached?.source) ? cached!.source.filter((item): item is string => typeof item === 'string') : ['cache'],
+      capturedAt:
+        typeof cached?.capturedAt === 'string' && cached.capturedAt
+          ? cached.capturedAt
+          : new Date().toISOString(),
+    };
+  } catch (error) {
+    transferLog.warn('[Background] Failed to read tenaga medis cache', error);
+    return null;
+  }
+}
+
+async function writeTenagaMedisCache(snapshot: TenagaMedisSnapshot): Promise<void> {
+  try {
+    await browser.storage.local.set({ [TENAGA_MEDIS_CACHE_KEY]: snapshot });
+  } catch (error) {
+    transferLog.warn('[Background] Failed to write tenaga medis cache', error);
+  }
+}
+
+async function resolveTenagaMedisForTab(tabId: number): Promise<TenagaMedisSnapshot | null> {
+  const request = { type: 'resolveTenagaMedis' } as const;
+
+  try {
+    const response = await sendMessageToTabWithTimeout<ResolveTenagaMedisResponse>(tabId, request, 3000);
+    const live = response?.tenagaMedis;
+    if (hasTenagaMedisValue(live)) {
+      const snapshot: TenagaMedisSnapshot = {
+        dokterNama: normalizeTenagaMedisName(live?.dokterNama),
+        perawatNama: normalizeTenagaMedisName(live?.perawatNama),
+        source: Array.isArray(live?.source) ? live!.source : ['live'],
+        capturedAt:
+          typeof live?.capturedAt === 'string' && live.capturedAt
+            ? live.capturedAt
+            : new Date().toISOString(),
+      };
+      await writeTenagaMedisCache(snapshot);
+      return snapshot;
+    }
+  } catch (error) {
+    if (classifyTabMessageError(error) === 'NO_RECEIVER') {
+      const injected = await tryInjectContentScripts(tabId);
+      if (injected) {
+        try {
+          const retry = await sendMessageToTabWithTimeout<ResolveTenagaMedisResponse>(
+            tabId,
+            request,
+            3000,
+          );
+          const live = retry?.tenagaMedis;
+          if (hasTenagaMedisValue(live)) {
+            const snapshot: TenagaMedisSnapshot = {
+              dokterNama: normalizeTenagaMedisName(live?.dokterNama),
+              perawatNama: normalizeTenagaMedisName(live?.perawatNama),
+              source: Array.isArray(live?.source) ? live!.source : ['live-retry'],
+              capturedAt:
+                typeof live?.capturedAt === 'string' && live.capturedAt
+                  ? live.capturedAt
+                  : new Date().toISOString(),
+            };
+            await writeTenagaMedisCache(snapshot);
+            return snapshot;
+          }
+        } catch (retryError) {
+          transferLog.debug('[Background] resolveTenagaMedis retry failed', retryError);
+        }
+      }
+    } else {
+      transferLog.debug('[Background] resolveTenagaMedis live fetch failed', error);
+    }
+  }
+
+  return readTenagaMedisCache();
+}
+
+async function hydrateTenagaMedisPayload<TStep extends RMETransferStepStatus>(
+  step: TStep,
+  payload: RMETransferStepPayload[TStep],
+  tabId: number,
+): Promise<RMETransferStepPayload[TStep]> {
+  if (step !== 'anamnesa' && step !== 'resep') {
+    return payload;
+  }
+
+  const resolved = await resolveTenagaMedisForTab(tabId);
+  if (!resolved) {
+    return payload;
+  }
+
+  if (step === 'anamnesa') {
+    const anamnesaPayload = payload as NonNullable<RMETransferPayload['anamnesa']>;
+    const dokterNama =
+      normalizeTenagaMedisName(anamnesaPayload.tenaga_medis?.dokter_nama) || resolved.dokterNama;
+    const perawatNama =
+      normalizeTenagaMedisName(anamnesaPayload.tenaga_medis?.perawat_nama) || resolved.perawatNama;
+
+    if (!dokterNama && !perawatNama) {
+      return payload;
+    }
+
+    return {
+      ...anamnesaPayload,
+      tenaga_medis: {
+        dokter_nama: dokterNama,
+        perawat_nama: perawatNama,
+      },
+    } as RMETransferStepPayload[TStep];
+  }
+
+  const resepPayload = payload as NonNullable<RMETransferPayload['resep']>;
+  const dokterNama = normalizeTenagaMedisName(resepPayload.ajax?.dokter) || resolved.dokterNama;
+  const perawatNama = normalizeTenagaMedisName(resepPayload.ajax?.perawat) || resolved.perawatNama;
+
+  if (!dokterNama && !perawatNama) {
+    return payload;
+  }
+
+  return {
+    ...resepPayload,
+    ajax: {
+      ...resepPayload.ajax,
+      dokter: dokterNama,
+      perawat: perawatNama,
+    },
+  } as RMETransferStepPayload[TStep];
+}
 
 function toTabCommunicationError(error: unknown, fallbackMessage: string): string {
   const kind = classifyTabMessageError(error);
@@ -331,27 +503,43 @@ async function executeRMEFillStep<TStep extends RMETransferStepStatus>(
   step: TStep,
   payload: RMETransferStepPayload[TStep],
 ): Promise<unknown> {
+  console.warn('🔥 [BACKGROUND] executeRMEFillStep called for step:', step);
+  console.warn('🔥 [BACKGROUND] Payload:', JSON.stringify(payload).substring(0, 500));
+
   const tabId = await resolveTransferTabId();
+  console.warn('🔥 [BACKGROUND] Resolved tabId:', tabId);
+
   if (!tabId) {
     throw new Error('No active tab');
   }
 
+  const hydratedPayload = await hydrateTenagaMedisPayload(step, payload, tabId);
+
   await ensureTransferStepPage(tabId, step);
+  console.warn('🔥 [BACKGROUND] Step page ensured for:', step);
 
   const fillMessage = {
     type: 'execFill',
     data: {
       type: step,
-      encounter: payload,
+      encounter: hydratedPayload,
     },
   } as const;
   const timeout = step === 'anamnesa' ? 45000 : step === 'resep' ? 30000 : 18000;
 
+  console.warn('🔥 [BACKGROUND] Sending message to tab:', tabId, 'with timeout:', timeout);
+  console.warn('🔥 [BACKGROUND] Message:', fillMessage);
+
   try {
-    return await sendMessageToTabWithTimeout<unknown>(tabId, fillMessage, timeout);
+    const result = await sendMessageToTabWithTimeout<unknown>(tabId, fillMessage, timeout);
+    console.warn('🔥 [BACKGROUND] Fill result received:', result);
+    return result;
   } catch (error) {
+    console.error('🔥 [BACKGROUND] Fill error:', error);
     if (classifyTabMessageError(error) === 'NO_RECEIVER') {
+      console.warn('🔥 [BACKGROUND] NO_RECEIVER detected, attempting injection...');
       const injected = await tryInjectContentScripts(tabId);
+      console.warn('🔥 [BACKGROUND] Injection result:', injected);
       if (injected) {
         return sendMessageToTabWithTimeout<unknown>(tabId, fillMessage, timeout);
       }
@@ -375,8 +563,8 @@ interface BrowserGlobalWithSidePanel {
     executeScript: (options: {
       target: { tabId: number };
       world?: 'MAIN' | 'ISOLATED';
-      func?: (...args: any[]) => void;
-      args?: any[];
+      func?: (...args: unknown[]) => void;
+      args?: unknown[];
       files?: string[];
     }) => Promise<unknown>;
   };
@@ -642,6 +830,20 @@ export default defineBackground(() => {
     }
   });
 
+  // AUTH TOKEN RELAY - Content scripts can't access chrome.identity directly
+  chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
+    if (request.type === 'GET_AUTH_TOKEN') {
+      chrome.identity.getAuthToken({ interactive: true }, (token) => {
+        if (chrome.runtime.lastError) {
+          sendResponse({ error: chrome.runtime.lastError.message });
+        } else {
+          sendResponse({ token });
+        }
+      });
+      return true; // Keep channel open for async response
+    }
+  });
+
   // Panel → Worker: Fill Diagnosa command
   onMessage('fillDiagnosa', async (message) => {
     // Extract actual payload from message.data (webext-core/messaging wraps it)
@@ -684,6 +886,10 @@ export default defineBackground(() => {
 
   onMessage('transferRME', async (message) => {
     const payload = message.data as RMETransferPayload;
+    console.warn('🔥🔥🔥 [BACKGROUND] transferRME MESSAGE RECEIVED');
+    console.warn('🔥 [BACKGROUND] Payload options:', payload.options);
+    console.warn('🔥 [BACKGROUND] Has diagnosa:', !!payload.diagnosa);
+    console.warn('🔥 [BACKGROUND] Diagnosa payload:', payload.diagnosa);
     transferLog.debug('[Background] transferRME request received');
     let transferPayload = payload;
 
@@ -1110,6 +1316,35 @@ export default defineBackground(() => {
     }
   });
 
+  // Panel → Content: Resolve dokter/perawat names with cache fallback
+  onMessage('resolveTenagaMedis', async () => {
+    const activeTabs = await browser.tabs.query({ active: true, currentWindow: true });
+    let tabId = activeTabs[0]?.id;
+
+    if (!tabId) {
+      const epTabs = await browser.tabs.query({ url: '*://*.epuskesmas.id/*' });
+      tabId = epTabs[0]?.id;
+    }
+
+    if (!tabId) {
+      const cached = await readTenagaMedisCache();
+      if (cached) {
+        return { success: true, tenagaMedis: cached };
+      }
+      return { success: false, error: 'No active ePuskesmas tab', tenagaMedis: undefined };
+    }
+
+    const resolved = await resolveTenagaMedisForTab(tabId);
+    if (!resolved) {
+      return { success: false, error: 'Nama dokter/perawat tidak tersedia', tenagaMedis: undefined };
+    }
+
+    return {
+      success: true,
+      tenagaMedis: resolved,
+    };
+  });
+
   // Panel → Content: Scan visit history from ePuskesmas page
   onMessage('scanVisitHistory', async () => {
     const bgDiag: string[] = [];
@@ -1419,7 +1654,8 @@ export default defineBackground(() => {
           await chrome.scripting.executeScript({
             target: { tabId },
             world: 'MAIN',
-            func: (id: string) => {
+            func: (...args: unknown[]) => {
+              const id = args[0] as string;
               const el = document.querySelector(`a[data-id="${id}"]`);
               const maybeWindow = window as Window & {
                 showRiwayatPelayanan?: (element: Element) => void;

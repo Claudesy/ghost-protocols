@@ -1,8 +1,9 @@
 import {
   runDiagnosisAlgorithm,
   type RankedDiagnosis,
-} from '@/lib/cdss/diagnosis-algorithm';
-import type { DifferentialVitals } from '@/lib/cdss/differential-diagnosis';
+} from '@/lib/iskandar-diagnosis-engine/diagnosis-algorithm';
+import { classifyChronicDisease } from '@/lib/iskandar-diagnosis-engine/chronic-disease-classifier';
+import type { DifferentialVitals } from '@/lib/iskandar-diagnosis-engine/differential-diagnosis';
 import { buildRMETransferPayload } from '@/lib/rme/payload-mapper';
 import { sendMessage } from '@/utils/messaging';
 import type {
@@ -18,7 +19,6 @@ import type {
   RMETransferStepStatus,
 } from '@/utils/types';
 import React, { useEffect, useMemo, useState } from 'react';
-import { browser } from 'wxt/browser';
 
 interface ClinicalDifferentialProps {
   keluhanUtama: string;
@@ -29,6 +29,8 @@ interface ClinicalDifferentialProps {
   allergies?: string[];
   confirmedPregnancyStatus?: boolean | null;
   vitals: DifferentialVitals;
+  trajectory?: import('@/lib/iskandar-diagnosis-engine/trajectory-analyzer').TrajectoryAnalysis;
+  hasVisitHistory?: boolean;
   onBack: () => void;
 }
 
@@ -36,6 +38,21 @@ type LoadState = 'loading' | 'error' | 'ready';
 type TherapyState = 'idle' | 'loading' | 'ready' | 'error';
 type TransferUiState = 'idle' | 'running' | 'partial' | 'success' | 'failed';
 const MAX_DIAGNOSIS_SELECTION = 2;
+const MANUAL_ATURAN_PAKAI_OPTIONS: MedicationRecommendation['aturan_pakai'][] = [
+  'Sebelum makan',
+  'Sesudah makan',
+  'Pemakaian luar',
+  'Jika diperlukan',
+  'Saat makan',
+];
+
+interface ManualMedicationDraft {
+  nama_obat: string;
+  dosis: string;
+  aturan_pakai: MedicationRecommendation['aturan_pakai'];
+  durasi: string;
+  rationale: string;
+}
 
 interface SelectedDiagnosis {
   icd_x: string;
@@ -57,11 +74,95 @@ function humanize(value: string): string {
   return value.replace(/_/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
+const ICD_PATTERN = /^[A-Z][0-9]{2}(?:\.[0-9A-Z]{1,2})?$/;
+const ICD_EMERGENCY_HEAD_MAP: Record<string, string> = {
+  '0': 'O',
+  '1': 'I',
+  '5': 'S',
+  '8': 'B',
+};
+
+function normalizeIcdCode(value: string | undefined): string {
+  const raw = String(value || '')
+    .toUpperCase()
+    .replace(/\s+/g, '')
+    .trim();
+  if (!raw) return '';
+
+  const direct = raw.match(/[A-Z][0-9]{2}(?:\.[0-9A-Z]{1,2})?/);
+  if (direct?.[0]) return direct[0];
+
+  const compact = raw.replace(/[^A-Z0-9.]/g, '');
+  if (!compact) return '';
+
+  const mappedHead = ICD_EMERGENCY_HEAD_MAP[compact[0]];
+  if (mappedHead) {
+    const candidate = `${mappedHead}${compact.slice(1)}`;
+    const recovered = candidate.match(/^[A-Z][0-9]{2}(?:\.[0-9A-Z]{1,2})?/);
+    if (recovered?.[0]) return recovered[0];
+  }
+
+  return compact;
+}
+
+function isReadableDiagnosisName(value: string | undefined): boolean {
+  const cleaned = (value || '').trim();
+  if (!cleaned) return false;
+  if (cleaned.length < 3) return false;
+  if (/^\d+$/.test(cleaned)) return false;
+  if (!/[A-Za-z]/.test(cleaned)) return false;
+  return true;
+}
+
+function isCodeLikeDiagnosisName(value: string | undefined): boolean {
+  const cleaned = (value || '').toUpperCase().replace(/\s+/g, ' ').trim();
+  if (!cleaned) return false;
+  if (/^DIAGNOSIS\s+[A-Z][0-9]{2}(?:\.[0-9A-Z]{1,2})?$/.test(cleaned)) return true;
+  return /^[A-Z][0-9]{2}(?:\.[0-9A-Z]{1,2})?$/.test(cleaned);
+}
+
+function isLikelyIcdCode(value: string | undefined): boolean {
+  const normalized = normalizeIcdCode(value);
+  return ICD_PATTERN.test(normalized);
+}
+
+function resolveDiagnosisDisplayName(icd_x: string, nama: string | undefined): string {
+  const normalizedIcd = normalizeIcdCode(icd_x);
+  const cleaned = (nama || '').replace(/\s+/g, ' ').trim();
+  if (isReadableDiagnosisName(cleaned) && !isCodeLikeDiagnosisName(cleaned)) {
+    return cleaned;
+  }
+  const classification = classifyChronicDisease(normalizedIcd);
+  if (classification) return classification.fullName;
+  if (normalizedIcd) return `Diagnosis ${normalizedIcd}`;
+  return 'Diagnosis belum terklasifikasi';
+}
+
 type PregnancyStatus = boolean;
 
 function pregnancyStatusLabel(status: PregnancyStatus): string {
   if (status === true) return 'Confirmed: Pregnant';
   return 'Confirmed: Not Pregnant';
+}
+
+function buildConfirmedChronicSuggestion(
+  diagnosis: {
+    icd_x: string;
+    nama: string;
+  },
+): DiagnosisSuggestion {
+  return {
+    rank: 0,
+    icd_x: diagnosis.icd_x,
+    nama: diagnosis.nama,
+    confidence: 0.98,
+    rationale:
+      'Diagnosis kronis terkonfirmasi dari riwayat kunjungan pasien. Prioritaskan sebagai differential utama.',
+    red_flags: [],
+    recommended_actions: [
+      'Verifikasi status diagnosis kronis terkonfirmasi pada kunjungan berjalan',
+    ],
+  };
 }
 
 function buildUiFallbackDiagnoses(
@@ -247,6 +348,14 @@ function makeInitialTransferSteps(): RMETransferResult['steps'] {
   };
 }
 
+function medicationSelectionKey(med: MedicationRecommendation): string {
+  const namaObat = med.nama_obat.toLowerCase().trim();
+  const dosis = med.dosis.toLowerCase().trim();
+  const aturanPakai = med.aturan_pakai.toLowerCase().trim();
+  const durasi = (med.durasi || '').toLowerCase().trim();
+  return `${namaObat}|${dosis}|${aturanPakai}|${durasi}`;
+}
+
 export const ClinicalDifferential: React.FC<ClinicalDifferentialProps> = ({
   keluhanUtama,
   keluhanTambahan,
@@ -256,6 +365,8 @@ export const ClinicalDifferential: React.FC<ClinicalDifferentialProps> = ({
   allergies = [],
   confirmedPregnancyStatus,
   vitals,
+  trajectory,
+  hasVisitHistory,
   onBack,
 }) => {
   const [phase, setPhase] = useState<LoadState>('loading');
@@ -268,6 +379,16 @@ export const ClinicalDifferential: React.FC<ClinicalDifferentialProps> = ({
   const [therapyState, setTherapyState] = useState<TherapyState>('idle');
   const [therapyError, setTherapyError] = useState('');
   const [therapyByDiagnosis, setTherapyByDiagnosis] = useState<DiagnosisTherapyResult[]>([]);
+  const [showManualMedicationInput, setShowManualMedicationInput] = useState(true);
+  const [manualMedications, setManualMedications] = useState<MedicationRecommendation[]>([]);
+  const [manualMedicationDraft, setManualMedicationDraft] = useState<ManualMedicationDraft>({
+    nama_obat: '',
+    dosis: '',
+    aturan_pakai: 'Sesudah makan',
+    durasi: '',
+    rationale: 'Input manual operator',
+  });
+  const [selectedMedicationKeys, setSelectedMedicationKeys] = useState<string[]>([]);
   const [processingTimeMs, setProcessingTimeMs] = useState<number | null>(null);
   const [transferUiState, setTransferUiState] = useState<TransferUiState>('idle');
   const [transferRunId, setTransferRunId] = useState<string | null>(null);
@@ -278,6 +399,17 @@ export const ClinicalDifferential: React.FC<ClinicalDifferentialProps> = ({
   const [transferError, setTransferError] = useState('');
   const [transferResult, setTransferResult] = useState<RMETransferResult | null>(null);
   const [lastTriggeredStep, setLastTriggeredStep] = useState<RMETransferStepStatus>('anamnesa');
+  const [tenagaMedis, setTenagaMedis] = useState<{
+    dokterNama: string;
+    perawatNama: string;
+    source: string[];
+    capturedAt: string;
+  }>({
+    dokterNama: '',
+    perawatNama: '',
+    source: [],
+    capturedAt: '',
+  });
   const [pregnancyStatus, setPregnancyStatus] = useState<PregnancyStatus>(
     patientGender === 'L'
       ? false
@@ -301,6 +433,30 @@ export const ClinicalDifferential: React.FC<ClinicalDifferentialProps> = ({
   useEffect(() => {
     let cancelled = false;
 
+    const bootstrapTenagaMedis = async (): Promise<void> => {
+      try {
+        const response = await sendMessage('resolveTenagaMedis', undefined);
+        if (cancelled || !response.success || !response.tenagaMedis) return;
+        setTenagaMedis({
+          dokterNama: response.tenagaMedis.dokterNama || '',
+          perawatNama: response.tenagaMedis.perawatNama || '',
+          source: response.tenagaMedis.source || [],
+          capturedAt: response.tenagaMedis.capturedAt || '',
+        });
+      } catch {
+        // Non-blocking: fallback will happen at transfer time.
+      }
+    };
+
+    void bootstrapTenagaMedis();
+    return () => {
+      cancelled = true;
+    };
+  }, [patientRM]);
+
+  useEffect(() => {
+    let cancelled = false;
+
     const fetchDifferential = async () => {
       setPhase('loading');
       setErrorMsg('');
@@ -311,6 +467,16 @@ export const ClinicalDifferential: React.FC<ClinicalDifferentialProps> = ({
       setTherapyState('idle');
       setTherapyError('');
       setTherapyByDiagnosis([]);
+      setShowManualMedicationInput(true);
+      setManualMedications([]);
+      setManualMedicationDraft({
+        nama_obat: '',
+        dosis: '',
+        aturan_pakai: 'Sesudah makan',
+        durasi: '',
+        rationale: 'Input manual operator',
+      });
+      setSelectedMedicationKeys([]);
 
       try {
         const response = await sendMessage('getSuggestions', {
@@ -364,12 +530,70 @@ export const ClinicalDifferential: React.FC<ClinicalDifferentialProps> = ({
     };
   }, [keluhanUtama, keluhanTambahan, patientAge, patientGender, vitals.dbp, vitals.glucose, vitals.hr, vitals.rr, vitals.sbp, vitals.temp]);
 
+  const confirmedChronicDiagnoses = useMemo(
+    () =>
+      (trajectory?.confirmed_chronic_diagnoses || [])
+        .map((item) => {
+          const icd_x = normalizeIcdCode(item.icd_x);
+          const classification = classifyChronicDisease(icd_x);
+          if (!classification) return null;
+
+          return {
+            icd_x,
+            nama: isReadableDiagnosisName(item.nama) ? item.nama.trim() : classification.fullName,
+          };
+        })
+        .filter((item): item is { icd_x: string; nama: string } => Boolean(item?.icd_x)),
+    [trajectory],
+  );
+
   const normalizedSuggestions = useMemo<DiagnosisSuggestion[]>(() => {
-    if (Array.isArray(suggestions) && suggestions.length > 0) {
-      return suggestions;
+    const baseSuggestions =
+      Array.isArray(suggestions) && suggestions.length > 0
+        ? suggestions
+        : buildUiFallbackDiagnoses(keluhanUtama, vitals);
+    const sanitizedBaseSuggestions = baseSuggestions
+      .map((item) => {
+        const normalizedCode = normalizeIcdCode(item.icd_x);
+        if (!isLikelyIcdCode(normalizedCode)) return null;
+        return {
+          ...item,
+          icd_x: normalizedCode,
+          nama: resolveDiagnosisDisplayName(normalizedCode, item.nama),
+        };
+      })
+      .filter((item): item is DiagnosisSuggestion => Boolean(item));
+
+    const mergedByIcd = new Map<string, DiagnosisSuggestion>();
+
+    for (const chronic of confirmedChronicDiagnoses) {
+      const key = chronic.icd_x;
+      if (!key) continue;
+      mergedByIcd.set(key, buildConfirmedChronicSuggestion(chronic));
     }
-    return buildUiFallbackDiagnoses(keluhanUtama, vitals);
-  }, [suggestions, keluhanUtama, vitals]);
+
+    for (const suggestion of sanitizedBaseSuggestions) {
+      const key = suggestion.icd_x?.trim().toUpperCase();
+      if (!key || !isLikelyIcdCode(key)) continue;
+
+      const existing = mergedByIcd.get(key);
+      if (!existing) {
+        mergedByIcd.set(key, suggestion);
+        continue;
+      }
+
+      mergedByIcd.set(key, {
+        ...suggestion,
+        confidence: Math.max(existing.confidence, suggestion.confidence),
+        rationale: existing.rationale || suggestion.rationale,
+      });
+    }
+
+    return Array.from(mergedByIcd.values()).map((item, index) => ({
+      ...item,
+      rank: index + 1,
+    }));
+  }, [suggestions, keluhanUtama, vitals, confirmedChronicDiagnoses]);
 
   const rankedDiagnoses: RankedDiagnosis[] = useMemo(
     () =>
@@ -378,9 +602,10 @@ export const ClinicalDifferential: React.FC<ClinicalDifferentialProps> = ({
         keluhanUtama,
         keluhanTambahan,
         vitals,
+        trajectory,  // SPRINT 1 P0-2: Pass trajectory data
         maxResults: 5,
       }),
-    [normalizedSuggestions, keluhanUtama, keluhanTambahan, vitals]
+    [normalizedSuggestions, keluhanUtama, keluhanTambahan, vitals, trajectory]
   );
 
   const diagnosisKey = (diagnosis: SelectedDiagnosis): string =>
@@ -541,26 +766,141 @@ export const ClinicalDifferential: React.FC<ClinicalDifferentialProps> = ({
   }, [transferRunId]);
 
   const selectedDiagnosisForTransfer = selectedDiagnoses[0] || null;
-  const transferMedications = useMemo(() => {
-    if (selectedDiagnoses.length === 0) return [];
-    const selectedKeys = new Set(selectedDiagnoses.map((item) => diagnosisKey(item)));
-    const combined = therapyByDiagnosis
-      .filter((item) => selectedKeys.has(diagnosisKey(item.diagnosis)))
-      .flatMap((item) => item.medications);
+  const candidateTransferMedications = useMemo(() => {
+    const combined: MedicationRecommendation[] = [];
+    if (selectedDiagnoses.length > 0) {
+      const selectedKeys = new Set(selectedDiagnoses.map((item) => diagnosisKey(item)));
+      combined.push(
+        ...therapyByDiagnosis
+          .filter((item) => selectedKeys.has(diagnosisKey(item.diagnosis)))
+          .flatMap((item) => item.medications),
+      );
+    }
+    combined.push(...manualMedications);
 
     const deduped = new Map<string, MedicationRecommendation>();
     for (const med of combined) {
-      const key = med.nama_obat.toLowerCase().trim();
+      const key = medicationSelectionKey(med);
       if (!deduped.has(key)) deduped.set(key, med);
     }
     return Array.from(deduped.values());
-  }, [selectedDiagnoses, therapyByDiagnosis]);
+  }, [selectedDiagnoses, therapyByDiagnosis, manualMedications]);
+
+  const selectedMedicationKeySet = useMemo(
+    () => new Set(selectedMedicationKeys),
+    [selectedMedicationKeys]
+  );
+
+  const selectedTransferMedications = useMemo(
+    () =>
+      candidateTransferMedications.filter((med) =>
+        selectedMedicationKeySet.has(medicationSelectionKey(med))
+      ),
+    [candidateTransferMedications, selectedMedicationKeySet]
+  );
+
+  useEffect(() => {
+    const availableMedicationKeys = new Set(
+      candidateTransferMedications.map((med) => medicationSelectionKey(med))
+    );
+    setSelectedMedicationKeys((prev) =>
+      prev.filter((key) => availableMedicationKeys.has(key))
+    );
+  }, [candidateTransferMedications]);
+
+  const toggleMedicationSelection = (med: MedicationRecommendation): void => {
+    const key = medicationSelectionKey(med);
+    setSelectedMedicationKeys((prev) =>
+      prev.includes(key)
+        ? prev.filter((item) => item !== key)
+        : [...prev, key]
+    );
+    setTransferError('');
+  };
+
+  const selectAllRecommendedMedications = (): void => {
+    const allKeys = Array.from(
+      new Set(candidateTransferMedications.map((med) => medicationSelectionKey(med)))
+    );
+    setSelectedMedicationKeys(allKeys);
+    setTransferError('');
+  };
+
+  const clearSelectedMedications = (): void => {
+    setSelectedMedicationKeys([]);
+    setTransferError('');
+  };
+
+  const updateManualMedicationDraft = <TField extends keyof ManualMedicationDraft>(
+    field: TField,
+    value: ManualMedicationDraft[TField],
+  ): void => {
+    setManualMedicationDraft((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
+
+  const addManualMedication = (): void => {
+    const namaObat = manualMedicationDraft.nama_obat.trim();
+    const dosis = manualMedicationDraft.dosis.trim();
+
+    if (!namaObat || !dosis) {
+      setTherapyState('error');
+      setTherapyError('Obat manual butuh minimal Nama Obat dan Dosis.');
+      return;
+    }
+
+    const manualMedication: MedicationRecommendation = {
+      nama_obat: namaObat,
+      dosis,
+      aturan_pakai: manualMedicationDraft.aturan_pakai,
+      durasi: manualMedicationDraft.durasi.trim() || undefined,
+      rationale: manualMedicationDraft.rationale.trim() || 'Input manual operator',
+      safety_check: 'caution',
+      contraindications: [],
+    };
+
+    const medKey = medicationSelectionKey(manualMedication);
+    const hasDuplicate = manualMedications.some(
+      (item) => medicationSelectionKey(item) === medKey,
+    );
+    if (hasDuplicate) {
+      setTherapyState('error');
+      setTherapyError('Obat manual dengan regimen yang sama sudah ada.');
+      return;
+    }
+
+    setManualMedications((prev) => [...prev, manualMedication]);
+    setSelectedMedicationKeys((prev) => (prev.includes(medKey) ? prev : [...prev, medKey]));
+    setManualMedicationDraft((prev) => ({
+      ...prev,
+      nama_obat: '',
+      dosis: '',
+      durasi: '',
+      rationale: 'Input manual operator',
+    }));
+    setTherapyError('');
+  };
+
+  const removeManualMedication = (medication: MedicationRecommendation): void => {
+    const medKey = medicationSelectionKey(medication);
+    setManualMedications((prev) =>
+      prev.filter((item) => medicationSelectionKey(item) !== medKey),
+    );
+    setSelectedMedicationKeys((prev) => prev.filter((item) => item !== medKey));
+    setTherapyError('');
+  };
+
+  const selectedMedicationCount = selectedTransferMedications.length;
+  const candidateMedicationCount = candidateTransferMedications.length;
 
   const hasDiagnosisForTransfer = Boolean(selectedDiagnosisForTransfer);
+  const hasCandidateResepMedication = candidateMedicationCount > 0;
   const hasResepPayloadReady =
     hasDiagnosisForTransfer &&
     therapyState !== 'loading' &&
-    transferMedications.length > 0 &&
+    selectedMedicationCount > 0 &&
     (therapyState === 'ready' || therapyByDiagnosis.length > 0);
 
   const handleTransferToRME = async (
@@ -584,13 +924,34 @@ export const ClinicalDifferential: React.FC<ClinicalDifferentialProps> = ({
         setTransferError('Farmakoterapi masih diproses. Tunggu sampai selesai lalu uplink Resep.');
         return;
       }
-      if (!hasResepPayloadReady) {
+      if (!hasCandidateResepMedication) {
         setTransferUiState('failed');
         setTransferError(
           'Resep belum siap. Muat rekomendasi farmakologi dulu agar uplink Resep tidak kosong.',
         );
         return;
       }
+      if (selectedMedicationCount === 0) {
+        setTransferUiState('failed');
+        setTransferError('Pilih minimal 1 obat (proposal/manual) sebelum uplink Resep.');
+        return;
+      }
+    }
+
+    let resolvedTenagaMedis = tenagaMedis;
+    try {
+      const tenagaMedisResponse = await sendMessage('resolveTenagaMedis', undefined);
+      if (tenagaMedisResponse.success && tenagaMedisResponse.tenagaMedis) {
+        resolvedTenagaMedis = {
+          dokterNama: tenagaMedisResponse.tenagaMedis.dokterNama || '',
+          perawatNama: tenagaMedisResponse.tenagaMedis.perawatNama || '',
+          source: tenagaMedisResponse.tenagaMedis.source || [],
+          capturedAt: tenagaMedisResponse.tenagaMedis.capturedAt || '',
+        };
+        setTenagaMedis(resolvedTenagaMedis);
+      }
+    } catch {
+      // Keep last known value in state.
     }
 
     const mapped = buildRMETransferPayload({
@@ -610,12 +971,20 @@ export const ClinicalDifferential: React.FC<ClinicalDifferentialProps> = ({
       diagnosis: {
         icd_x: selectedDiagnosisForTransfer.icd_x,
         nama: selectedDiagnosisForTransfer.nama,
-        jenis: 'PRIMER',
-        kasus: 'BARU',
-        penyakit_kronis: [],
-        prognosa: '',
+        jenis: selectedDiagnoses.indexOf(selectedDiagnosisForTransfer) === 0 ? 'PRIMER' : 'SEKUNDER',
+        // kasus, prognosa, penyakit_kronis auto-detected by payload-mapper
       },
-      medications: transferMedications,
+      medications: selectedTransferMedications,
+      tenagaMedis:
+        resolvedTenagaMedis.dokterNama || resolvedTenagaMedis.perawatNama
+          ? {
+              dokterNama: resolvedTenagaMedis.dokterNama || undefined,
+              perawatNama: resolvedTenagaMedis.perawatNama || undefined,
+              ruangan: 'POLI UMUM',
+            }
+          : undefined,
+      trajectory,
+      hasVisitHistory,
     });
 
     const scopedReasonCodes = filterReasonCodesForStep(mapped.reasonCodes, targetStep);
@@ -676,9 +1045,13 @@ export const ClinicalDifferential: React.FC<ClinicalDifferentialProps> = ({
   };
 
   const selectSuggestedDiagnosis = (item: RankedDiagnosis): void => {
+    const normalizedIcd = normalizeIcdCode(item.suggestion.icd_x);
     const diagnosis: SelectedDiagnosis = {
-      icd_x: item.suggestion.icd_x,
-      nama: item.suggestion.nama,
+      icd_x: normalizedIcd || item.suggestion.icd_x,
+      nama: resolveDiagnosisDisplayName(
+        normalizedIcd || item.suggestion.icd_x,
+        item.suggestion.nama,
+      ),
       source: 'suggested',
       rank: item.rank,
     };
@@ -705,16 +1078,22 @@ export const ClinicalDifferential: React.FC<ClinicalDifferentialProps> = ({
   };
 
   const selectManualDiagnosis = (): void => {
-    const icd = manualIcd.trim().toUpperCase();
+    const icd = normalizeIcdCode(manualIcd);
     if (!icd) {
       setTherapyState('error');
       setTherapyError('Kode ICD-X manual wajib diisi sebelum mengambil farmakoterapi.');
       return;
     }
+    if (!isLikelyIcdCode(icd)) {
+      setTherapyState('error');
+      setTherapyError('Format ICD-X manual tidak valid. Contoh: I10, N18.9, E11.9.');
+      return;
+    }
 
+    const resolvedName = resolveDiagnosisDisplayName(icd, manualName.trim() || undefined);
     const diagnosis: SelectedDiagnosis = {
       icd_x: icd,
-      nama: manualName.trim() || 'Diagnosis manual',
+      nama: resolvedName,
       source: 'manual',
     };
 
@@ -750,7 +1129,10 @@ export const ClinicalDifferential: React.FC<ClinicalDifferentialProps> = ({
   };
 
   return (
-    <div className="relative min-h-screen w-full p-5 flex flex-col gap-4" style={{ background: 'linear-gradient(180deg, #202024 0%, #1a1a1d 100%)' }}>
+    <div
+      className="ct-neu-shell relative min-h-screen w-full p-5 flex flex-col gap-4"
+      style={{ background: 'linear-gradient(180deg, #202024 0%, #1a1a1d 100%)' }}
+    >
       <div
         className="absolute top-0 left-0 right-0 h-40 pointer-events-none"
         style={{
@@ -758,111 +1140,216 @@ export const ClinicalDifferential: React.FC<ClinicalDifferentialProps> = ({
             'radial-gradient(ellipse 80% 50% at 50% -10%, rgba(255,107,47,0.08) 0%, transparent 70%)',
         }}
       />
-      <header className="flex items-center justify-between mb-6">
+      <header className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <div className="neu-logo w-11 h-11 flex items-center justify-center overflow-hidden rounded-xl">
-            <img
-              src={browser.runtime.getURL('/sentra.png')}
-              alt="Sentra"
-              className="w-8 h-8 object-contain"
-            />
+            <img src="/logosen.png" alt="Sentra" className="w-8 h-8 object-contain" />
           </div>
           <div>
             <h1 className="text-title text-platinum">Sentra Assist</h1>
-            <p className="text-small text-muted mt-0.5">Differential Diagnosis Workup</p>
+            <p className="text-small text-muted mt-0.5">Halaman 3 • Diagnosis dan Resep</p>
           </div>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="text-left">
-            <p className="text-[10px] text-muted leading-tight">Architected by</p>
-            <p className="text-[12px] text-platinum font-semibold leading-tight">dr Ferdi Iskandar</p>
-          </div>
-          <div className="w-14 h-14 flex items-center justify-center overflow-hidden rounded-xl">
-            <img src={browser.runtime.getURL('/docsy.png')} alt="Docsy" className="w-14 h-14 object-contain" />
-          </div>
-        </div>
-      </header>
-
-      <div className="flex items-center gap-3">
-        <button
-          onClick={onBack}
-          className="bg-[var(--surface-secondary)] border border-[var(--border-subtle)] rounded-[6px] px-3 py-2 text-xs font-semibold text-platinum hover:bg-carbon-800 transition-colors"
-        >
-          ← Kembali
-        </button>
-        <div className="flex-1">
-          <h2 className="text-xs font-semibold uppercase tracking-wide animate-pulse" style={{ color: 'var(--accent-primary)' }}>
-            Differential Diagnosis (Top 3-5)
-          </h2>
         </div>
         {processingTimeMs !== null && (
           <span className="px-2 py-1 text-[10px] rounded border border-[var(--border-subtle)] text-muted font-mono">
             {processingTimeMs}ms
           </span>
         )}
-      </div>
+      </header>
 
-      <div className="ttv-section p-3">
-        <div className="text-tiny font-bold text-muted uppercase tracking-wide mb-1">Chief Complaint Context</div>
-        <div className="text-small text-platinum">{keluhanUtama || '-'}</div>
-        {keluhanTambahan && <div className="text-small text-muted mt-1">{keluhanTambahan}</div>}
-        <div className="text-[10px] text-muted mt-2 font-mono">RM: {patientRM} | Age: {patientAge || '-'} | Gender: {patientGender}</div>
-      </div>
-
-      <div className="ttv-section p-3">
-        <div className="flex items-center justify-between gap-2 mb-2">
-          <div className="text-tiny font-bold text-muted uppercase tracking-wide">
-            Pregnancy Status Confirmation
-          </div>
-          <span className="px-2 py-0.5 rounded border border-[var(--border-subtle)] text-[10px] text-muted">
-            {pregnancyStatusLabel(pregnancyStatus)}
-          </span>
+      <div className="neu-card-inset p-1.5">
+        <div className="flex gap-1.5">
+          <button
+            onClick={onBack}
+            className="flex-1 py-2 px-2 rounded-lg text-body relative neu-tab text-muted font-medium"
+          >
+            Clinical Trajectory
+          </button>
+          <button className="flex-1 py-2 px-2 rounded-lg text-body relative neu-tab-active text-platinum font-semibold">
+            Diagnosis + Resep
+          </button>
         </div>
-        {patientGender === 'L' ? (
-          <div className="text-[10px] text-muted leading-snug">
-            Gender male terdeteksi, status kehamilan dikunci ke <span className="text-platinum font-semibold">Not Pregnant</span>.
-          </div>
-        ) : typeof confirmedPregnancyStatus === 'boolean' ? (
-          <div className="text-[10px] text-muted leading-snug">
-            Status kehamilan diambil dari konfirmasi Anamnesa:{' '}
-            <span className="text-platinum font-semibold">
-              {confirmedPregnancyStatus ? 'Pregnant' : 'Not Pregnant'}
-            </span>.
-          </div>
-        ) : (
-          <div className="flex flex-col gap-2">
-            <div className="text-[10px] text-muted leading-snug">
-              Default saat tidak dicentang adalah <span className="text-platinum font-semibold">Not Pregnant</span>.
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setPregnancyStatus(false)}
-                className={`px-3 py-1.5 rounded border text-[10px] font-semibold transition-colors ${
-                  pregnancyStatus === false
-                    ? 'border-emerald-600/35 text-emerald-300 bg-emerald-600/10'
-                    : 'border-[var(--border-subtle)] text-muted hover:text-platinum'
-                }`}
-              >
-                Not Pregnant
-              </button>
-              <button
-                onClick={() => setPregnancyStatus(true)}
-                className={`px-3 py-1.5 rounded border text-[10px] font-semibold transition-colors ${
-                  pregnancyStatus === true
-                    ? 'border-amber-600/35 text-amber-300 bg-amber-600/10'
-                    : 'border-[var(--border-subtle)] text-muted hover:text-platinum'
-                }`}
-              >
-                Pregnant
-              </button>
+      </div>
+
+      <div className="ttv-section p-3">
+        <div className="text-tiny font-bold text-muted uppercase tracking-wide mb-2">
+          Alur Kerja Cepat
+        </div>
+        <div className="grid grid-cols-1 gap-2">
+          <div
+            className={`ct-neu-cell rounded-[6px] border p-2 ${
+              selectedDiagnoses.length > 0
+                ? 'border-emerald-600/35 bg-emerald-600/10'
+                : 'border-[var(--border-subtle)] bg-[var(--surface-primary)]'
+            }`}
+          >
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[10px] font-semibold text-platinum">Step 1 • Pilih Diagnosis</span>
+              <span className="text-[10px] text-muted font-mono">
+                {selectedDiagnoses.length}/{MAX_DIAGNOSIS_SELECTION}
+              </span>
             </div>
           </div>
-        )}
+          <div
+            className={`ct-neu-cell rounded-[6px] border p-2 ${
+              hasResepPayloadReady
+                ? 'border-emerald-600/35 bg-emerald-600/10'
+                : selectedMedicationCount > 0
+                  ? 'border-amber-600/35 bg-amber-600/10'
+                  : 'border-[var(--border-subtle)] bg-[var(--surface-primary)]'
+            }`}
+          >
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[10px] font-semibold text-platinum">Step 2 • Pilih Resep</span>
+              <span className="text-[10px] text-muted font-mono">
+                {selectedMedicationCount}/{candidateMedicationCount}
+              </span>
+            </div>
+          </div>
+          <div
+            className={`ct-neu-cell rounded-[6px] border p-2 ${
+              transferUiState === 'success'
+                ? 'border-emerald-600/35 bg-emerald-600/10'
+                : transferUiState === 'running'
+                  ? 'border-blue-600/35 bg-blue-600/10'
+                  : transferUiState === 'partial'
+                    ? 'border-amber-600/35 bg-amber-600/10'
+                    : transferUiState === 'failed'
+                      ? 'border-red-600/35 bg-red-600/10'
+                      : 'border-[var(--border-subtle)] bg-[var(--surface-primary)]'
+            }`}
+          >
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[10px] font-semibold text-platinum">Step 3 • Uplink ke RME</span>
+              <span className="text-[10px] text-muted font-mono">{transferUiState.toUpperCase()}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {trajectory && hasVisitHistory !== undefined && (
+        <div className="bg-blue-700/10 border border-blue-700/30 rounded-[6px] p-3 mb-3">
+          <div className="flex items-center gap-2 mb-1">
+            <div className="text-[10px] text-blue-300 font-semibold uppercase tracking-wide">Trajectory Intelligence Active</div>
+            <span className="px-2 py-0.5 rounded border border-blue-600/35 bg-blue-600/10 text-[10px] text-blue-300 font-mono">
+              {hasVisitHistory ? 'Returning Patient' : 'New Case'}
+            </span>
+          </div>
+          <div className="text-[10px] text-muted leading-snug">
+            Auto-detecting: Prognosis ({trajectory.overallTrend} trend, {trajectory.overallRisk} risk) • Kasus ({hasVisitHistory ? 'LAMA' : 'BARU'}) • Chronic diseases from ICD
+          </div>
+        </div>
+      )}
+
+      <div className="ttv-section p-3">
+        <div className="text-tiny font-bold text-muted uppercase tracking-wide mb-2">
+          Ringkasan Kasus
+        </div>
+        <div className="grid grid-cols-1 gap-2">
+          <div
+            className="ct-neu-cell rounded-[6px] px-3 py-3"
+            style={{
+              background: 'linear-gradient(145deg, #1e1e20 0%, #1a1a1c 100%)',
+              border: '1px solid rgba(255,255,255,0.06)',
+            }}
+          >
+            <div className="text-xs text-platinum font-medium leading-relaxed">
+              {keluhanUtama || '-'}
+            </div>
+            {keluhanTambahan && (
+              <div className="text-[10px] text-muted mt-1 leading-snug">{keluhanTambahan}</div>
+            )}
+            <div className="flex items-center gap-2 mt-2">
+              <span className="text-[10px] font-mono text-muted">RM {patientRM}</span>
+              <span className="text-[10px] font-mono text-muted">{patientAge || '-'}th</span>
+              <span
+                className="px-2 py-0.5 rounded text-[10px] font-bold font-mono"
+                style={{
+                  background: 'rgba(255,69,0,0.15)',
+                  color: 'var(--accent-primary)',
+                  border: '1px solid rgba(255,69,0,0.3)',
+                }}
+              >
+                {patientGender}
+              </span>
+            </div>
+            {confirmedChronicDiagnoses.length > 0 && (
+              <div className="mt-2">
+                <div className="text-[10px] text-muted mb-1 uppercase tracking-wide font-semibold">
+                  Confirmed Chronic Diagnosis
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  {confirmedChronicDiagnoses.slice(0, 3).map((item) => (
+                    <span
+                      key={`${item.icd_x}-${item.nama}`}
+                      className="px-2 py-0.5 rounded border border-amber-600/35 bg-amber-600/10 text-[10px] text-amber-300 font-mono"
+                    >
+                      {item.icd_x} • {humanize(item.nama)}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="ct-neu-cell bg-[var(--surface-primary)] border border-[var(--border-subtle)] rounded-[6px] px-3 py-3">
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <div className="text-[10px] font-semibold text-muted uppercase tracking-wide">
+                Konfirmasi Kehamilan
+              </div>
+              <span className="px-2 py-0.5 rounded border border-[var(--border-subtle)] text-[10px] text-muted">
+                {pregnancyStatusLabel(pregnancyStatus)}
+              </span>
+            </div>
+            {patientGender === 'L' ? (
+              <div className="text-[10px] text-muted leading-snug">
+                Gender male terdeteksi, status kehamilan dikunci ke{' '}
+                <span className="text-platinum font-semibold">Not Pregnant</span>.
+              </div>
+            ) : typeof confirmedPregnancyStatus === 'boolean' ? (
+              <div className="text-[10px] text-muted leading-snug">
+                Status kehamilan dari Anamnesa:{' '}
+                <span className="text-platinum font-semibold">
+                  {confirmedPregnancyStatus ? 'Pregnant' : 'Not Pregnant'}
+                </span>
+                .
+              </div>
+            ) : (
+              <div className="flex flex-col gap-2">
+                <div className="text-[10px] text-muted leading-snug">
+                  Pilih status untuk menyesuaikan safety filter farmakoterapi.
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setPregnancyStatus(false)}
+                    className={`px-3 py-1.5 rounded border text-[10px] font-semibold ${
+                      pregnancyStatus === false
+                        ? 'border-emerald-600/35 text-emerald-300 bg-emerald-600/10'
+                        : 'border-[var(--border-subtle)] text-muted'
+                    }`}
+                  >
+                    Not Pregnant
+                  </button>
+                  <button
+                    onClick={() => setPregnancyStatus(true)}
+                    className={`px-3 py-1.5 rounded border text-[10px] font-semibold ${
+                      pregnancyStatus === true
+                        ? 'border-amber-600/35 text-amber-300 bg-amber-600/10'
+                        : 'border-[var(--border-subtle)] text-muted'
+                    }`}
+                  >
+                    Pregnant
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
       {phase === 'loading' && (
         <div className="ttv-section p-8 flex flex-col items-center gap-3">
-          <div className="w-8 h-8 border-2 border-pulse-500 border-t-transparent rounded-full animate-spin" />
+          <div className="w-8 h-8 border-2 border-pulse-500 border-t-transparent rounded-full " />
           <div className="text-small text-muted">Menganalisis differential diagnosis...</div>
         </div>
       )}
@@ -874,27 +1361,51 @@ export const ClinicalDifferential: React.FC<ClinicalDifferentialProps> = ({
         </div>
       )}
 
-      {phase === 'ready' && rankedDiagnoses.length === 0 && (
-        <div className="ttv-section p-4">
-          <div className="text-small text-muted">Belum ada differential diagnosis yang bisa diproposisikan.</div>
-        </div>
-      )}
-
-      {phase === 'ready' && rankedDiagnoses.length > 0 && (
+      {phase === 'ready' && (
         <div className="flex flex-col gap-3">
           {errorMsg && (
             <div className="bg-amber-700/10 border border-amber-700/30 rounded-[6px] p-3">
               <div className="text-[10px] text-amber-300 leading-snug">{errorMsg}</div>
             </div>
           )}
+          {rankedDiagnoses.length === 0 && (
+            <div className="ttv-section p-4">
+              <div className="text-small text-muted">Belum ada differential diagnosis yang bisa diproposisikan.</div>
+            </div>
+          )}
 
-          {rankedDiagnoses.map((item) => {
-            const { suggestion, insight } = item;
+          {rankedDiagnoses.length > 0 && (
+            <div className="ttv-section p-3">
+              <div className="flex items-center justify-between gap-2">
+                <div className="text-tiny font-bold text-muted uppercase tracking-wide">
+                  Step 1 • Kandidat Diagnosis
+                </div>
+                <span className="px-2 py-0.5 rounded border border-[var(--border-subtle)] text-[10px] text-muted">
+                  Top {Math.min(rankedDiagnoses.length, 3)}
+                </span>
+              </div>
+            </div>
+          )}
+
+          {rankedDiagnoses.slice(0, 3).map((item) => {
+            const { suggestion, insight, adjustedConfidence } = item;
             const confidencePct = Math.round(suggestion.confidence * 100);
+            const adjustedPct = Math.round(adjustedConfidence * 100);
             const needStyle = toNeedStyle(insight.supportingExamPlan.needLevel);
+
+            // SPRINT 1 HOTFIX: Confidence tier classification
+            const confidenceTier = adjustedConfidence >= 0.60
+              ? 'primary'
+              : adjustedConfidence >= 0.25
+                ? 'secondary'
+                : 'low';
+            const normalizedSuggestionIcd = normalizeIcdCode(suggestion.icd_x);
             const diagnosisCandidate: SelectedDiagnosis = {
-              icd_x: suggestion.icd_x,
-              nama: suggestion.nama,
+              icd_x: normalizedSuggestionIcd || suggestion.icd_x,
+              nama: resolveDiagnosisDisplayName(
+                normalizedSuggestionIcd || suggestion.icd_x,
+                suggestion.nama,
+              ),
               source: 'suggested',
               rank: item.rank,
             };
@@ -903,136 +1414,153 @@ export const ClinicalDifferential: React.FC<ClinicalDifferentialProps> = ({
               !isSelected && selectedDiagnoses.length >= MAX_DIAGNOSIS_SELECTION;
 
             return (
-              <div
+              <details
                 key={`${suggestion.icd_x}-${suggestion.rank}`}
                 className={`ttv-section p-4 ${isSelected ? 'border-emerald-500/50' : ''}`}
               >
-                <div className="flex items-start justify-between gap-3 mb-2">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="px-2 py-0.5 rounded bg-carbon-800 border border-[var(--border-subtle)] text-[10px] text-muted font-mono">
-                        #{item.rank}
-                      </span>
-                      <span className="px-2 py-0.5 rounded bg-carbon-800 border border-[var(--border-subtle)] text-[10px] text-platinum font-mono">
-                        {suggestion.icd_x}
-                      </span>
+                <summary className="cursor-pointer list-none">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-muted text-sm">▸</span>
+                        <span className="px-2 py-0.5 rounded bg-carbon-800 border border-[var(--border-subtle)] text-[10px] text-muted font-mono">
+                          #{item.rank}
+                        </span>
+                        <span className="px-2 py-0.5 rounded bg-carbon-800 border border-[var(--border-subtle)] text-[10px] text-platinum font-mono">
+                          {suggestion.icd_x}
+                        </span>
+                      </div>
+                      <h3 className="text-sm font-semibold text-platinum">{humanize(suggestion.nama)}</h3>
                     </div>
-                    <h3 className="text-sm font-semibold text-platinum mt-2">{humanize(suggestion.nama)}</h3>
+                    <div className="text-right flex flex-col items-end gap-1">
+                      {/* SPRINT 1 HOTFIX: Tier badge */}
+                      {confidenceTier === 'primary' ? (
+                        <div className="px-2 py-0.5 rounded bg-emerald-600/15 border border-emerald-600/30 text-[9px] text-emerald-300 font-bold uppercase tracking-wide">
+                          ✓ Tinggi
+                        </div>
+                      ) : (
+                        <div className="px-2 py-0.5 rounded bg-amber-600/15 border border-amber-600/30 text-[9px] text-amber-300 font-bold uppercase tracking-wide">
+                          ⚠ Pertimbangkan
+                        </div>
+                      )}
+                      {/* Adjusted confidence (composite score) */}
+                      <div className="text-[10px] text-muted">Skor Klinis: <span className="font-mono font-bold text-platinum">{adjustedPct}%</span></div>
+                      {/* Raw AI confidence */}
+                      <div className="text-[9px] text-muted/70">AI: {confidencePct}%</div>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <div className="text-[10px] text-muted uppercase tracking-wide">Confidence</div>
-                    <div className="text-sm font-mono font-bold text-platinum">{confidencePct}%</div>
-                    <div className="text-[10px] text-muted mt-1">
-                      Dx score: <span className="font-mono text-platinum">{item.diagnosisScore}</span>
-                    </div>
+                </summary>
+
+                <div className="mt-3">
+                  <div className="flex justify-end mb-2">
                     <button
                       onClick={() => selectSuggestedDiagnosis(item)}
                       disabled={isSelectionBlocked}
-                      className={`mt-2 px-2 py-1 rounded border text-[10px] font-semibold transition-colors ${
+                      className={`px-2 py-1 rounded border text-[10px] font-semibold ${
                         isSelected
                           ? 'border-emerald-600/35 text-emerald-300 bg-emerald-600/10'
                           : isSelectionBlocked
                             ? 'border-[var(--border-subtle)] text-muted/50 cursor-not-allowed'
-                            : 'border-[var(--border-subtle)] text-muted hover:text-platinum'
+                            : 'border-[var(--border-subtle)] text-muted'
                       }`}
                     >
                       {isSelected ? 'Batalkan Pilihan' : 'Pilih Diagnosis'}
                     </button>
                   </div>
-                </div>
 
-                <div className="grid grid-cols-2 gap-2 mb-2">
-                  <div className="ct-neu-cell bg-[var(--surface-primary)] border border-[var(--border-subtle)] rounded-[6px] p-2">
-                    <div className="text-tiny font-bold text-muted uppercase tracking-wide mb-1">Berdasarkan Gejala</div>
-                    <div className="flex flex-wrap gap-1">
-                      {insight.matchedSymptoms.length > 0 ? (
-                        insight.matchedSymptoms.map((item) => (
-                          <span key={item} className="px-2 py-0.5 rounded bg-carbon-800/70 border border-[var(--border-subtle)] text-[10px] text-muted">
-                            {humanize(item)}
-                          </span>
-                        ))
-                      ) : (
-                        <span className="text-[10px] text-muted">Tidak ada sinyal gejala dominan.</span>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="ct-neu-cell bg-[var(--surface-primary)] border border-[var(--border-subtle)] rounded-[6px] p-2">
-                    <div className="text-tiny font-bold text-muted uppercase tracking-wide mb-1">Driver TTV</div>
-                    <div className="flex flex-col gap-1">
-                      {insight.vitalDrivers.length > 0 ? (
-                        insight.vitalDrivers.slice(0, 2).map((driver) => (
-                          <div key={driver} className="text-[10px] text-muted leading-snug">
-                            • {humanize(driver)}
-                          </div>
-                        ))
-                      ) : (
-                        <div className="text-[10px] text-muted">Tidak ada abnormalitas TTV dominan.</div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="ct-neu-cell bg-[var(--surface-primary)] border rounded-[6px] p-2 mb-2" style={{ borderColor: needStyle.border }}>
-                  <div className="flex items-center justify-between gap-2 mb-1">
-                    <div className="text-tiny font-bold text-muted uppercase tracking-wide">Pemeriksaan Penunjang</div>
-                    <span
-                      className="px-2 py-0.5 rounded border text-[10px] font-bold tracking-wide"
-                      style={{ color: needStyle.color, background: needStyle.bg, borderColor: needStyle.border }}
-                    >
-                      {needStyle.label}
-                    </span>
-                  </div>
-                  <div className="text-[10px] text-muted mb-1">{insight.supportingExamPlan.summary}</div>
-                  <div className="flex flex-col gap-1">
-                    {insight.supportingExamPlan.tests.slice(0, 4).map((test) => (
-                      <div key={test} className="text-[10px] text-muted leading-snug">
-                        • {humanize(test)}
+                  <div className="grid grid-cols-2 gap-2 mb-2">
+                    <div className="ct-neu-cell bg-[var(--surface-primary)] border border-[var(--border-subtle)] rounded-[6px] p-2">
+                      <div className="text-tiny font-bold text-muted uppercase tracking-wide mb-1">Berdasarkan Gejala</div>
+                      <div className="flex flex-wrap gap-1">
+                        {insight.matchedSymptoms.length > 0 ? (
+                          insight.matchedSymptoms.map((item) => (
+                            <span key={item} className="px-2 py-0.5 rounded bg-carbon-800/70 border border-[var(--border-subtle)] text-[10px] text-muted">
+                              {humanize(item)}
+                            </span>
+                          ))
+                        ) : (
+                          <span className="text-[10px] text-muted">Tidak ada sinyal gejala dominan.</span>
+                        )}
                       </div>
-                    ))}
-                  </div>
-                </div>
+                    </div>
 
-                <div className="text-[11px] text-muted leading-relaxed mb-2">
-                  {humanize(suggestion.rationale || suggestion.reasoning || 'Rasional klinis tidak tersedia.')}
-                </div>
-
-                {suggestion.red_flags && suggestion.red_flags.length > 0 && (
-                  <div className="mb-2">
-                    <div className="text-[10px] text-critical uppercase font-bold tracking-wide mb-1">Red Flags</div>
-                    <div className="flex flex-wrap gap-1">
-                      {suggestion.red_flags.slice(0, 4).map((flag) => (
-                        <span
-                          key={flag}
-                          className="px-2 py-0.5 rounded bg-critical/10 border border-critical/30 text-[10px] text-critical"
-                        >
-                          {humanize(flag)}
-                        </span>
-                      ))}
+                    <div className="ct-neu-cell bg-[var(--surface-primary)] border border-[var(--border-subtle)] rounded-[6px] p-2">
+                      <div className="text-tiny font-bold text-muted uppercase tracking-wide mb-1">Driver TTV</div>
+                      <div className="flex flex-col gap-1">
+                        {insight.vitalDrivers.length > 0 ? (
+                          insight.vitalDrivers.slice(0, 2).map((driver) => (
+                            <div key={driver} className="text-[10px] text-muted leading-snug">
+                              • {humanize(driver)}
+                            </div>
+                          ))
+                        ) : (
+                          <div className="text-[10px] text-muted">Tidak ada abnormalitas TTV dominan.</div>
+                        )}
+                      </div>
                     </div>
                   </div>
-                )}
 
-                {suggestion.recommended_actions && suggestion.recommended_actions.length > 0 && (
-                  <div>
-                    <div className="text-[10px] text-muted uppercase font-bold tracking-wide mb-1">Aksi Awal Disarankan</div>
+                  <div className="ct-neu-cell bg-[var(--surface-primary)] border rounded-[6px] p-2 mb-2" style={{ borderColor: needStyle.border }}>
+                    <div className="flex items-center justify-between gap-2 mb-1">
+                      <div className="text-tiny font-bold text-muted uppercase tracking-wide">Pemeriksaan Penunjang</div>
+                      <span
+                        className="px-2 py-0.5 rounded border text-[10px] font-bold tracking-wide"
+                        style={{ color: needStyle.color, background: needStyle.bg, borderColor: needStyle.border }}
+                      >
+                        {needStyle.label}
+                      </span>
+                    </div>
+                    <div className="text-[10px] text-muted mb-1">{insight.supportingExamPlan.summary}</div>
                     <div className="flex flex-col gap-1">
-                      {suggestion.recommended_actions.slice(0, 3).map((action) => (
-                        <div key={action} className="text-[10px] text-muted leading-snug">
-                          • {humanize(action)}
+                      {insight.supportingExamPlan.tests.slice(0, 4).map((test) => (
+                        <div key={test} className="text-[10px] text-muted leading-snug">
+                          • {humanize(test)}
                         </div>
                       ))}
                     </div>
                   </div>
-                )}
-              </div>
+
+                  <div className="text-[11px] text-muted leading-relaxed mb-2">
+                    {humanize(suggestion.rationale || suggestion.reasoning || 'Rasional klinis tidak tersedia.')}
+                  </div>
+
+                  {suggestion.red_flags && suggestion.red_flags.length > 0 && (
+                    <div className="mb-2">
+                      <div className="text-[10px] text-critical uppercase font-bold tracking-wide mb-1">Red Flags</div>
+                      <div className="flex flex-wrap gap-1">
+                        {suggestion.red_flags.slice(0, 4).map((flag) => (
+                          <span
+                            key={flag}
+                            className="px-2 py-0.5 rounded bg-critical/10 border border-critical/30 text-[10px] text-critical"
+                          >
+                            {humanize(flag)}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {suggestion.recommended_actions && suggestion.recommended_actions.length > 0 && (
+                    <div>
+                      <div className="text-[10px] text-muted uppercase font-bold tracking-wide mb-1">Aksi Awal Disarankan</div>
+                      <div className="flex flex-col gap-1">
+                        {suggestion.recommended_actions.slice(0, 3).map((action) => (
+                          <div key={action} className="text-[10px] text-muted leading-snug">
+                            • {humanize(action)}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </details>
             );
           })}
 
           <div className="ttv-section p-4">
             <div className="flex items-center justify-between gap-2 mb-2">
               <div className="text-tiny font-bold text-muted uppercase tracking-wide">
-                Diagnosis Terpilih
+                Step 1 • Diagnosis Terpilih
               </div>
               <span className="px-2 py-0.5 rounded border border-[var(--border-subtle)] text-[10px] text-muted">
                 {selectedDiagnoses.length}/{MAX_DIAGNOSIS_SELECTION}
@@ -1060,11 +1588,12 @@ export const ClinicalDifferential: React.FC<ClinicalDifferentialProps> = ({
           <div className="ttv-section p-4">
             <button
               onClick={() => setShowManualDiagnosisInput((prev) => !prev)}
-              className="px-3 py-2 text-[11px] font-semibold rounded-[6px] border border-[var(--border-subtle)] text-platinum hover:bg-carbon-800 transition-colors"
+              className="px-3 py-2 text-[11px] font-semibold rounded-[6px] border border-[var(--border-subtle)] text-platinum flex items-center gap-2"
             >
+              <span className="text-muted text-sm">{showManualDiagnosisInput ? '▾' : '▸'}</span>
               {showManualDiagnosisInput
-                ? 'Tutup Input Diagnosis Manual'
-                : 'Input Diagnosis Manual (Opsional)'}
+                ? 'Step 1b • Tutup Diagnosis Manual'
+                : 'Step 1b • Input Diagnosis Manual (Opsional)'}
             </button>
             {showManualDiagnosisInput && (
               <div className="mt-3">
@@ -1084,7 +1613,7 @@ export const ClinicalDifferential: React.FC<ClinicalDifferentialProps> = ({
                 </div>
                 <button
                   onClick={selectManualDiagnosis}
-                  className="px-3 py-2 text-[11px] font-semibold rounded-[6px] border border-emerald-600/40 text-emerald-300 bg-emerald-600/10 hover:bg-emerald-600/20 transition-colors"
+                  className="px-3 py-2 text-[11px] font-semibold rounded-[6px] border border-emerald-600/40 text-emerald-300 bg-emerald-600/10"
                 >
                   Gunakan Diagnosis Manual
                 </button>
@@ -1095,7 +1624,7 @@ export const ClinicalDifferential: React.FC<ClinicalDifferentialProps> = ({
           <div className="ttv-section p-4">
             <div className="flex items-center justify-between gap-2 mb-2">
               <div className="text-tiny font-bold text-muted uppercase tracking-wide">
-                Terapi Farmakologi Awal
+                Step 2 • Rekomendasi Resep
               </div>
               <span className="px-2 py-0.5 rounded border border-[var(--border-subtle)] text-[10px] text-muted">
                 Basis:{' '}
@@ -1103,6 +1632,150 @@ export const ClinicalDifferential: React.FC<ClinicalDifferentialProps> = ({
                   ? selectedDiagnoses.map((item) => item.icd_x).join(', ')
                   : 'Belum dipilih'}
               </span>
+            </div>
+            <div className="mb-2 ct-neu-cell bg-[var(--surface-primary)] border border-[var(--border-subtle)] rounded-[6px] px-2 py-2">
+              <div className="flex items-center justify-between gap-2">
+                <div className="text-[10px] text-muted leading-snug">
+                  Obat dipilih: <span className="text-platinum font-semibold">{selectedMedicationCount}</span>/{candidateMedicationCount}
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={selectAllRecommendedMedications}
+                    disabled={candidateMedicationCount === 0 || selectedMedicationCount === candidateMedicationCount}
+                    className="px-2 py-1 rounded border border-emerald-600/35 text-[10px] text-emerald-300 bg-emerald-600/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Pilih Semua
+                  </button>
+                  <button
+                    onClick={clearSelectedMedications}
+                    disabled={selectedMedicationCount === 0}
+                    className="px-2 py-1 rounded border border-[var(--border-subtle)] text-[10px] text-muted disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Reset
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div className="mb-2 ct-neu-cell bg-[var(--surface-primary)] border border-[var(--border-subtle)] rounded-[6px] px-2 py-2">
+              {selectedDiagnoses.length === 0 && (
+                <div className="mb-2 text-[10px] text-muted leading-snug">
+                  Belum ada diagnosis dipilih. Obat manual tetap bisa disiapkan, tapi uplink resep membutuhkan diagnosis.
+                </div>
+              )}
+              <div className="mb-2">
+                <button
+                  onClick={() => setShowManualMedicationInput((prev) => !prev)}
+                  className="w-full flex items-center justify-between gap-2 text-[10px] text-platinum"
+                >
+                  <span className="font-semibold uppercase tracking-wide">Input Obat Manual</span>
+                  <span className="text-muted">{showManualMedicationInput ? '▾' : '▸'}</span>
+                </button>
+              </div>
+
+              {showManualMedicationInput && (
+                <div className="mt-2 grid grid-cols-1 gap-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    <input
+                      value={manualMedicationDraft.nama_obat}
+                      onChange={(event) => updateManualMedicationDraft('nama_obat', event.target.value)}
+                      placeholder="Nama obat manual"
+                      className="bg-[var(--surface-primary)] border border-[var(--border-subtle)] rounded-[6px] px-2 py-2 text-[11px] text-platinum outline-none"
+                    />
+                    <input
+                      value={manualMedicationDraft.dosis}
+                      onChange={(event) => updateManualMedicationDraft('dosis', event.target.value)}
+                      placeholder="Dosis (contoh: 3x1)"
+                      className="bg-[var(--surface-primary)] border border-[var(--border-subtle)] rounded-[6px] px-2 py-2 text-[11px] text-platinum outline-none"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <select
+                      value={manualMedicationDraft.aturan_pakai}
+                      onChange={(event) =>
+                        updateManualMedicationDraft(
+                          'aturan_pakai',
+                          event.target.value as ManualMedicationDraft['aturan_pakai'],
+                        )
+                      }
+                      className="bg-[var(--surface-primary)] border border-[var(--border-subtle)] rounded-[6px] px-2 py-2 text-[11px] text-platinum outline-none"
+                    >
+                      {MANUAL_ATURAN_PAKAI_OPTIONS.map((option) => (
+                        <option key={option} value={option}>
+                          {option}
+                        </option>
+                      ))}
+                    </select>
+                    <input
+                      value={manualMedicationDraft.durasi}
+                      onChange={(event) => updateManualMedicationDraft('durasi', event.target.value)}
+                      placeholder="Durasi (contoh: 3 hari)"
+                      className="bg-[var(--surface-primary)] border border-[var(--border-subtle)] rounded-[6px] px-2 py-2 text-[11px] text-platinum outline-none"
+                    />
+                  </div>
+                  <input
+                    value={manualMedicationDraft.rationale}
+                    onChange={(event) => updateManualMedicationDraft('rationale', event.target.value)}
+                    placeholder="Catatan klinis singkat (opsional)"
+                    className="bg-[var(--surface-primary)] border border-[var(--border-subtle)] rounded-[6px] px-2 py-2 text-[11px] text-platinum outline-none"
+                  />
+                  <button
+                    onClick={addManualMedication}
+                    className="px-3 py-2 text-[11px] font-semibold rounded-[6px] border border-emerald-600/40 text-emerald-300 bg-emerald-600/10"
+                  >
+                    Tambah Obat Manual
+                  </button>
+                </div>
+              )}
+
+              {manualMedications.length > 0 && (
+                <div className="mt-2 grid grid-cols-1 gap-1.5">
+                  {manualMedications.map((medication, index) => {
+                    const medKey = medicationSelectionKey(medication);
+                    const isMedicationSelected = selectedMedicationKeySet.has(medKey);
+
+                    return (
+                      <div
+                        key={`manual-${medKey}-${index}`}
+                        className={`rounded-[6px] border px-2 py-2 ${
+                          isMedicationSelected
+                            ? 'border-emerald-600/35 bg-emerald-600/10'
+                            : 'border-[var(--border-subtle)]'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex items-start gap-2">
+                            <input
+                              type="checkbox"
+                              checked={isMedicationSelected}
+                              onChange={() => toggleMedicationSelection(medication)}
+                              className="mt-0.5 h-3.5 w-3.5 accent-emerald-500 cursor-pointer"
+                            />
+                            <div>
+                              <div className="text-[11px] text-platinum font-semibold">
+                                {medication.nama_obat}
+                              </div>
+                              <div className="text-[10px] text-muted">
+                                {medication.dosis} • {medication.aturan_pakai} • {medication.durasi || '-'}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <span className="px-2 py-0.5 rounded border border-cyan-600/35 text-[10px] text-cyan-300">
+                              MANUAL
+                            </span>
+                            <button
+                              onClick={() => removeManualMedication(medication)}
+                              className="px-2 py-0.5 rounded border border-red-600/35 text-[10px] text-red-300"
+                            >
+                              Hapus
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
             {therapyState === 'idle' && (
               <div className="text-[10px] text-muted leading-snug">
@@ -1145,7 +1818,7 @@ export const ClinicalDifferential: React.FC<ClinicalDifferentialProps> = ({
                         </div>
                         <button
                           onClick={() => removeDiagnosis(diagnosis)}
-                          className="px-2 py-0.5 rounded border border-[var(--border-subtle)] text-[10px] text-muted hover:text-platinum"
+                          className="px-2 py-0.5 rounded border border-[var(--border-subtle)] text-[10px] text-muted"
                         >
                           Batalkan
                         </button>
@@ -1231,40 +1904,57 @@ export const ClinicalDifferential: React.FC<ClinicalDifferentialProps> = ({
                       )}
                       {therapyResult && !therapyResult.error && medications.length > 0 && (
                         <div className="grid grid-cols-1 gap-2">
-                          {medications.slice(0, 5).map((med) => (
-                            <div
-                              key={`${diagnosisKey(diagnosis)}-${med.nama_obat}-${med.dosis}`}
-                              className="neu-list-item rounded-[10px] p-2"
-                            >
-                              <div className="flex items-start justify-between gap-2">
-                                <div>
-                                  <div className="text-xs font-semibold text-platinum">{med.nama_obat}</div>
-                                  <div className="text-[10px] text-muted mt-0.5">
-                                    {med.dosis} • {med.aturan_pakai} • {med.durasi || '-'}
+                          {medications.slice(0, 5).map((med) => {
+                            const medKey = medicationSelectionKey(med);
+                            const isMedicationSelected = selectedMedicationKeySet.has(medKey);
+
+                            return (
+                              <div
+                                key={`${diagnosisKey(diagnosis)}-${med.nama_obat}-${med.dosis}`}
+                                className={`neu-list-item rounded-[10px] p-2 border ${
+                                  isMedicationSelected
+                                    ? 'border-emerald-600/35 bg-emerald-600/10'
+                                    : 'border-[var(--border-subtle)]'
+                                }`}
+                              >
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="flex items-start gap-2">
+                                    <input
+                                      type="checkbox"
+                                      checked={isMedicationSelected}
+                                      onChange={() => toggleMedicationSelection(med)}
+                                      className="mt-0.5 h-3.5 w-3.5 accent-emerald-500 cursor-pointer"
+                                    />
+                                    <div>
+                                      <div className="text-xs font-semibold text-platinum">{med.nama_obat}</div>
+                                      <div className="text-[10px] text-muted mt-0.5">
+                                        {med.dosis} • {med.aturan_pakai} • {med.durasi || '-'}
+                                      </div>
+                                    </div>
                                   </div>
+                                  <span
+                                    className={`px-2 py-0.5 rounded border text-[10px] font-semibold ${
+                                      med.safety_check === 'safe'
+                                        ? 'border-emerald-600/35 text-emerald-400'
+                                        : med.safety_check === 'caution'
+                                          ? 'border-amber-600/35 text-amber-400'
+                                          : 'border-red-600/35 text-red-400'
+                                    }`}
+                                  >
+                                    {med.safety_check.toUpperCase()}
+                                  </span>
                                 </div>
-                                <span
-                                  className={`px-2 py-0.5 rounded border text-[10px] font-semibold ${
-                                    med.safety_check === 'safe'
-                                      ? 'border-emerald-600/35 text-emerald-400'
-                                      : med.safety_check === 'caution'
-                                        ? 'border-amber-600/35 text-amber-400'
-                                        : 'border-red-600/35 text-red-400'
-                                  }`}
-                                >
-                                  {med.safety_check.toUpperCase()}
-                                </span>
-                              </div>
-                              <div className="text-[10px] text-muted mt-1 leading-snug">
-                                {humanize(med.rationale)}
-                              </div>
-                              {med.contraindications && med.contraindications.length > 0 && (
-                                <div className="text-[10px] text-amber-300 mt-1">
-                                  Kontraindikasi: {med.contraindications.map((c) => humanize(c)).join('; ')}
+                                <div className="text-[10px] text-muted mt-1 leading-snug">
+                                  {humanize(med.rationale)}
                                 </div>
-                              )}
-                            </div>
-                          ))}
+                                {med.contraindications && med.contraindications.length > 0 && (
+                                  <div className="text-[10px] text-amber-300 mt-1">
+                                    Kontraindikasi: {med.contraindications.map((c) => humanize(c)).join('; ')}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
                         </div>
                       )}
                       {therapyResult && !therapyResult.error && therapyResult.guidelines.length > 0 && (
@@ -1298,7 +1988,7 @@ export const ClinicalDifferential: React.FC<ClinicalDifferentialProps> = ({
       <div className="ttv-section p-4">
         <div className="flex items-center justify-between gap-2 mb-3">
           <div className="text-tiny font-bold text-muted uppercase tracking-wide">
-            Uplink RME (Manual per Halaman)
+            Step 3 • Uplink ke ePuskesmas
           </div>
           <span
             className={`px-2 py-0.5 rounded border text-[10px] font-semibold ${
@@ -1317,44 +2007,49 @@ export const ClinicalDifferential: React.FC<ClinicalDifferentialProps> = ({
           </span>
         </div>
 
-        <div className="grid grid-cols-1 gap-2 mb-3">
-          {TRANSFER_STEP_ORDER.map((step) => {
-            const status = transferSteps[step];
-            const hasError = status.state === 'failed' || status.state === 'partial';
-            return (
-              <div
-                key={step}
-                className={`ct-neu-cell motion-card rounded-[6px] p-2 border ${
-                  hasError
-                    ? 'border-amber-600/35 bg-amber-600/10'
-                    : status.state === 'success'
-                      ? 'border-emerald-600/35 bg-emerald-600/10'
-                      : status.state === 'running'
-                        ? 'border-blue-600/35 bg-blue-600/10'
-                        : 'border-[var(--border-subtle)] bg-[var(--surface-primary)]'
-                }`}
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <div className="text-[11px] font-semibold text-platinum">{stepLabel(step)}</div>
-                  <div className="text-[10px] text-muted font-mono">
-                    {status.state} • {status.latencyMs}ms • try {status.attempt}
+        <details className="mb-3">
+          <summary className="cursor-pointer list-none text-[10px] text-muted uppercase tracking-wide font-semibold">
+            Detail Status Transfer
+          </summary>
+          <div className="grid grid-cols-1 gap-2 mt-2">
+            {TRANSFER_STEP_ORDER.map((step) => {
+              const status = transferSteps[step];
+              const hasError = status.state === 'failed' || status.state === 'partial';
+              return (
+                <div
+                  key={step}
+                  className={`ct-neu-cell rounded-[6px] p-2 border ${
+                    hasError
+                      ? 'border-amber-600/35 bg-amber-600/10'
+                      : status.state === 'success'
+                        ? 'border-emerald-600/35 bg-emerald-600/10'
+                        : status.state === 'running'
+                          ? 'border-blue-600/35 bg-blue-600/10'
+                          : 'border-[var(--border-subtle)] bg-[var(--surface-primary)]'
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="text-[11px] font-semibold text-platinum">{stepLabel(step)}</div>
+                    <div className="text-[10px] text-muted font-mono">
+                      {status.state} • {status.latencyMs}ms • try {status.attempt}
+                    </div>
                   </div>
-                </div>
-                <div className="text-[10px] text-muted mt-1">
-                  ok:{status.successCount} fail:{status.failedCount} skip:{status.skippedCount}
-                </div>
-                {status.reasonCode && (
-                  <div className="text-[10px] text-amber-300 mt-1 leading-snug">
-                    {REASON_CODE_LABELS[status.reasonCode]}
+                  <div className="text-[10px] text-muted mt-1">
+                    ok:{status.successCount} fail:{status.failedCount} skip:{status.skippedCount}
                   </div>
-                )}
-                {status.message && (
-                  <div className="text-[10px] text-muted mt-1 leading-snug">{status.message}</div>
-                )}
-              </div>
-            );
-          })}
-        </div>
+                  {status.reasonCode && (
+                    <div className="text-[10px] text-amber-300 mt-1 leading-snug">
+                      {REASON_CODE_LABELS[status.reasonCode]}
+                    </div>
+                  )}
+                  {status.message && (
+                    <div className="text-[10px] text-muted mt-1 leading-snug">{status.message}</div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </details>
 
         {transferReasonCodes.length > 0 && (
           <div className="mb-3 text-[10px] text-muted leading-snug">
@@ -1372,40 +2067,50 @@ export const ClinicalDifferential: React.FC<ClinicalDifferentialProps> = ({
           </div>
         )}
 
-        <div className="flex items-center gap-2">
+        <div className="grid grid-cols-1 gap-3">
+          <div className="ct-neu-cell bg-[var(--surface-primary)] border border-[var(--border-subtle)] rounded-[6px] p-3">
+            <div className="text-[11px] font-semibold text-platinum mb-2">Diagnosis</div>
+            <button
+              onClick={() => {
+                void handleTransferToRME('diagnosa', false);
+              }}
+              disabled={!hasDiagnosisForTransfer || transferUiState === 'running'}
+              className="w-full px-3 py-2 text-[11px] font-semibold rounded-[6px] border border-cyan-600/40 text-cyan-300 bg-cyan-600/10 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Uplink Diagnosis
+            </button>
+          </div>
+
+          <div className="ct-neu-cell bg-[var(--surface-primary)] border border-[var(--border-subtle)] rounded-[6px] p-3">
+            <div className="text-[11px] font-semibold text-platinum mb-2">Pharmacotherapy</div>
+            <button
+              onClick={() => {
+                void handleTransferToRME('resep', false);
+              }}
+              disabled={!hasResepPayloadReady || transferUiState === 'running'}
+              className="w-full px-3 py-2 text-[11px] font-semibold rounded-[6px] border border-emerald-600/40 text-emerald-300 bg-emerald-600/10 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Uplink Resep
+            </button>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 mt-3">
           <button
             onClick={() => {
               void handleTransferToRME('anamnesa', false);
             }}
             disabled={transferUiState === 'running'}
-            className="motion-press px-3 py-2 text-[11px] font-semibold rounded-[6px] border border-blue-600/40 text-blue-300 bg-blue-600/10 hover:bg-blue-600/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-3 py-2 text-[11px] font-semibold rounded-[6px] border border-blue-600/40 text-blue-300 bg-blue-600/10 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Uplink Anamnesa
-          </button>
-          <button
-            onClick={() => {
-              void handleTransferToRME('diagnosa', false);
-            }}
-            disabled={!hasDiagnosisForTransfer || transferUiState === 'running'}
-            className="motion-press px-3 py-2 text-[11px] font-semibold rounded-[6px] border border-cyan-600/40 text-cyan-300 bg-cyan-600/10 hover:bg-cyan-600/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Uplink Diagnosa
-          </button>
-          <button
-            onClick={() => {
-              void handleTransferToRME('resep', false);
-            }}
-            disabled={!hasResepPayloadReady || transferUiState === 'running'}
-            className="motion-press px-3 py-2 text-[11px] font-semibold rounded-[6px] border border-emerald-600/40 text-emerald-300 bg-emerald-600/10 hover:bg-emerald-600/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Uplink Resep
           </button>
           <button
             onClick={() => {
               void handleTransferToRME(lastTriggeredStep, true);
             }}
             disabled={transferUiState === 'running'}
-            className="motion-press px-3 py-2 text-[11px] font-semibold rounded-[6px] border border-amber-600/40 text-amber-300 bg-amber-600/10 hover:bg-amber-600/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-3 py-2 text-[11px] font-semibold rounded-[6px] border border-amber-600/40 text-amber-300 bg-amber-600/10 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Paksa Rerun Step
           </button>
@@ -1414,7 +2119,7 @@ export const ClinicalDifferential: React.FC<ClinicalDifferentialProps> = ({
               void handleCancelTransfer();
             }}
             disabled={transferUiState !== 'running' || !transferRunId}
-            className="motion-press px-3 py-2 text-[11px] font-semibold rounded-[6px] border border-red-600/40 text-red-300 bg-red-600/10 hover:bg-red-600/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-3 py-2 text-[11px] font-semibold rounded-[6px] border border-red-600/40 text-red-300 bg-red-600/10 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Cancel
           </button>
@@ -1422,8 +2127,7 @@ export const ClinicalDifferential: React.FC<ClinicalDifferentialProps> = ({
 
         {(!hasDiagnosisForTransfer || !hasResepPayloadReady) && (
           <div className="mt-2 text-[10px] text-muted leading-snug">
-            Alur manual: buka halaman Anamnesa lalu klik `Uplink Anamnesa`, pindah ke Diagnosa dan
-            pilih diagnosis lalu klik `Uplink Diagnosa`, lalu ke Resep klik `Uplink Resep`.
+            Pilih diagnosis terlebih dahulu, lalu pilih minimal 1 obat proposal/manual sebelum uplink Pharmacotherapy.
           </div>
         )}
       </div>
@@ -1438,3 +2142,5 @@ export const ClinicalDifferential: React.FC<ClinicalDifferentialProps> = ({
     </div>
   );
 };
+
+

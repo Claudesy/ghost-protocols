@@ -22,6 +22,7 @@ vi.mock('@webext-core/messaging', () => ({
 }));
 
 import {
+  classifyTabMessageError,
   parseAnamnesaData,
   parseDiagnosaData,
   parseResepData,
@@ -121,5 +122,23 @@ describe('messaging runtime hardening', () => {
     await expect(sendMessageToTabWithTimeout(11, { type: 'scanFields' }, 100)).rejects.toThrow(
       'No content-script receiver'
     );
+  });
+
+  it('treats BFCache closed-channel errors as no-receiver for self-healing retry', async () => {
+    mockSendMessage.mockRejectedValueOnce(
+      new Error('The page keeping the extension port is moved into back/forward cache, so the message channel is closed.')
+    );
+
+    await expect(sendMessageToTabWithTimeout(11, { type: 'scanFields' }, 100)).rejects.toThrow(
+      'No content-script receiver'
+    );
+  });
+
+  it('classifies wrapped no-receiver errors from sendMessageToTabWithTimeout retries', () => {
+    const kind = classifyTabMessageError(
+      new Error('No content-script receiver for "scanVisitHistory" on tab 972825325')
+    );
+
+    expect(kind).toBe('NO_RECEIVER');
   });
 });

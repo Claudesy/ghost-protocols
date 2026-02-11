@@ -44,6 +44,9 @@ export interface AutocompleteOptions {
   dropdownSelector?: string;
   retries?: number;
   typeDelay?: number;
+  allowFirstItemFallback?: boolean;
+  requireDropdownSelection?: boolean;
+  ignoreExistingDropdown?: boolean;
 }
 
 // ============================================================================
@@ -160,10 +163,12 @@ export function dispatchKeyboardEvent(
  * Fill a text input field
  * Event chain: input → change → blur
  * SKIP if field already has value (user manual input)
+ * UNLESS forceOverride is true (for mandatory fields)
  */
 export async function fillTextField(
   selector: string,
-  value: string
+  value: string,
+  forceOverride: boolean = false
 ): Promise<FillResult> {
   const field = 'text:' + selector;
 
@@ -185,9 +190,15 @@ export async function fillTextField(
     }
 
     // SKIP if field already has value (user manual input - don't overwrite)
-    if (element.value && element.value.trim().length > 0) {
+    // UNLESS forceOverride is true (for mandatory fields like dokter, perawat, keluhan)
+    if (element.value && element.value.trim().length > 0 && !forceOverride) {
       fillerLog.debug(`[Filler] Skipped (has value): ${selector} = "${element.value.substring(0, 20)}..."`);
       return { success: true, field, value: element.value, method: 'direct' };
+    }
+
+    // If forceOverride is true, log that we're overriding
+    if (forceOverride && element.value && element.value.trim().length > 0) {
+      fillerLog.debug(`[Filler] ⚠️ FORCE OVERRIDE: ${selector} - Old: "${element.value.substring(0, 20)}..." → New: "${value.substring(0, 20)}..."`);
     }
 
     // Set value
@@ -263,12 +274,15 @@ export async function fillNumberField(
 /**
  * Fill a textarea field
  * Event chain: input → change → blur
+ * SKIP if field already has value (user manual input)
+ * UNLESS forceOverride is true (for mandatory fields)
  */
 export async function fillTextarea(
   selector: string,
-  value: string
+  value: string,
+  forceOverride: boolean = false
 ): Promise<FillResult> {
-  return fillTextField(selector, value); // Same logic as text field
+  return fillTextField(selector, value, forceOverride); // Same logic as text field
 }
 
 /**
@@ -424,6 +438,9 @@ export async function fillAutocomplete(
     dropdownSelector = '.ui-autocomplete .ui-menu-item, .dropdown-menu .dropdown-item, .autocomplete-results li, .tt-suggestion',
     retries = 2,
     typeDelay = 50,
+    allowFirstItemFallback = true,
+    requireDropdownSelection = false,
+    ignoreExistingDropdown = false,
   } = options;
 
   const field = 'autocomplete:' + selector;
@@ -469,9 +486,18 @@ export async function fillAutocomplete(
 
       // 5. Wait for dropdown to appear
       fillerLog.debug(`[Filler] Waiting for dropdown (${timeout}ms)...`);
-      const dropdown = await waitForDropdown(dropdownSelector, timeout);
+      const dropdown = await waitForDropdown(dropdownSelector, timeout, ignoreExistingDropdown);
 
       if (!dropdown) {
+        if (requireDropdownSelection) {
+          if (attempt < retries) {
+            fillerLog.warn(`[Filler] Dropdown required but missing, retry ${attempt + 1}/${retries}...`);
+            await sleep(300);
+            continue;
+          }
+          return { success: false, field, value, method: 'autocomplete', error: 'Dropdown not appeared' };
+        }
+
         if (attempt < retries) {
           fillerLog.warn(`[Filler] Dropdown not appeared, retry ${attempt + 1}/${retries}...`);
           await sleep(300);
@@ -497,13 +523,18 @@ export async function fillAutocomplete(
         }
       }
 
-      if (!matchedItem && items.length > 0) {
+      if (!matchedItem && allowFirstItemFallback && items.length > 0) {
         // Take first item if no exact match
         matchedItem = items[0] as HTMLElement;
         fillerLog.debug(`[Filler] No exact match, using first item`);
       }
 
       if (!matchedItem) {
+        if (attempt < retries) {
+          fillerLog.warn(`[Filler] No matching dropdown item, retry ${attempt + 1}/${retries}...`);
+          await sleep(250);
+          continue;
+        }
         return { success: false, field, value, method: 'autocomplete', error: 'No dropdown items found' };
       }
 
@@ -537,14 +568,17 @@ export async function fillAutocomplete(
  */
 async function waitForDropdown(
   selector: string,
-  timeout: number
+  timeout: number,
+  ignoreExisting: boolean = false
 ): Promise<HTMLElement | null> {
   return new Promise((resolve) => {
     // Check if dropdown already visible
-    const existing = document.querySelector(selector);
-    if (existing && isVisible(existing as HTMLElement)) {
-      resolve(existing as HTMLElement);
-      return;
+    if (!ignoreExisting) {
+      const existing = document.querySelector(selector);
+      if (existing && isVisible(existing as HTMLElement)) {
+        resolve(existing as HTMLElement);
+        return;
+      }
     }
 
     // Setup MutationObserver
@@ -806,6 +840,7 @@ export interface FieldMapping {
   value: string | number | boolean;
   type: 'text' | 'number' | 'textarea' | 'select' | 'checkbox' | 'autocomplete' | 'radio';
   autocompleteOptions?: AutocompleteOptions;
+  forceOverride?: boolean; // Always override existing value (for mandatory fields)
 }
 
 /**
@@ -832,7 +867,7 @@ export async function fillFields(
     switch (field.type) {
       case 'text':
       case 'textarea':
-        result = await fillTextField(field.selector, String(field.value));
+        result = await fillTextField(field.selector, String(field.value), field.forceOverride);
         break;
       case 'number':
         result = await fillNumberField(field.selector, Number(field.value));

@@ -160,21 +160,19 @@ function sanitizeFieldForPrompt(field: FieldSignature): Record<string, unknown> 
 // ============================================================================
 
 /**
- * Get OAuth2 token via chrome.identity
+ * Get OAuth2 token via chrome.identity (relay through background)
+ * Content scripts can't access chrome.identity directly - must relay via background
  */
 async function getAuthToken(): Promise<string> {
   return new Promise((resolve, reject) => {
-    chrome.identity.getAuthToken({ interactive: true }, (result) => {
-      if (chrome.runtime.lastError) {
-        reject(new Error(chrome.runtime.lastError.message));
-        return;
+    chrome.runtime.sendMessage({ type: 'GET_AUTH_TOKEN' }, (response) => {
+      if (response?.error) {
+        reject(new Error(response.error));
+      } else if (response?.token) {
+        resolve(response.token);
+      } else {
+        reject(new Error('No token received from background'));
       }
-      const token = typeof result === 'object' ? result.token : result;
-      if (!token) {
-        reject(new Error('Failed to retrieve OAuth token'));
-        return;
-      }
-      resolve(token);
     });
   });
 }

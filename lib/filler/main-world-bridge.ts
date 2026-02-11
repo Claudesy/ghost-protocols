@@ -52,7 +52,9 @@ interface FillResponseMessage {
  * @param timeoutMs - Max wait time for ping response (default: 2s)
  * @returns Promise with ping result (null if timeout)
  */
-async function pingMainWorld(timeoutMs: number = 2000): Promise<any> {
+async function pingMainWorld(
+  timeoutMs: number = 2000
+): Promise<{ hasJQueryAjax?: boolean; hasShowRiwayat?: boolean } | null> {
   bridgeLog.debug('[Bridge] Pinging main world...');
 
   return new Promise((resolve) => {

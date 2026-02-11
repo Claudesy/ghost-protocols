@@ -20,6 +20,7 @@ lerna-debug.log*
 
 node_modules
 .output
+output
 stats.html
 stats-*.json
 .wxt
@@ -29,6 +30,15 @@ web-ext.config.ts
 entrypoints/sidepanel/*.backup
 temp_styles.txt
 nul
+
+# Archived clutter
+archieved/2026-02-11-repo-optimization/
+archieved/legacy/.output/
+archieved/legacy/output/
+archieved/legacy/.claude/
+archieved/legacy/skills/
+archieved/legacy/sources/
+archieved/legacy/✅/
 
 # Editor directories and files
 .vscode/*

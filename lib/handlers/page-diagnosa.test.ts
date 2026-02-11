@@ -56,7 +56,10 @@ describe('fillDiagnosaForm fallback selector reliability', () => {
 
     expect(fillFieldsMock).toHaveBeenCalledTimes(1);
     const mappings = fillFieldsMock.mock.calls[0][0] as Array<{ selector: string }>;
-    expect(mappings[0]?.selector).toBe('input[name="icd10"]');
+    const selectedToken = mappings[0]?.selector || '';
+    expect(selectedToken).toMatch(/^\[data-sentra-target=/);
+    const targetedElement = document.querySelector(selectedToken) as HTMLInputElement | null;
+    expect(targetedElement?.name).toBe('icd10');
     expect(result.success.length).toBeGreaterThan(0);
   });
 });

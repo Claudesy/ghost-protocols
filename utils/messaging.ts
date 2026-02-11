@@ -7,7 +7,7 @@
 // Based on SENTRA-SPEC-001 v1.2.0 Section 4.4
 // Uses @webext-core/messaging for compile-time type safety
 
-import type { CDSSEngineStatus } from '@/lib/cdss/engine';
+import type { CDSSEngineStatus } from '@/lib/iskandar-diagnosis-engine/engine';
 import type {
   APIResponse,
   CDSSAlert,
@@ -111,8 +111,12 @@ export function classifyTabMessageError(error: unknown): TabMessageErrorKind {
 
   if (normalized.includes('timeout')) return 'TIMEOUT';
   if (
+    normalized.includes('no content-script receiver') ||
     normalized.includes('receiving end does not exist') ||
-    normalized.includes('could not establish connection')
+    normalized.includes('could not establish connection') ||
+    normalized.includes('message channel is closed') ||
+    normalized.includes('moved into back/forward cache') ||
+    normalized.includes('back/forward cache')
   ) {
     return 'NO_RECEIVER';
   }
@@ -228,6 +232,18 @@ interface ProtocolMap {
       keluhan_utama: string;
       diagnosa: { icd_x: string; nama: string } | null;
     }>;
+  }>;
+
+  // Panel → Worker → Content (Tenaga Medis Resolver)
+  resolveTenagaMedis(data: undefined): Promise<{
+    success: boolean;
+    error?: string;
+    tenagaMedis?: {
+      dokterNama: string;
+      perawatNama: string;
+      source: string[];
+      capturedAt: string;
+    };
   }>;
 
   // Content → Worker → Panel (Visit History Scraped Acknowledgment)

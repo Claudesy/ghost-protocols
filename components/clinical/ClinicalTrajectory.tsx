@@ -7,12 +7,13 @@ import {
   type TrajectoryAnalysis,
   type TrendDirection,
   type VitalTrend,
-} from '@/lib/cdss/trajectory-analyzer';
-import type { VisitRecord } from '@/lib/cdss/visit-history-store';
+} from '@/lib/iskandar-diagnosis-engine/trajectory-analyzer';
+import type { VisitRecord } from '@/lib/iskandar-diagnosis-engine/visit-history-store';
 import { sendMessage } from '@/utils/messaging';
 import React, { useEffect, useMemo, useState } from 'react';
 import type { ScreeningAlert } from './TTVInferenceUI';
-import { browser } from 'wxt/browser';
+import { CTHeader } from './CTHeader';
+import { DosageCalculator } from './DosageCalculator';
 
 // Lazy import ApexCharts
 const Chart = React.lazy(() => import('react-apexcharts'));
@@ -41,7 +42,7 @@ export interface ClinicalTrajectoryProps {
   patientRM: string;
   encounterId?: string;
   onBack: () => void;
-  onNextDifferential?: () => void;
+  onNextDifferential?: (trajectory: TrajectoryAnalysis, visitCount: number) => void;
 }
 
 type Phase = 'loading' | 'error' | 'ready';
@@ -147,16 +148,15 @@ function scoreToRiskLevel(score: number): RiskLevel {
 }
 
 const PAGE_BG_STYLE = {
-  background: 'linear-gradient(180deg, #202024 0%, #1a1a1d 100%)',
+  background: 'linear-gradient(180deg, #1e1e24 0%, #16161a 100%)',
+  WebkitFontSmoothing: 'antialiased',
+  MozOsxFontSmoothing: 'grayscale',
+  textRendering: 'geometricPrecision',
 } as React.CSSProperties;
-
-const TRAJECTORY_TITLE_STYLE: React.CSSProperties = {
-  color: 'var(--accent-primary)',
-};
 
 const PAGE_TOP_GLOW_STYLE: React.CSSProperties = {
   background:
-    'radial-gradient(ellipse 80% 50% at 50% -10%, rgba(255,107,47,0.08) 0%, transparent 70%)',
+    'radial-gradient(ellipse 80% 50% at 50% 0%, rgba(255,69,0,0.03) 0%, transparent 60%)',
 };
 
 function humanizeToken(value: string): string {
@@ -290,7 +290,11 @@ export const ClinicalTrajectory: React.FC<ClinicalTrajectoryProps> = ({
         },
       },
       theme: { mode: 'dark' },
-      colors: ['#ff6b2f', '#dcd7cc', '#c0bbb2'], // Match sidepanel page-1 accent + neutral palette
+      colors: [
+        getComputedStyle(document.documentElement).getPropertyValue('--accent-primary').trim() || '#FF4500',
+        getComputedStyle(document.documentElement).getPropertyValue('--cream').trim() || '#dcd7cc',
+        getComputedStyle(document.documentElement).getPropertyValue('--muted').trim() || '#c0bbb2',
+      ],
       stroke: { curve: 'smooth', width: 2 },
       fill: {
         type: 'gradient',
@@ -299,14 +303,22 @@ export const ClinicalTrajectory: React.FC<ClinicalTrajectoryProps> = ({
       xaxis: {
         categories: bpTrend.dates,
         labels: {
-          style: { colors: '#888580', fontSize: '9px', fontFamily: "'JetBrains Mono', monospace" },
+          style: {
+            colors: getComputedStyle(document.documentElement).getPropertyValue('--text-tertiary').trim() || '#9a9aa2',
+            fontSize: '9px',
+            fontFamily: "'JetBrains Mono', monospace",
+          },
         },
         axisBorder: { show: false },
         axisTicks: { show: false },
       },
       yaxis: {
         labels: {
-          style: { colors: '#c0bbb2', fontSize: '10px', fontFamily: "'JetBrains Mono', monospace" },
+          style: {
+            colors: getComputedStyle(document.documentElement).getPropertyValue('--muted').trim() || '#c0bbb2',
+            fontSize: '10px',
+            fontFamily: "'JetBrains Mono', monospace",
+          },
         },
       },
       grid: { borderColor: 'rgba(255,255,255,0.06)', strokeDashArray: 4 },
@@ -344,48 +356,21 @@ export const ClinicalTrajectory: React.FC<ClinicalTrajectoryProps> = ({
     return (
       <div className="ct-neu-shell relative min-h-screen w-full p-5" style={PAGE_BG_STYLE}>
         <div className="absolute top-0 left-0 right-0 h-40 pointer-events-none" style={PAGE_TOP_GLOW_STYLE} />
-        {/* Brand Header */}
-        <header className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <div className="neu-logo w-11 h-11 flex items-center justify-center overflow-hidden rounded-xl">
-              <img
-                src={browser.runtime.getURL('/sentra.png')}
-                alt="Sentra"
-                className="w-8 h-8 object-contain"
-              />
-            </div>
-            <div>
-              <h1 className="text-title text-platinum">Sentra Assist</h1>
-              <p className="text-small text-muted mt-0.5">Clinical Decision Support</p>
-            </div>
+        <CTHeader />
+        <div className="neu-card-inset p-1.5 mb-7 relative z-10">
+          <div className="flex gap-1.5">
+            <button
+              onClick={onBack}
+              className="motion-press flex-1 py-2 px-2 rounded-lg text-body relative neu-tab text-muted font-medium"
+            >
+              Satellite Processing
+            </button>
+            <button
+              className="motion-press flex-1 py-2 px-2 rounded-lg text-body relative neu-tab-active text-platinum font-semibold"
+            >
+              Clinical Trajectory
+            </button>
           </div>
-          <div className="flex items-center gap-3">
-            <div className="text-left">
-              <p className="text-[10px] text-muted leading-tight">Architected by</p>
-              <p className="text-[12px] text-platinum font-semibold leading-tight">
-                dr Ferdi Iskandar
-              </p>
-            </div>
-            <div className="w-14 h-14 flex items-center justify-center overflow-hidden rounded-xl">
-              <img
-                src={browser.runtime.getURL('/docsy.png')}
-                alt="Docsy"
-                className="w-14 h-14 object-contain"
-              />
-            </div>
-          </div>
-        </header>
-
-        <div className="flex items-center gap-3 mb-6">
-          <button
-            onClick={onBack}
-            className="bg-[var(--surface-secondary)] border border-[var(--border-subtle)] rounded-[6px] px-3 py-2 text-xs font-semibold text-platinum hover:bg-carbon-800 transition-colors"
-          >
-            ← Kembali
-          </button>
-          <h2 className="text-xs font-semibold uppercase tracking-wide animate-pulse" style={TRAJECTORY_TITLE_STYLE}>
-            Clinical Trajectory
-          </h2>
         </div>
         <div className="ttv-section p-8 flex flex-col items-center justify-center gap-4">
           <div className="w-8 h-8 border-3 border-pulse-500 border-t-transparent rounded-full animate-spin"></div>
@@ -400,48 +385,21 @@ export const ClinicalTrajectory: React.FC<ClinicalTrajectoryProps> = ({
     return (
       <div className="ct-neu-shell relative min-h-screen w-full p-5" style={PAGE_BG_STYLE}>
         <div className="absolute top-0 left-0 right-0 h-40 pointer-events-none" style={PAGE_TOP_GLOW_STYLE} />
-        {/* Brand Header */}
-        <header className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <div className="neu-logo w-11 h-11 flex items-center justify-center overflow-hidden rounded-xl">
-              <img
-                src={browser.runtime.getURL('/sentra.png')}
-                alt="Sentra"
-                className="w-8 h-8 object-contain"
-              />
-            </div>
-            <div>
-              <h1 className="text-title text-platinum">Sentra Assist</h1>
-              <p className="text-small text-muted mt-0.5">Clinical Decision Support</p>
-            </div>
+        <CTHeader />
+        <div className="neu-card-inset p-1.5 mb-7 relative z-10">
+          <div className="flex gap-1.5">
+            <button
+              onClick={onBack}
+              className="motion-press flex-1 py-2 px-2 rounded-lg text-body relative neu-tab text-muted font-medium"
+            >
+              Satellite Processing
+            </button>
+            <button
+              className="motion-press flex-1 py-2 px-2 rounded-lg text-body relative neu-tab-active text-platinum font-semibold"
+            >
+              Clinical Trajectory
+            </button>
           </div>
-          <div className="flex items-center gap-3">
-            <div className="text-left">
-              <p className="text-[10px] text-muted leading-tight">Architected by</p>
-              <p className="text-[12px] text-platinum font-semibold leading-tight">
-                dr Ferdi Iskandar
-              </p>
-            </div>
-            <div className="w-14 h-14 flex items-center justify-center overflow-hidden rounded-xl">
-              <img
-                src={browser.runtime.getURL('/docsy.png')}
-                alt="Docsy"
-                className="w-14 h-14 object-contain"
-              />
-            </div>
-          </div>
-        </header>
-
-        <div className="flex items-center gap-3 mb-6">
-          <button
-            onClick={onBack}
-            className="bg-[var(--surface-secondary)] border border-[var(--border-subtle)] rounded-[6px] px-3 py-2 text-xs font-semibold text-platinum hover:bg-carbon-800 transition-colors"
-          >
-            ← Kembali
-          </button>
-          <h2 className="text-xs font-semibold uppercase tracking-wide animate-pulse" style={TRAJECTORY_TITLE_STYLE}>
-            Clinical Trajectory
-          </h2>
         </div>
         <div className="ttv-section p-6 flex flex-col items-center gap-4">
           <div className="w-12 h-12 rounded-full bg-critical/20 border border-critical/50 flex items-center justify-center">
@@ -450,14 +408,14 @@ export const ClinicalTrajectory: React.FC<ClinicalTrajectoryProps> = ({
           <p className="text-small text-critical">{errorMsg || 'Gagal memuat data trajectory'}</p>
           <button
             onClick={() => setPhase('loading')}
-            className="bg-[var(--surface-secondary)] border border-[var(--border-subtle)] rounded-[6px] px-4 py-2 text-xs font-semibold text-platinum hover:bg-carbon-800 transition-colors"
+            className="neu-tab py-2 px-4 rounded-lg border border-[rgba(255,255,255,0.06)] text-small font-medium text-platinum cursor-pointer"
           >
             Coba Lagi
           </button>
         </div>
         {scrapeLog.length > 0 && (
-          <div className="bg-[var(--surface-primary)] border border-[var(--border-subtle)] rounded-[6px] mt-4 p-4">
-            <div className="text-tiny font-bold text-caution uppercase tracking-wider mb-2">ERROR DIAGNOSTICS</div>
+          <div className="neu-card-inset mt-4 p-4">
+            <div className="ttv-label mb-2" style={{ color: '#F59E0B' }}>ERROR DIAGNOSTICS</div>
             {scrapeLog.map((line, i) => (
               <div key={i} className="text-tiny text-muted font-mono mb-1">{line}</div>
             ))}
@@ -509,85 +467,62 @@ export const ClinicalTrajectory: React.FC<ClinicalTrajectoryProps> = ({
   return (
     <div className="ct-neu-shell relative min-h-screen w-full p-5 flex flex-col gap-4" style={PAGE_BG_STYLE}>
       <div className="absolute top-0 left-0 right-0 h-40 pointer-events-none" style={PAGE_TOP_GLOW_STYLE} />
-      {/* Brand Header */}
-      <header className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-          <div className="neu-logo w-11 h-11 flex items-center justify-center overflow-hidden rounded-xl">
-            <img
-              src={browser.runtime.getURL('/sentra.png')}
-              alt="Sentra"
-              className="w-8 h-8 object-contain"
-            />
-          </div>
-          <div>
-            <h1 className="text-title text-platinum">Sentra Assist</h1>
-            <p className="text-small text-muted mt-0.5">Clinical Decision Support</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="text-left">
-            <p className="text-[10px] text-muted leading-tight">Architected by</p>
-            <p className="text-[12px] text-platinum font-semibold leading-tight">
-              dr Ferdi Iskandar
-            </p>
-          </div>
-          <div className="w-14 h-14 flex items-center justify-center overflow-hidden rounded-xl">
-            <img
-              src={browser.runtime.getURL('/docsy.png')}
-              alt="Docsy"
-              className="w-14 h-14 object-contain"
-            />
-          </div>
-        </div>
-      </header>
+      <CTHeader />
 
-      {/* Navigation with back button */}
-      <div className="flex items-center gap-3">
-        <button
-          onClick={onBack}
-          className="bg-[var(--surface-secondary)] border border-[var(--border-subtle)] rounded-[6px] px-3 py-2 text-xs font-semibold text-platinum hover:bg-carbon-800 transition-colors"
-        >
-          ← Kembali
-        </button>
-        <div className="flex-1">
-          <h2 className="text-xs font-semibold uppercase tracking-wide animate-pulse" style={TRAJECTORY_TITLE_STYLE}>
-            Clinical Trajectory
-          </h2>
-        </div>
-        <div className="flex items-center gap-2">
-          <span
-            className="ct-neu-chip px-2 py-1 text-tiny font-bold uppercase tracking-wide rounded border"
-            style={{ color: TREND_COLOR[analysis.overallTrend], borderColor: TREND_COLOR[analysis.overallTrend] }}
+      {/* Top Tab Navigation */}
+      <div className="neu-card-inset p-1.5 mb-7 relative z-10">
+        <div className="flex gap-1.5">
+          <button
+            onClick={onBack}
+            className="motion-press flex-1 py-2 px-2 rounded-lg text-body relative neu-tab text-muted font-medium"
           >
-            {TREND_ICON[analysis.overallTrend]} {TREND_LABEL[analysis.overallTrend]}
-          </span>
-          <span className="ct-neu-chip bg-[var(--surface-secondary)] border border-[var(--border-subtle)] rounded-[6px] px-2 py-1 text-tiny font-mono text-muted">
-            {visitCount} kunjungan
-          </span>
+            Satellite Processing
+          </button>
+          <button
+            className="motion-press flex-1 py-2 px-2 rounded-lg text-body relative neu-tab-active text-platinum font-semibold"
+          >
+            Clinical Trajectory
+          </button>
         </div>
       </div>
 
-      {/* Current Vitals - Compact 2 Columns */}
-      <div className="ttv-section p-4">
-        <div className="grid grid-cols-2 gap-2">
-          <VitalCardCompact label="SBP/DBP" value={`${vitals.sbp}/${vitals.dbp}`} unit="mmHg" alert={vitals.sbp >= 140 || vitals.dbp >= 90} />
-          <VitalCardCompact label="HR" value={String(vitals.hr)} unit="bpm" alert={vitals.hr > 100 || vitals.hr < 60} />
-          <VitalCardCompact label="RR" value={String(vitals.rr)} unit="/min" alert={vitals.rr > 20 || vitals.rr < 12} />
-          <VitalCardCompact label="TEMP" value={vitals.temp.toFixed(1)} unit="°C" alert={vitals.temp >= 37.5} />
-          {vitals.glucose > 0 && (
-            <VitalCardCompact label="GDS" value={String(vitals.glucose)} unit="mg/dL" alert={vitals.glucose >= 200 || vitals.glucose < 70} />
-          )}
+      {/* TREND VISUALIZATION - Moved to top */}
+      {chartConfig && (
+        <div className="ttv-section p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="ttv-section-title">TREND VISUALIZATION</h3>
+            <span
+              className="ct-neu-chip text-muted"
+              style={{
+                borderColor: 'rgba(255,255,255,0.06)',
+                fontSize: '10px',
+                padding: '4px 10px',
+              }}
+            >
+              {visitCount} kunjungan
+            </span>
+          </div>
+          <div className="rounded overflow-hidden">
+            <React.Suspense fallback={<div className="text-small text-muted p-4">Memuat chart...</div>}>
+              <Chart
+                options={chartConfig.options}
+                series={chartConfig.series}
+                type="area"
+                height={180}
+              />
+            </React.Suspense>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Screening Alerts */}
       {alerts.length > 0 && (
         <div className="ttv-section p-4">
-          <h3 className="text-xs font-bold text-muted uppercase tracking-wider mb-3">SCREENING ALERTS</h3>
+          <h3 className="ttv-section-title mb-3">SCREENING ALERTS</h3>
           <div className="flex flex-col gap-2">
             {alerts.slice(0, 3).map((alert) => (
-              <div key={alert.id} className="flex items-center gap-2 p-2 rounded bg-critical/5 border border-critical/20">
-                <span className="text-tiny font-bold text-critical uppercase tracking-wide">{alert.severity}</span>
+              <div key={alert.id} className="neu-card-inset px-3 py-2 flex items-center gap-2 border-l-2 border-critical">
+                <span className="ttv-label text-critical">{alert.severity}</span>
                 <span className="text-small text-platinum">{alert.title}</span>
               </div>
             ))}
@@ -595,55 +530,83 @@ export const ClinicalTrajectory: React.FC<ClinicalTrajectoryProps> = ({
         </div>
       )}
 
-      {/* Trajectory Status */}
-      <div
-        className="ttv-section p-4 flex items-center gap-3 border-l-4"
-        style={{ borderLeftColor: TREND_COLOR[analysis.overallTrend] }}
-      >
-        <span className="text-2xl" style={{ color: TREND_COLOR[analysis.overallTrend] }}>
-          {TREND_ICON[analysis.overallTrend]}
-        </span>
-        <div className="flex-1">
-          <div className="text-small font-bold uppercase tracking-wide" style={{ color: TREND_COLOR[analysis.overallTrend] }}>
-            {TREND_LABEL[analysis.overallTrend]}
+      {/* Trajectory Status - Expanded */}
+      <div className="ttv-section p-5">
+        <div className="flex items-start gap-4 mb-4">
+          <span className="text-3xl" style={{ color: TREND_COLOR[analysis.overallTrend] }}>
+            {TREND_ICON[analysis.overallTrend]}
+          </span>
+          <div className="flex-1">
+            <div className="flex items-center gap-2 mb-2">
+              <span
+                className="ct-neu-chip"
+                style={{
+                  color: TREND_COLOR[analysis.overallTrend],
+                  borderColor: TREND_COLOR[analysis.overallTrend],
+                  fontSize: '10px',
+                  padding: '4px 10px',
+                }}
+              >
+                {TREND_LABEL[analysis.overallTrend]}
+              </span>
+              <span
+                className="ct-neu-chip"
+                style={{
+                  color: RISK_STYLE[analysis.overallRisk].color,
+                  background: RISK_STYLE[analysis.overallRisk].bg,
+                  borderColor: RISK_STYLE[analysis.overallRisk].border,
+                }}
+              >
+                {humanizeToken(analysis.overallRisk).toUpperCase()}
+              </span>
+            </div>
+            <div className="text-body text-muted leading-relaxed">{analysis.summary}</div>
           </div>
-          <div className="text-small text-muted">{analysis.summary}</div>
         </div>
-        <span
-          className="ct-neu-chip px-2 py-1 text-tiny font-bold uppercase tracking-wide rounded border"
-          style={{
-            color: RISK_STYLE[analysis.overallRisk].color,
-            background: RISK_STYLE[analysis.overallRisk].bg,
-            borderColor: RISK_STYLE[analysis.overallRisk].border,
-          }}
-        >
-          {humanizeToken(analysis.overallRisk).toUpperCase()}
-        </span>
+
+        {/* Analysis Detail Row */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="neu-card-inset p-3">
+            <div className="ttv-label text-tertiary mb-1">Overall Trend</div>
+            <div className="text-small font-mono text-platinum">{TREND_LABEL[analysis.overallTrend]}</div>
+          </div>
+          <div className="neu-card-inset p-3">
+            <div className="ttv-label text-tertiary mb-1">Risk Level</div>
+            <div className="text-small font-mono" style={{ color: RISK_STYLE[analysis.overallRisk].color }}>
+              {humanizeToken(analysis.overallRisk).toUpperCase()}
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Clinical Command Panel */}
-      <div
-        className="ttv-section p-4 border-l-4"
-        style={{ borderLeftColor: urgencyStyle.color }}
-      >
-        <div className="flex flex-wrap items-start justify-between gap-2 mb-3">
+      <div className="ttv-section p-4">
+        <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
           <div>
-            <h3 className="text-xs font-bold text-muted uppercase tracking-wider">CLINICAL COMMAND PANEL (24H)</h3>
+            <h3 className="ttv-section-title mb-2">CLINICAL COMMAND PANEL (24H)</h3>
             <p className="text-small text-platinum mt-1">{analysis.clinical_safe_output.recommended_action}</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <span
-              className="ct-neu-chip px-2 py-1 text-tiny font-bold uppercase tracking-wide rounded border"
-              style={{ color: urgencyStyle.color, background: urgencyStyle.bg, borderColor: urgencyStyle.border }}
+              className="ct-neu-chip"
+              style={{
+                color: urgencyStyle.color,
+                background: urgencyStyle.bg,
+                borderColor: urgencyStyle.border,
+                fontSize: '10px',
+                padding: '4px 10px',
+              }}
             >
               {urgencyStyle.label}
             </span>
             <span
-              className="ct-neu-chip px-2 py-1 text-tiny font-bold uppercase tracking-wide rounded border"
+              className="ct-neu-chip"
               style={{
                 color: deteriorationStyle.color,
                 background: deteriorationStyle.bg,
                 borderColor: deteriorationStyle.border,
+                fontSize: '10px',
+                padding: '4px 10px',
               }}
             >
               {deteriorationStyle.label}
@@ -679,7 +642,8 @@ export const ClinicalTrajectory: React.FC<ClinicalTrajectoryProps> = ({
             {analysis.clinical_safe_output.drivers.slice(0, 3).map((driver, i) => (
               <span
                 key={i}
-                className="ct-neu-chip px-2 py-0.5 rounded bg-carbon-800/60 border border-[var(--border-subtle)] text-[10px] text-muted"
+                className="ct-neu-chip text-muted"
+                style={{ borderColor: 'rgba(255,255,255,0.06)', fontSize: '10px', padding: '4px 10px' }}
               >
                 {humanizeToken(driver)}
               </span>
@@ -695,8 +659,11 @@ export const ClinicalTrajectory: React.FC<ClinicalTrajectoryProps> = ({
       >
         <summary className="cursor-pointer list-none">
           <div className="flex items-center justify-between gap-2">
-            <h3 className="text-xs font-bold text-muted uppercase tracking-wider">ACUTE ATTACK RISK (24H)</h3>
-            <span className="text-tiny font-mono text-muted">
+            <div className="flex items-center gap-2">
+              <span className="text-muted text-sm">▸</span>
+              <h3 className="text-small font-bold text-platinum uppercase tracking-wide">ACUTE ATTACK RISK (24H)</h3>
+            </div>
+            <span className="font-mono text-muted" style={{ fontSize: '9px' }}>
               high/critical: {highAcuteRiskCount}/5
             </span>
           </div>
@@ -708,11 +675,11 @@ export const ClinicalTrajectory: React.FC<ClinicalTrajectoryProps> = ({
             return (
               <div
                 key={risk.label}
-                className="ct-neu-cell bg-[var(--surface-primary)] border rounded-[6px] p-2"
+                className="ct-neu-cell"
                 style={{ borderColor: style.border }}
               >
-                <div className="ct-neu-cell-label text-tiny uppercase tracking-wide text-muted">{risk.label}</div>
-                <div className="text-sm font-mono font-bold mt-1" style={{ color: style.color }}>
+                <div className="ct-neu-cell-label">{risk.label}</div>
+                <div className="text-small font-mono font-bold mt-1" style={{ color: style.color }}>
                   {risk.value}
                 </div>
               </div>
@@ -725,10 +692,13 @@ export const ClinicalTrajectory: React.FC<ClinicalTrajectoryProps> = ({
       <details className="ttv-section p-4">
         <summary className="cursor-pointer list-none">
           <div className="flex items-center justify-between gap-2">
-            <h3 className="text-xs font-bold text-muted uppercase tracking-wider">
-              EARLY WARNING + VOLATILITY
-            </h3>
-            <span className="text-tiny font-mono text-muted">
+            <div className="flex items-center gap-2">
+              <span className="text-muted text-sm">▸</span>
+              <h3 className="text-small font-bold text-platinum uppercase tracking-wide">
+                EARLY WARNING + VOLATILITY
+              </h3>
+            </div>
+            <span className="font-mono text-muted" style={{ fontSize: '9px' }}>
               breaches: {analysis.early_warning_burden.total_breaches_last5} | volatility:{' '}
               {analysis.trajectory_volatility.volatility_index}
             </span>
@@ -740,9 +710,9 @@ export const ClinicalTrajectory: React.FC<ClinicalTrajectoryProps> = ({
             value={analysis.early_warning_burden.total_breaches_last5}
             tone={analysis.early_warning_burden.total_breaches_last5 >= 4 ? 'high' : 'moderate'}
           />
-          <div className="ct-neu-cell bg-[var(--surface-primary)] border border-[var(--border-subtle)] rounded-[6px] p-2">
-            <div className="ct-neu-cell-label text-tiny uppercase tracking-wide text-muted">Stability Label</div>
-            <div className="text-sm font-mono font-bold mt-1" style={{ color: stabilityStyle.color }}>
+          <div className="neu-card-inset p-2.5">
+            <div className="ttv-label text-tertiary">Stability Label</div>
+            <div className="text-small font-mono font-bold mt-1" style={{ color: stabilityStyle.color }}>
               {stabilityStyle.label}
             </div>
           </div>
@@ -755,7 +725,8 @@ export const ClinicalTrajectory: React.FC<ClinicalTrajectoryProps> = ({
               {activeBreaches.map((item) => (
                 <span
                   key={item.label}
-                  className="ct-neu-chip px-2 py-0.5 rounded bg-carbon-800/60 border border-[var(--border-subtle)] text-[10px] text-muted font-mono"
+                  className="ct-neu-chip text-muted"
+                  style={{ borderColor: 'rgba(255,255,255,0.06)', fontSize: '10px', padding: '4px 10px' }}
                 >
                   {item.label}: {item.count}
                 </span>
@@ -774,7 +745,8 @@ export const ClinicalTrajectory: React.FC<ClinicalTrajectoryProps> = ({
               {etaEntries.map(([key, value]) => (
                 <span
                   key={key}
-                  className="ct-neu-chip px-2 py-0.5 rounded bg-carbon-800/60 border border-[var(--border-subtle)] text-[10px] text-muted font-mono"
+                  className="ct-neu-chip text-muted"
+                  style={{ borderColor: 'rgba(255,255,255,0.06)', fontSize: '10px', padding: '4px 10px' }}
                 >
                   {humanizeToken(key.replace('_hours_to_critical', '')).toUpperCase()}: {value}h
                 </span>
@@ -789,13 +761,16 @@ export const ClinicalTrajectory: React.FC<ClinicalTrajectoryProps> = ({
         <details className="ttv-section p-4">
           <summary className="cursor-pointer list-none">
             <div className="flex items-center justify-between gap-2">
-              <h3 className="text-xs font-bold text-muted uppercase tracking-wider">RISK DRIVERS + DATA GAPS</h3>
-              <span className="text-tiny font-mono text-muted">
+              <div className="flex items-center gap-2">
+                <span className="text-muted text-sm">▸</span>
+                <h3 className="text-small font-bold text-platinum uppercase tracking-wide">RISK DRIVERS + DATA GAPS</h3>
+              </div>
+              <span className="font-mono text-muted" style={{ fontSize: '9px' }}>
                 drivers: {analysis.clinical_safe_output.drivers.length} | missing:{' '}
                 {analysis.clinical_safe_output.missing_data.length}
               </span>
-            </div>
-          </summary>
+          </div>
+        </summary>
           <div className="mt-3">
             {analysis.clinical_safe_output.drivers.length > 0 && (
               <div className="mb-3">
@@ -809,12 +784,13 @@ export const ClinicalTrajectory: React.FC<ClinicalTrajectoryProps> = ({
             )}
             {analysis.clinical_safe_output.missing_data.length > 0 && (
               <div>
-                <div className="text-tiny font-bold text-caution uppercase tracking-wide mb-1">MISSING DATA</div>
+                <div className="text-tiny font-bold uppercase tracking-wide mb-1" style={{ color: '#F59E0B' }}>MISSING DATA</div>
                 <div className="flex flex-wrap gap-1">
                   {analysis.clinical_safe_output.missing_data.slice(0, 8).map((item, i) => (
                     <span
                       key={i}
-                      className="ct-neu-chip px-2 py-0.5 rounded bg-carbon-800/60 border border-[var(--border-subtle)] text-[10px] text-muted font-mono"
+                      className="ct-neu-chip text-muted"
+                      style={{ borderColor: 'rgba(255,255,255,0.06)', fontSize: '10px', padding: '4px 10px' }}
                     >
                       {humanizeToken(item)}
                     </span>
@@ -826,27 +802,10 @@ export const ClinicalTrajectory: React.FC<ClinicalTrajectoryProps> = ({
         </details>
       )}
 
-      {/* Chart */}
-      {chartConfig && (
-        <div className="ttv-section p-4">
-          <h3 className="text-xs font-bold text-muted uppercase tracking-wider mb-3">TREND VISUALIZATION</h3>
-          <div className="rounded overflow-hidden">
-            <React.Suspense fallback={<div className="text-small text-muted p-4">Memuat chart...</div>}>
-              <Chart
-                options={chartConfig.options}
-                series={chartConfig.series}
-                type="area"
-                height={180}
-              />
-            </React.Suspense>
-          </div>
-        </div>
-      )}
-
       {/* Vital Trend Cards */}
       {activeTrends.length > 0 && (
-        <div className="ttv-section p-4">
-          <h3 className="text-xs font-bold text-muted uppercase tracking-wider mb-3">VITAL TRENDS</h3>
+        <div className="ttv-section p-4 mb-4">
+          <h3 className="ttv-section-title mb-3">VITAL TRENDS</h3>
           <div className="flex flex-col gap-2">
             {activeTrends.map((trend) => (
               <TrendCard key={trend.parameter} trend={trend} />
@@ -855,15 +814,38 @@ export const ClinicalTrajectory: React.FC<ClinicalTrajectoryProps> = ({
         </div>
       )}
 
+      {/* SenCal Medical Calculators */}
+      <details className="mb-4">
+        <summary className="ttv-section p-4 cursor-pointer list-none">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <span className="text-muted text-sm">▸</span>
+              <h3 className="text-small font-bold text-platinum uppercase tracking-wide">
+                SenCal
+              </h3>
+            </div>
+            <span className="font-mono text-muted" style={{ fontSize: '9px' }}>
+              kalkulator medis
+            </span>
+          </div>
+        </summary>
+        <div className="mt-0">
+          <DosageCalculator
+            patientAge={_patientAge}
+            patientWeight={undefined}
+          />
+        </div>
+      </details>
+
       {/* Recommendations */}
       {analysis.recommendations.length > 0 && (
         <div className="ttv-section p-4">
-          <h3 className="text-xs font-bold text-muted uppercase tracking-wider mb-3">REKOMENDASI</h3>
+          <h3 className="ttv-section-title mb-3">REKOMENDASI</h3>
           <div className="flex flex-col gap-2">
             {analysis.recommendations.map((rec, i) => (
-              <div key={i} className="flex items-start gap-2 p-3 rounded bg-carbon-800/50">
+              <div key={i} className="neu-card-inset px-3 py-2.5 flex items-start gap-2">
                 <span
-                  className="text-tiny font-bold uppercase tracking-wide"
+                  className="ttv-label flex-shrink-0 mt-0.5"
                   style={{
                     color:
                       rec.priority === 'high'
@@ -875,7 +857,7 @@ export const ClinicalTrajectory: React.FC<ClinicalTrajectoryProps> = ({
                 >
                   {rec.priority}
                 </span>
-                <span className="flex-1 text-small text-platinum">{rec.text}</span>
+                <span className="text-small text-platinum" style={{ lineHeight: '1.5' }}>{rec.text}</span>
               </div>
             ))}
           </div>
@@ -884,8 +866,8 @@ export const ClinicalTrajectory: React.FC<ClinicalTrajectoryProps> = ({
 
       {/* Scraper Diagnostics (only when ≤1 visit) */}
       {scrapeLog.length > 0 && visitCount <= 1 && (
-        <div className="bg-[var(--surface-primary)] border border-[var(--border-subtle)] rounded-[6px] p-4">
-          <div className="text-tiny font-bold text-caution uppercase tracking-wider mb-2">SCRAPER DIAGNOSTICS</div>
+        <div className="neu-card-inset p-4">
+          <div className="ttv-label mb-2" style={{ color: '#F59E0B' }}>SCRAPER DIAGNOSTICS</div>
           {scrapeLog.map((line, i) => (
             <div key={i} className="text-tiny text-muted font-mono mb-1">{line}</div>
           ))}
@@ -893,45 +875,22 @@ export const ClinicalTrajectory: React.FC<ClinicalTrajectoryProps> = ({
       )}
 
       {/* Next Step Flow */}
-      {onNextDifferential && (
-        <button
-          onClick={onNextDifferential}
-          className="w-full py-3 px-4 rounded-xl text-body font-medium transition-all"
-          style={{
-            background: 'linear-gradient(135deg, rgba(255,107,47,0.12) 0%, rgba(245,158,11,0.1) 100%)',
-            border: '1px solid rgba(255,107,47,0.35)',
-            color: '#FF6B2F',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 8,
-          }}
-        >
-          <span style={{ fontSize: 16 }}>{'\u2695'}</span>
-          Lanjut ke Differential Dx
-        </button>
+      {onNextDifferential && analysis && (
+        <div className="neu-card-inset p-1.5 relative z-10">
+          <button
+            onClick={() => onNextDifferential(analysis, visitCount)}
+            className="motion-press w-full py-2 px-2 rounded-lg text-body relative neu-tab text-muted font-medium hover:text-platinum transition-all flex items-center justify-center gap-2"
+          >
+            <span className="text-base">⚕</span>
+            Differential Diagnosis
+          </button>
+        </div>
       )}
     </div>
   );
 };
 
 // Sub-components
-
-// Compact horizontal vital card (1 row per vital)
-function VitalCardCompact({ label, value, unit, alert }: { label: string; value: string; unit: string; alert: boolean }) {
-  return (
-    <div className={`ct-neu-cell bg-[var(--surface-primary)] border border-[var(--border-subtle)] rounded-[6px] px-3 py-2 flex items-center gap-3 ${alert ? 'border-l-2 border-critical' : ''}`}>
-      <span className="ct-vital-label-text text-tiny font-semibold text-muted uppercase tracking-wide w-20">{label}</span>
-      <div className="flex items-baseline gap-1 flex-1">
-        <span className={`text-sm font-mono font-bold ${alert ? 'text-critical' : 'text-platinum'}`}>
-          {value}
-        </span>
-        <span className="text-tiny font-mono text-muted">{unit}</span>
-      </div>
-    </div>
-  );
-}
 
 function MetricTile({
   label,
@@ -945,9 +904,9 @@ function MetricTile({
   const toneStyle = RISK_STYLE[tone];
   const displayValue = typeof value === 'string' ? humanizeToken(value) : value;
   return (
-    <div className="ct-neu-cell bg-[var(--surface-primary)] border rounded-[6px] p-2" style={{ borderColor: toneStyle.border }}>
-      <div className="ct-neu-cell-label text-tiny uppercase tracking-wide text-muted">{label}</div>
-      <div className="text-sm font-mono font-bold mt-1" style={{ color: toneStyle.color }}>
+    <div className="neu-card-inset p-2.5" style={{ borderColor: toneStyle.border }}>
+      <div className="ttv-label text-tertiary">{label}</div>
+      <div className="text-small font-mono font-bold mt-1" style={{ color: toneStyle.color }}>
         {displayValue}
       </div>
     </div>
@@ -959,27 +918,35 @@ function TrendCard({ trend }: { trend: VitalTrend }) {
   const trendColor = TREND_COLOR[trend.trend];
 
   return (
-    <div className="bg-[var(--surface-primary)] border border-[var(--border-subtle)] rounded-[6px] p-3 flex items-center gap-3">
-      <span className="text-2xl" style={{ color: trendColor }}>{TREND_ICON[trend.trend]}</span>
-      <div className="flex-1">
-        <div className="flex items-center gap-2 mb-1">
-          <span className="text-small font-semibold text-platinum uppercase tracking-wide">{trend.label}</span>
-          <span className="text-small font-mono font-bold" style={{ color: trendColor }}>
-            {trend.changePercent > 0 ? '+' : ''}{trend.changePercent.toFixed(0)}%
-          </span>
-        </div>
-        <span className="text-tiny text-muted">{trend.note}</span>
+    <div className="neu-card-inset p-3 flex items-center gap-3">
+      <div className="flex items-center gap-2 flex-1">
+        <span
+          className="ct-neu-chip"
+          style={{
+            color: trendColor,
+            borderColor: trendColor,
+            fontSize: '10px',
+            padding: '4px 10px',
+          }}
+        >
+          {TREND_ICON[trend.trend]} {trend.label}
+        </span>
+        <span
+          className="ct-neu-chip"
+          style={{
+            color: riskStyle.color,
+            background: riskStyle.bg,
+            borderColor: riskStyle.border,
+            fontSize: '10px',
+            padding: '4px 10px',
+          }}
+        >
+          {trend.risk.toUpperCase()}
+        </span>
+        <span className="text-small font-mono font-bold text-muted">
+          {trend.changePercent > 0 ? '+' : ''}{trend.changePercent.toFixed(0)}%
+        </span>
       </div>
-      <span
-        className="px-2 py-1 text-tiny font-bold uppercase tracking-wide rounded border"
-        style={{
-          color: riskStyle.color,
-          background: riskStyle.bg,
-          borderColor: riskStyle.border,
-        }}
-      >
-        {trend.risk}
-      </span>
     </div>
   );
 }

@@ -13,7 +13,7 @@
 import { useState } from 'react';
 import { ChevronDown, ChevronUp, Check, Copy, AlertTriangle } from 'lucide-react';
 import { ConfidenceMeter } from './ConfidenceMeter';
-import type { ValidatedSuggestion } from '@/lib/cdss/validation/types';
+import type { ValidatedSuggestion } from '@/lib/iskandar-diagnosis-engine/validation/types';
 
 // =============================================================================
 // TYPES

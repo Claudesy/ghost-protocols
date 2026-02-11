@@ -12,7 +12,7 @@
 
 import { useState } from 'react';
 import { AlertTriangle, ChevronDown, ChevronUp, Phone, Ambulance } from 'lucide-react';
-import type { RedFlag } from '@/lib/cdss/red-flags';
+import type { RedFlag } from '@/lib/iskandar-diagnosis-engine/red-flags';
 
 // =============================================================================
 // TYPES

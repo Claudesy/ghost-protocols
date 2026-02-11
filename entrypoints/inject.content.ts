@@ -23,7 +23,7 @@ export default defineContentScript({
     // PHASE 1 DIAGNOSTIC: Check jQuery availability
     const win = window as unknown as Record<string, unknown>;
     const hasJQuery = typeof win.$ === 'function';
-    const hasJQueryUI = hasJQuery && typeof (win.$ as any).ui === 'object';
+    const hasJQueryUI = hasJQuery && typeof (win.$ as { ui?: unknown }).ui === 'object';
 
     console.log('[MainWorld] ✅ jQuery available?', hasJQuery);
     console.log('[MainWorld] ✅ jQuery UI available?', hasJQueryUI);

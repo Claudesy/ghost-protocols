@@ -1,15 +1,15 @@
 {
   "_metadata": {
     "version": "2.0.0",
-    "description": "Master Database 144 Penyakit KKI untuk Sentra Assist CDSS",
+    "description": "Master Database 159 Penyakit KKI untuk Sentra Assist CDSS",
     "sources": [
       "144 Diagnosis KKI - Standar Kompetensi Dokter Indonesia",
       "Panduan Praktik Klinis Bagi Dokter di FKTP - IDI 2013"
     ],
-    "total_diseases": 144,
-    "with_clinical_data": 144,
+    "total_diseases": 159,
+    "with_clinical_data": 159,
     "coverage_percentage": 100,
-    "last_updated": "2026-01-30T20:52:33.817687",
+    "last_updated": "2026-02-10T19:33:14.321Z",
     "author": "Sentra Healthcare Solutions"
   },
   "penyakit": [
@@ -590,10 +590,30 @@
       "can_refer": false,
       "definisi": "Mata kering adalah suatu keadaan keringnya permukaan kornea dan konjungtiva yang\ndiakibatkan berkurangnya produksi komponen air mata (musin, akueous, dan lipid). Mata\nkering merupakan salah satu gangguan yang sering pada mata, persentase insiden sekitar 10-\n30% dari populasi, terutama pada orang yang usianya lebih dari 40 tahun dan 90% terjadi\npada wanita.",
       "gejala_klinis": [
-        "Keluhan dapat disertai"
+        "Mata terasa kering",
+        "Mata terasa perih dan pedas",
+        "Sensasi berpasir atau mengganjal pada mata",
+        "Mata merah",
+        "Mata mudah lelah",
+        "Penglihatan kabur sementara yang membaik setelah berkedip",
+        "Fotofobia ringan",
+        "Produksi air mata berlebihan sebagai kompensasi (epifora paradoks)",
+        "Rasa tidak nyaman yang memburuk di lingkungan berangin, kering, atau ber-AC",
+        "Sulit menggunakan lensa kontak"
       ],
-      "pemeriksaan_fisik": [],
-      "diagnosis_banding": [],
+      "pemeriksaan_fisik": [
+        "Injeksi konjungtiva ringan",
+        "Tear break-up time (TBUT) memendek (<10 detik)",
+        "Tes Schirmer <10 mm dalam 5 menit",
+        "Keratopati punktata pada pemeriksaan fluorescein",
+        "Debris pada tear film",
+        "Berkurangnya meniskus air mata di tepi kelopak bawah"
+      ],
+      "diagnosis_banding": [
+        "Konjungtivitis alergi",
+        "Blefaritis",
+        "Konjungtivitis viral"
+      ],
       "komplikasi": [
         "Keratitis",
         "Penipisan kornea",
@@ -606,7 +626,13 @@
         "Infeksi sekunder oleh bakteri",
         "Neovaskularisasi kornea"
       ],
-      "terapi": [],
+      "terapi": [
+        {
+          "obat": "Artificial tears",
+          "dosis": "1-2 tetes",
+          "frek": "4-6x sehari atau sesuai kebutuhan"
+        }
+      ],
       "kriteria_rujukan": "Dilakukan rujukan ke spesialis mata jika timbul komplikasi.",
       "source": "PPK IDI 2013 + 144 Diagnosis KKI"
     },
@@ -2323,17 +2349,55 @@
       "can_refer": false,
       "definisi": "Penyakit cacing tambang adalah suatu penyakit yang disebabkan oleh infestasi parasit\nNecator americanus dan Ancylostoma duodenale.Hospes parasit ini adalah manusia, cacing\nini menyebabkan nekatoriasis dan ankilostomiasis. Diperkirakan sekitar 576 – 740 juta orang\ndi dunia terinfeksi dengan cacing tambang. Di Indonesia insiden tertinggi ditemukan\nterutama didaerah pedesaan khususnya perkebunan. Seringkali golongan pekerja perkebunan\nyang langsung berhubungan dengan tanah, mendapat infeksi lebih dari 70%.",
       "gejala_klinis": [
-        "Namun bila"
+        "Lemas dan mudah lelah",
+        "Pucat",
+        "Mual",
+        "Nyeri perut terutama epigastrium",
+        "Diare yang kadang disertai darah",
+        "Nafsu makan menurun",
+        "Penurunan berat badan",
+        "Ground itch: gatal dan ruam pada kulit telapak kaki tempat larva masuk",
+        "Batuk (saat migrasi larva melalui paru)",
+        "Pusing dan sakit kepala"
       ],
       "pemeriksaan_fisik": [
-        "Konjungtiva pucat",
-        "Perubahan pada kulit (telapak kaki) bila banyak larva yang menembus kulit, disebut"
+        "Konjungtiva pucat (tanda anemia)",
+        "Perubahan pada kulit telapak kaki: papul eritema, vesikel (ground itch)",
+        "Nyeri tekan epigastrium",
+        "Tampak lemah dan pucat",
+        "Hepatomegali ringan pada infeksi berat",
+        "Edema pada infeksi berat dengan hipoalbuminemia"
       ],
-      "diagnosis_banding": [],
-      "komplikasi": [],
-      "red_flags": [],
-      "terapi": [],
-      "kriteria_rujukan": "",
+      "diagnosis_banding": [
+        "Anemia defisiensi besi penyebab lain",
+        "Askariasis",
+        "Strongiloidiasis",
+        "Anemia akibat perdarahan saluran cerna"
+      ],
+      "komplikasi": [
+        "Anemia defisiensi besi berat",
+        "Gagal jantung akibat anemia berat",
+        "Malnutrisi",
+        "Gangguan pertumbuhan pada anak"
+      ],
+      "red_flags": [
+        "Anemia berat (Hb <7 g/dL)",
+        "Gagal jantung",
+        "Gangguan pertumbuhan pada anak"
+      ],
+      "terapi": [
+        {
+          "obat": "Albendazole",
+          "dosis": "400 mg",
+          "frek": "Dosis tunggal"
+        },
+        {
+          "obat": "Fe",
+          "dosis": "Sesuai derajat anemia",
+          "frek": "1x sehari selama 1-3 bulan"
+        }
+      ],
+      "kriteria_rujukan": "Anemia berat yang tidak respon terapi besi oral, atau terjadi komplikasi gagal jantung.",
       "source": "PPK IDI 2013 + 144 Diagnosis KKI"
     },
     {
@@ -3723,23 +3787,61 @@
       "can_refer": false,
       "definisi": "Demam Dengue dan Demam Berdarah Dengue adalah penyakit infeksi yang disebabkan oleh\nvirus Dengue. Virus Dengue memiliki 4 jenis serotype: DEN-1, DEN-2, DEN-3, DEN-4.\nInfeksi salah satu serotype akan menimbulkan antibody terhadap serotype yang bersangkutan,\nnamun tidak untuk serotype lainnya, sehingga seseorang dapat terinfeksi demam Dengue 4\nkali selama hidupnya. Indonesia merupakan Negara yang endemis untuk Demam Dengue\nmaupun Demam Berdarah Dengue.",
       "gejala_klinis": [
-        "hari, nyeri kepala,"
+        "Demam tinggi mendadak terus-menerus selama 2-7 hari",
+        "Nyeri kepala hebat",
+        "Nyeri retroorbital (nyeri di belakang bola mata)",
+        "Mialgia (nyeri otot seluruh badan)",
+        "Artralgia (nyeri sendi)",
+        "Mual dan muntah",
+        "Nyeri perut",
+        "Ruam kulit (skin rash) makulopapular",
+        "Perdarahan: petekie, epistaksis, gusi berdarah",
+        "Lemas dan lesu",
+        "Nafsu makan menurun",
+        "Tanda bahaya: nyeri perut hebat, muntah persisten, perdarahan mukosa, gelisah"
       ],
       "pemeriksaan_fisik": [
-        ",5 derajat celcius",
-        ",5 derajat celcius",
-        "tanda efusi pleura dan asites."
+        "Suhu tubuh ≥38,5 derajat celcius",
+        "Uji tourniquet positif (≥10 petekie per 1 inch persegi)",
+        "Petekie, ekimosis, atau purpura",
+        "Hepatomegali",
+        "Tanda efusi pleura dan asites (tanda kebocoran plasma)",
+        "Tanda-tanda syok: nadi cepat lemah, tekanan nadi menyempit (<20 mmHg), hipotensi, akral dingin",
+        "Flushing pada wajah"
       ],
       "diagnosis_banding": [
-        "lain)"
+        "Demam tifoid",
+        "Chikungunya",
+        "Malaria",
+        "Leptospirosis",
+        "Infeksi virus lain (campak, influenza)"
       ],
-      "komplikasi": [],
-      "red_flags": [],
+      "komplikasi": [
+        "Dengue Shock Syndrome (DSS)",
+        "Perdarahan masif (hematemesis, melena)",
+        "Ensefalopati dengue",
+        "Gagal organ multipel",
+        "Disseminated Intravascular Coagulation (DIC)"
+      ],
+      "red_flags": [
+        "Nyeri perut hebat dan terus-menerus",
+        "Muntah persisten",
+        "Perdarahan masif (hematemesis, melena)",
+        "Penurunan kesadaran atau gelisah",
+        "Tanda-tanda syok: akral dingin, nadi lemah, tekanan darah turun",
+        "Hepatomegali >2 cm",
+        "Trombositopenia berat (<50.000)"
+      ],
       "terapi": [
         {
           "obat": "Parasetamol",
-          "dosis": "-",
-          "frek": "Sesuai PPK"
+          "dosis": "10-15 mg/kgBB/kali",
+          "frek": "Tiap 4-6 jam bila demam (maks 4x sehari)"
+        },
+        {
+          "obat": "Oralit",
+          "dosis": "Sesuai derajat dehidrasi",
+          "frek": "Sering sedikit-sedikit"
         }
       ],
       "kriteria_rujukan": " Terjadi perdarahan masif (hematemesis, melena).\n Dengan pemberian cairan kristaloid sampai dosis 15 ml/kg/ jam kondisi belum membaik.\n Terjadi komplikasi atau keadaan klinis yang tidak lazim, seperti kejang, penurunan\nkesadaran, dan lainnya.",
@@ -5781,6 +5883,1010 @@
       ],
       "kriteria_rujukan": "",
       "source": "144 Diagnosis KKI + Standard Medical Reference"
+    },
+    {
+      "id": "DIS-145",
+      "kki_no": 145,
+      "nama": "Infeksi Saluran Pernafasan Akut Atas (ISPA)",
+      "nama_en": "ACUTE UPPER RESPIRATORY INFECTION, UNSPECIFIED",
+      "icd10": "J06",
+      "kompetensi": "4A",
+      "body_system": "SISTEM RESPIRASI",
+      "can_refer": false,
+      "definisi": "Infeksi Saluran Pernafasan Akut (ISPA) bagian atas adalah infeksi akut yang menyerang saluran pernafasan atas meliputi hidung, sinus paranasal, faring, dan laring. Penyebab tersering adalah virus (rhinovirus, adenovirus, parainfluenza) dan kadang bakteri. ISPA merupakan penyakit terbanyak di Puskesmas dengan angka kejadian sangat tinggi terutama pada anak-anak dan lansia.",
+      "gejala_klinis": [
+        "demam",
+        "batuk",
+        "pilek",
+        "hidung tersumbat",
+        "nyeri tenggorokan",
+        "bersin-bersin",
+        "rinorea",
+        "sakit kepala",
+        "malaise",
+        "nyeri menelan"
+      ],
+      "pemeriksaan_fisik": [
+        "Faring hiperemis",
+        "Tonsil hiperemis atau membesar",
+        "Sekret hidung mukoid atau purulen",
+        "Demam subfebris hingga febris",
+        "Ronki atau wheezing pada auskultasi (jika melibatkan saluran bawah)"
+      ],
+      "diagnosis_banding": [
+        "Faringitis (J02)",
+        "Tonsilitis (J03)",
+        "Influenza (J11)",
+        "Bronkitis akut (J20)",
+        "Pneumonia (J18)"
+      ],
+      "komplikasi": [
+        "Otitis media akut",
+        "Sinusitis",
+        "Bronkitis",
+        "Pneumonia"
+      ],
+      "red_flags": [
+        "Sesak nafas berat",
+        "Stridor",
+        "Demam tinggi >39°C tidak turun dengan antipiretik",
+        "Tanda dehidrasi berat pada anak"
+      ],
+      "terapi": [
+        {
+          "obat": "Parasetamol",
+          "dosis": "500 mg",
+          "frek": "3x sehari (dewasa)"
+        },
+        {
+          "obat": "Ambroxol",
+          "dosis": "30 mg",
+          "frek": "3x sehari"
+        },
+        {
+          "obat": "CTM (Chlorpheniramine)",
+          "dosis": "4 mg",
+          "frek": "3x sehari"
+        },
+        {
+          "obat": "Amoksisilin",
+          "dosis": "500 mg",
+          "frek": "3x sehari (jika infeksi bakteri)"
+        }
+      ],
+      "kriteria_rujukan": "Rujuk jika terdapat tanda komplikasi (otitis media, sinusitis berat, pneumonia), sesak nafas berat, atau tidak membaik setelah 5 hari terapi.",
+      "source": "PPK IDI 2017 + Pedoman FKTP Kemenkes RI"
+    },
+    {
+      "id": "DIS-146",
+      "kki_no": 146,
+      "nama": "Nasofaringitis Akut (Common Cold)",
+      "nama_en": "ACUTE NASOPHARYNGITIS [COMMON COLD]",
+      "icd10": "J00",
+      "kompetensi": "4A",
+      "body_system": "SISTEM RESPIRASI",
+      "can_refer": false,
+      "definisi": "Nasofaringitis akut atau common cold adalah infeksi virus self-limiting pada saluran napas atas yang terutama mengenai mukosa hidung dan nasofaring. Penyebab tersering adalah rhinovirus (30-50%), coronavirus, RSV, dan adenovirus. Berlangsung 7-10 hari tanpa komplikasi.",
+      "gejala_klinis": [
+        "pilek",
+        "hidung tersumbat",
+        "bersin-bersin",
+        "rinorea jernih",
+        "nyeri tenggorokan ringan",
+        "batuk ringan",
+        "demam ringan",
+        "malaise"
+      ],
+      "pemeriksaan_fisik": [
+        "Mukosa hidung edema dan hiperemis",
+        "Sekret hidung jernih (mukoid)",
+        "Faring sedikit hiperemis",
+        "Suhu subfebris atau normal"
+      ],
+      "diagnosis_banding": [
+        "Rinitis alergi (J30)",
+        "Sinusitis akut (J01)",
+        "ISPA (J06)",
+        "Influenza (J11)"
+      ],
+      "komplikasi": [
+        "Sinusitis akut",
+        "Otitis media akut",
+        "Eksaserbasi asma"
+      ],
+      "red_flags": [
+        "Demam tinggi >39°C persisten",
+        "Sekret hidung purulen >10 hari (curiga sinusitis)",
+        "Sesak nafas"
+      ],
+      "terapi": [
+        {
+          "obat": "Parasetamol",
+          "dosis": "500 mg",
+          "frek": "3x sehari (jika demam)"
+        },
+        {
+          "obat": "Pseudoefedrin",
+          "dosis": "60 mg",
+          "frek": "3x sehari (dekongestan)"
+        },
+        {
+          "obat": "CTM (Chlorpheniramine)",
+          "dosis": "4 mg",
+          "frek": "3x sehari (antihistamin)"
+        }
+      ],
+      "kriteria_rujukan": "Umumnya tidak perlu rujukan. Rujuk jika gejala menetap >10 hari atau terdapat komplikasi sinusitis/otitis.",
+      "source": "PPK IDI 2017 + WHO Guidelines"
+    },
+    {
+      "id": "DIS-147",
+      "kki_no": 147,
+      "nama": "Dispepsia Fungsional",
+      "nama_en": "FUNCTIONAL DYSPEPSIA",
+      "icd10": "K30",
+      "kompetensi": "4A",
+      "body_system": "SISTEM PENCERNAAN",
+      "can_refer": false,
+      "definisi": "Dispepsia fungsional adalah kumpulan gejala yang berasal dari gastroduodenal berupa nyeri epigastrium, rasa terbakar di epigastrium, rasa penuh setelah makan, atau cepat kenyang tanpa ditemukan kelainan struktural yang dapat menjelaskan gejala. Merupakan salah satu keluhan terbanyak di Puskesmas.",
+      "gejala_klinis": [
+        "nyeri epigastrium",
+        "nyeri ulu hati",
+        "rasa terbakar di ulu hati",
+        "perut kembung",
+        "mual",
+        "cepat kenyang",
+        "rasa penuh setelah makan",
+        "sendawa berlebihan",
+        "muntah"
+      ],
+      "pemeriksaan_fisik": [
+        "Nyeri tekan epigastrium",
+        "Perut kembung (distensi ringan)",
+        "Bising usus normal atau meningkat",
+        "Tidak ada tanda peritonitis"
+      ],
+      "diagnosis_banding": [
+        "Gastritis (K29)",
+        "Ulkus peptikum (K27)",
+        "GERD (K21)",
+        "Kolesistitis (K81)",
+        "Pankreatitis (K85)"
+      ],
+      "komplikasi": [
+        "Gangguan nutrisi akibat penurunan nafsu makan",
+        "Gangguan kualitas hidup",
+        "Ansietas dan depresi"
+      ],
+      "red_flags": [
+        "Penurunan berat badan tidak terjelaskan",
+        "Disfagia progresif",
+        "Hematemesis atau melena",
+        "Usia >55 tahun dengan gejala baru"
+      ],
+      "terapi": [
+        {
+          "obat": "Omeprazol",
+          "dosis": "20 mg",
+          "frek": "1x sehari sebelum makan"
+        },
+        {
+          "obat": "Antasida",
+          "dosis": "500-1000 mg",
+          "frek": "3x sehari setelah makan"
+        },
+        {
+          "obat": "Domperidon",
+          "dosis": "10 mg",
+          "frek": "3x sehari sebelum makan"
+        },
+        {
+          "obat": "Ranitidin",
+          "dosis": "150 mg",
+          "frek": "2x sehari"
+        }
+      ],
+      "kriteria_rujukan": "Rujuk jika terdapat alarm symptoms (penurunan BB, disfagia, hematemesis/melena, usia >55 tahun onset baru), tidak respons terapi 4 minggu, atau kecurigaan keganasan.",
+      "source": "PPK IDI 2017 + Konsensus Dispepsia PGI 2014"
+    },
+    {
+      "id": "DIS-148",
+      "kki_no": 148,
+      "nama": "Skizofrenia",
+      "nama_en": "SCHIZOPHRENIA",
+      "icd10": "F20",
+      "kompetensi": "3A",
+      "body_system": "SISTEM JIWA",
+      "can_refer": false,
+      "definisi": "Skizofrenia adalah gangguan jiwa berat yang ditandai oleh distorsi pikiran, persepsi, emosi, bahasa, kesadaran diri, dan perilaku. Ditandai oleh gejala positif (halusinasi, waham) dan gejala negatif (afek datar, avolisi, alogia). Diagnosis berdasarkan PPDGJ-III mensyaratkan gejala khas berlangsung minimal 1 bulan. Prevalensi di Indonesia ~1-2% populasi.",
+      "gejala_klinis": [
+        "halusinasi auditorik",
+        "waham kejar",
+        "waham kontrol",
+        "bicara kacau",
+        "perilaku aneh",
+        "afek datar",
+        "menarik diri dari sosial",
+        "alogia",
+        "avolisi",
+        "penurunan perawatan diri"
+      ],
+      "pemeriksaan_fisik": [
+        "Status mental: afek datar atau inappropriate",
+        "Gangguan arus pikir (inkoherensi, asosiasi longgar)",
+        "Gangguan persepsi (halusinasi auditorik/visual)",
+        "Gangguan psikomotor (agitasi atau retardasi)",
+        "Insight dan judgment terganggu"
+      ],
+      "diagnosis_banding": [
+        "Gangguan skizoafektif (F25)",
+        "Gangguan waham menetap (F22)",
+        "Gangguan psikotik akut (F23)",
+        "Gangguan bipolar episode manik dengan gejala psikotik (F31)",
+        "Psikotik akibat zat psikoaktif (F1x.5)"
+      ],
+      "komplikasi": [
+        "Percobaan bunuh diri (20-40% pernah mencoba)",
+        "Penyalahgunaan zat",
+        "Isolasi sosial",
+        "Tardive dyskinesia akibat antipsikotik"
+      ],
+      "red_flags": [
+        "Ide atau percobaan bunuh diri",
+        "Perilaku agresif atau membahayakan orang lain",
+        "Menolak makan atau minum",
+        "Gaduh gelisah tidak terkontrol"
+      ],
+      "terapi": [
+        {
+          "obat": "Haloperidol",
+          "dosis": "2-5 mg",
+          "frek": "2-3x sehari"
+        },
+        {
+          "obat": "Chlorpromazine",
+          "dosis": "100-200 mg",
+          "frek": "2-3x sehari"
+        },
+        {
+          "obat": "Risperidon",
+          "dosis": "2 mg",
+          "frek": "2x sehari"
+        },
+        {
+          "obat": "Trihexyphenidyl",
+          "dosis": "2 mg",
+          "frek": "2-3x sehari (anti EPS)"
+        }
+      ],
+      "kriteria_rujukan": "Rujuk ke psikiater untuk: episode pertama, ide bunuh diri atau perilaku membahayakan, gaduh gelisah berat, tidak respons terapi 2 minggu, efek samping obat berat (NMS, tardive dyskinesia).",
+      "source": "PPDGJ-III + PPK IDI 2017 + Pedoman PDSKJI"
+    },
+    {
+      "id": "DIS-149",
+      "kki_no": 149,
+      "nama": "Mialgia",
+      "nama_en": "MYALGIA",
+      "icd10": "M79.1",
+      "kompetensi": "4A",
+      "body_system": "SISTEM MUSKULOSKELETAL",
+      "can_refer": false,
+      "definisi": "Mialgia adalah nyeri otot yang dapat bersifat lokal atau difus. Dapat disebabkan oleh overuse, cedera, infeksi virus, stres, atau kondisi sistemik. Merupakan keluhan muskuloskeletal terbanyak di Puskesmas. Sebagian besar bersifat self-limiting.",
+      "gejala_klinis": [
+        "nyeri otot",
+        "nyeri otot difus",
+        "kaku otot",
+        "pegal-pegal",
+        "nyeri saat digerakkan",
+        "kelemahan otot",
+        "nyeri tekan otot",
+        "kelelahan"
+      ],
+      "pemeriksaan_fisik": [
+        "Nyeri tekan pada otot yang terkena",
+        "Kekuatan otot normal atau sedikit menurun",
+        "Range of motion terbatas akibat nyeri",
+        "Tidak ada tanda inflamasi sendi"
+      ],
+      "diagnosis_banding": [
+        "Fibromialgia (M79.7)",
+        "Artritis reumatoid (M06)",
+        "Polimialgia reumatika (M35.3)",
+        "Infeksi virus (dengue, chikungunya)",
+        "Hipotiroid"
+      ],
+      "komplikasi": [
+        "Nyeri kronik",
+        "Gangguan tidur",
+        "Penurunan produktivitas"
+      ],
+      "red_flags": [
+        "Kelemahan otot progresif",
+        "Urine berwarna gelap (curiga rhabdomiolisis)",
+        "Demam tinggi disertai nyeri otot berat"
+      ],
+      "terapi": [
+        {
+          "obat": "Ibuprofen",
+          "dosis": "400 mg",
+          "frek": "3x sehari setelah makan"
+        },
+        {
+          "obat": "Parasetamol",
+          "dosis": "500 mg",
+          "frek": "3x sehari"
+        },
+        {
+          "obat": "Asam mefenamat",
+          "dosis": "500 mg",
+          "frek": "3x sehari setelah makan"
+        },
+        {
+          "obat": "Methyl salicylate topikal",
+          "dosis": "secukupnya",
+          "frek": "2-3x sehari"
+        }
+      ],
+      "kriteria_rujukan": "Rujuk jika kelemahan otot progresif, curiga rhabdomiolisis, nyeri otot >4 minggu tidak membaik, atau dicurigai penyakit autoimun.",
+      "source": "PPK IDI 2017 + Standard Medical Reference"
+    },
+    {
+      "id": "DIS-150",
+      "kki_no": 150,
+      "nama": "Gagal Jantung Kongestif",
+      "nama_en": "HEART FAILURE",
+      "icd10": "I50",
+      "kompetensi": "3B",
+      "body_system": "SISTEM KARDIOVASKULAR",
+      "can_refer": false,
+      "definisi": "Gagal jantung adalah sindrom klinis dimana jantung tidak mampu memompa darah secara adekuat untuk memenuhi kebutuhan metabolik tubuh. Ditandai oleh gejala sesak nafas, kelelahan, dan retensi cairan. Klasifikasi berdasarkan NYHA (I-IV). Sering merupakan komplikasi akhir hipertensi dan penyakit jantung iskemik.",
+      "gejala_klinis": [
+        "sesak nafas",
+        "sesak nafas saat aktivitas",
+        "ortopnea",
+        "paroxysmal nocturnal dyspnea",
+        "edema tungkai",
+        "kelelahan",
+        "batuk malam hari",
+        "perut membesar",
+        "berat badan naik cepat"
+      ],
+      "pemeriksaan_fisik": [
+        "JVP meningkat",
+        "Ronki basah basal paru",
+        "Edema pitting pretibial bilateral",
+        "Hepatomegali",
+        "Kardiomegali (iktus kordis bergeser)",
+        "Gallop S3"
+      ],
+      "diagnosis_banding": [
+        "PPOK eksaserbasi (J44)",
+        "Pneumonia (J18)",
+        "Sindrom nefrotik (N04)",
+        "Sirosis hepatis (K74)",
+        "Asma bronkial (J45)"
+      ],
+      "komplikasi": [
+        "Edema paru akut",
+        "Syok kardiogenik",
+        "Aritmia",
+        "Gagal ginjal akut"
+      ],
+      "red_flags": [
+        "Sesak nafas berat saat istirahat",
+        "Edema paru akut (sputum berbuih merah muda)",
+        "Syok kardiogenik (hipotensi, kulit dingin lembab)",
+        "Aritmia berat"
+      ],
+      "terapi": [
+        {
+          "obat": "Furosemid",
+          "dosis": "20-40 mg",
+          "frek": "1-2x sehari"
+        },
+        {
+          "obat": "Captopril",
+          "dosis": "6.25-25 mg",
+          "frek": "2-3x sehari"
+        },
+        {
+          "obat": "Bisoprolol",
+          "dosis": "1.25-5 mg",
+          "frek": "1x sehari"
+        },
+        {
+          "obat": "Spironolakton",
+          "dosis": "25 mg",
+          "frek": "1x sehari"
+        },
+        {
+          "obat": "Oksigen",
+          "dosis": "2-4 L/menit",
+          "frek": "nasal kanul"
+        }
+      ],
+      "kriteria_rujukan": "SEGERA rujuk setelah stabilisasi awal. Rujuk jika: NYHA III-IV, edema paru akut, syok kardiogenik, aritmia, tidak respons diuretik, gagal jantung onset baru untuk evaluasi ekokardiografi.",
+      "source": "Pedoman Tatalaksana Gagal Jantung PERKI + PPK IDI 2017"
+    },
+    {
+      "id": "DIS-151",
+      "kki_no": 151,
+      "nama": "Penyakit Jantung Iskemik Kronik",
+      "nama_en": "CHRONIC ISCHAEMIC HEART DISEASE",
+      "icd10": "I25",
+      "kompetensi": "3A",
+      "body_system": "SISTEM KARDIOVASKULAR",
+      "can_refer": false,
+      "definisi": "Penyakit jantung iskemik kronik adalah penyakit jantung akibat insufisiensi suplai darah koroner yang berlangsung lama, biasanya akibat aterosklerosis. Pasien memiliki riwayat angina stabil, riwayat infark miokard, atau revaskularisasi koroner. Faktor risiko utama: hipertensi, diabetes, dislipidemia, merokok.",
+      "gejala_klinis": [
+        "nyeri dada",
+        "nyeri dada saat aktivitas",
+        "nyeri dada hilang dengan istirahat",
+        "sesak nafas saat aktivitas",
+        "mudah lelah",
+        "berdebar-debar",
+        "riwayat serangan jantung"
+      ],
+      "pemeriksaan_fisik": [
+        "Tekanan darah bisa normal atau hipertensi",
+        "Bunyi jantung bisa normal",
+        "Tanda gagal jantung jika sudah lanjut",
+        "Bruit karotis (aterosklerosis)"
+      ],
+      "diagnosis_banding": [
+        "Angina pektoris tidak stabil (I20)",
+        "GERD (K21)",
+        "Kostokondritis (M94.0)",
+        "Gangguan cemas (F41)",
+        "PPOK (J44)"
+      ],
+      "komplikasi": [
+        "Infark miokard akut",
+        "Gagal jantung kongestif",
+        "Aritmia",
+        "Kematian jantung mendadak"
+      ],
+      "red_flags": [
+        "Nyeri dada baru onset atau berubah pola (crescendo)",
+        "Nyeri dada saat istirahat >20 menit",
+        "Sesak nafas berat mendadak",
+        "Sinkop"
+      ],
+      "terapi": [
+        {
+          "obat": "Aspirin",
+          "dosis": "80 mg",
+          "frek": "1x sehari"
+        },
+        {
+          "obat": "Simvastatin",
+          "dosis": "20 mg",
+          "frek": "1x malam hari"
+        },
+        {
+          "obat": "ISDN",
+          "dosis": "5 mg",
+          "frek": "3x sehari atau sublingual saat nyeri"
+        },
+        {
+          "obat": "Bisoprolol",
+          "dosis": "2.5-5 mg",
+          "frek": "1x sehari"
+        }
+      ],
+      "kriteria_rujukan": "Rujuk ke kardiolog untuk: evaluasi awal dan treadmill test, perburukan gejala, angina tidak terkontrol, curiga ACS, evaluasi revaskularisasi.",
+      "source": "Pedoman PJK PERKI + PPK IDI 2017"
+    },
+    {
+      "id": "DIS-152",
+      "kki_no": 152,
+      "nama": "Angina Pektoris",
+      "nama_en": "ANGINA PECTORIS",
+      "icd10": "I20",
+      "kompetensi": "3B",
+      "body_system": "SISTEM KARDIOVASKULAR",
+      "can_refer": false,
+      "definisi": "Angina pektoris adalah nyeri dada akibat iskemia miokard yang bersifat sementara. Angina stabil terjadi saat aktivitas dan hilang dengan istirahat atau nitrogliserin. Angina tidak stabil (nyeri saat istirahat, crescendo, onset baru) merupakan kegawatan kardiovaskular yang memerlukan penanganan segera.",
+      "gejala_klinis": [
+        "nyeri dada seperti tertekan",
+        "nyeri dada seperti terbakar",
+        "nyeri dada menjalar ke lengan kiri",
+        "nyeri dada menjalar ke rahang",
+        "nyeri dada saat aktivitas",
+        "keringat dingin",
+        "sesak nafas",
+        "mual",
+        "cemas"
+      ],
+      "pemeriksaan_fisik": [
+        "Tekanan darah bisa hipertensi atau hipotensi (jika berat)",
+        "Diaforesis (keringat dingin)",
+        "Takikardia atau bradikardia",
+        "Bunyi jantung bisa normal, S4 gallop"
+      ],
+      "diagnosis_banding": [
+        "Infark miokard akut (I21)",
+        "GERD (K21)",
+        "Kostokondritis (M94.0)",
+        "Pneumotoraks (J93)",
+        "Emboli paru (I26)"
+      ],
+      "komplikasi": [
+        "Infark miokard akut",
+        "Aritmia",
+        "Gagal jantung akut",
+        "Kematian mendadak"
+      ],
+      "red_flags": [
+        "Nyeri dada saat istirahat >20 menit",
+        "Nyeri dada disertai keringat dingin dan sesak berat",
+        "Hipotensi atau syok",
+        "Penurunan kesadaran"
+      ],
+      "terapi": [
+        {
+          "obat": "ISDN sublingual",
+          "dosis": "5 mg",
+          "frek": "sublingual saat nyeri dada"
+        },
+        {
+          "obat": "Aspirin",
+          "dosis": "160-320 mg",
+          "frek": "dosis loading kunyah (jika curiga ACS)"
+        },
+        {
+          "obat": "Oksigen",
+          "dosis": "2-4 L/menit",
+          "frek": "nasal kanul jika SpO2 <94%"
+        }
+      ],
+      "kriteria_rujukan": "SEGERA rujuk: angina tidak stabil (nyeri saat istirahat, crescendo), curiga infark miokard akut, nyeri dada disertai sesak/hipotensi/aritmia. Stabilisasi: ISDN sublingual + aspirin loading sebelum transfer.",
+      "source": "Pedoman ACS PERKI + PPK IDI 2017"
+    },
+    {
+      "id": "DIS-153",
+      "kki_no": 153,
+      "nama": "Stroke",
+      "nama_en": "STROKE, NOT SPECIFIED AS HAEMORRHAGE OR INFARCTION",
+      "icd10": "I64",
+      "kompetensi": "3B",
+      "body_system": "SISTEM SARAF",
+      "can_refer": false,
+      "definisi": "Stroke adalah gangguan fungsi otak fokal atau global yang timbul mendadak akibat gangguan aliran darah otak (iskemik atau hemoragik), berlangsung >24 jam atau menyebabkan kematian. Merupakan kegawatan neurologis yang memerlukan penanganan segera (golden period 4.5 jam untuk trombolisis).",
+      "gejala_klinis": [
+        "kelemahan separuh badan mendadak",
+        "bicara pelo mendadak",
+        "wajah perot mendadak",
+        "gangguan bicara",
+        "penurunan kesadaran",
+        "nyeri kepala hebat mendadak",
+        "gangguan penglihatan mendadak",
+        "vertigo berat mendadak",
+        "sulit menelan"
+      ],
+      "pemeriksaan_fisik": [
+        "Hemiparesis atau hemiplegia",
+        "Paresis nervus VII (wajah perot)",
+        "Disartria atau afasia",
+        "GCS menurun",
+        "Refleks patologis positif (Babinski)",
+        "Tekanan darah sering meningkat"
+      ],
+      "diagnosis_banding": [
+        "TIA (G45)",
+        "Tumor otak (C71)",
+        "Hipoglikemia",
+        "Epilepsi (G40)",
+        "Ensefalitis (G04)"
+      ],
+      "komplikasi": [
+        "Pneumonia aspirasi",
+        "DVT dan emboli paru",
+        "Ulkus dekubitus",
+        "Depresi pasca-stroke"
+      ],
+      "red_flags": [
+        "Penurunan kesadaran progresif",
+        "Tanda herniasi otak (pupil anisokor, postur dekortikasi)",
+        "Kejang berulang",
+        "Muntah proyektil (curiga perdarahan)"
+      ],
+      "terapi": [
+        {
+          "obat": "Oksigen",
+          "dosis": "2-4 L/menit",
+          "frek": "jika SpO2 <94%"
+        },
+        {
+          "obat": "Posisi head-up 30°",
+          "dosis": "-",
+          "frek": "segera"
+        },
+        {
+          "obat": "NaCl 0.9%",
+          "dosis": "500 mL",
+          "frek": "IV maintenance"
+        },
+        {
+          "obat": "Nicardipin IV",
+          "dosis": "titrasi",
+          "frek": "jika TD >220/120 mmHg"
+        }
+      ],
+      "kriteria_rujukan": "SEGERA rujuk ke RS dengan fasilitas CT-Scan setelah stabilisasi ABC. Posisi head-up 30°, oksigenasi, akses IV, catat onset waktu. Golden period trombolisis 4.5 jam.",
+      "source": "Pedoman Stroke PERDOSSI + PPK IDI 2017"
+    },
+    {
+      "id": "DIS-154",
+      "kki_no": 154,
+      "nama": "Dislipidemia",
+      "nama_en": "DISORDERS OF LIPOPROTEIN METABOLISM AND OTHER LIPIDAEMIAS",
+      "icd10": "E78",
+      "kompetensi": "4A",
+      "body_system": "SISTEM ENDOKRIN, METABOLIK, NUTRISI",
+      "can_refer": false,
+      "definisi": "Dislipidemia adalah kelainan metabolisme lipid yang ditandai oleh peningkatan kolesterol total, LDL, trigliserida, dan/atau penurunan HDL. Merupakan faktor risiko utama penyakit kardiovaskular aterosklerosis. Sering ditemukan bersamaan dengan hipertensi dan diabetes (sindrom metabolik).",
+      "gejala_klinis": [
+        "sering tanpa gejala",
+        "xantelasma pada kelopak mata",
+        "xantoma pada tendon",
+        "arkus kornea",
+        "riwayat keluarga penyakit jantung",
+        "obesitas",
+        "nyeri dada (jika sudah ada PJK)"
+      ],
+      "pemeriksaan_fisik": [
+        "Xantelasma (plak kuning kelopak mata)",
+        "Xantoma tendineus",
+        "Arkus kornea (cincin putih pada kornea)",
+        "IMT bisa overweight/obese",
+        "Lingkar perut meningkat"
+      ],
+      "diagnosis_banding": [
+        "Hipotiroid (dislipidemia sekunder)",
+        "Sindrom nefrotik (dislipidemia sekunder)",
+        "Diabetes mellitus (E11)",
+        "Obat-induced (kortikosteroid, beta-bloker)"
+      ],
+      "komplikasi": [
+        "Penyakit jantung koroner",
+        "Stroke",
+        "Penyakit arteri perifer",
+        "Pankreatitis akut (jika TG sangat tinggi >500 mg/dL)"
+      ],
+      "red_flags": [
+        "Trigliserida >500 mg/dL (risiko pankreatitis akut)",
+        "Dislipidemia familial berat pada usia muda",
+        "Riwayat PJK prematur di keluarga"
+      ],
+      "terapi": [
+        {
+          "obat": "Simvastatin",
+          "dosis": "20 mg",
+          "frek": "1x malam hari"
+        },
+        {
+          "obat": "Atorvastatin",
+          "dosis": "20 mg",
+          "frek": "1x sehari"
+        },
+        {
+          "obat": "Gemfibrozil",
+          "dosis": "300 mg",
+          "frek": "2x sehari (jika TG tinggi)"
+        },
+        {
+          "obat": "Modifikasi gaya hidup",
+          "dosis": "-",
+          "frek": "diet rendah lemak, olahraga teratur"
+        }
+      ],
+      "kriteria_rujukan": "Rujuk jika: dislipidemia familial berat, tidak mencapai target LDL setelah terapi 3 bulan, intoleransi statin, TG >500 mg/dL, atau dislipidemia dengan PJK.",
+      "source": "Pedoman Dislipidemia PERKENI + PPK IDI 2017"
+    },
+    {
+      "id": "DIS-155",
+      "kki_no": 155,
+      "nama": "Artritis Reumatoid",
+      "nama_en": "OTHER RHEUMATOID ARTHRITIS",
+      "icd10": "M06",
+      "kompetensi": "3A",
+      "body_system": "SISTEM MUSKULOSKELETAL",
+      "can_refer": false,
+      "definisi": "Artritis reumatoid (AR) adalah penyakit autoimun sistemik yang ditandai oleh inflamasi kronik pada sendi, terutama sendi-sendi kecil tangan dan kaki secara simetris. Dapat menyebabkan destruksi sendi dan deformitas jika tidak ditangani. Lebih sering pada wanita (3:1) usia 30-50 tahun.",
+      "gejala_klinis": [
+        "nyeri sendi simetris",
+        "bengkak sendi",
+        "kaku sendi pagi hari >30 menit",
+        "nyeri sendi tangan",
+        "nyeri sendi kaki",
+        "kelelahan",
+        "demam ringan",
+        "penurunan kekuatan genggaman"
+      ],
+      "pemeriksaan_fisik": [
+        "Pembengkakan sendi simetris (MCP, PIP, pergelangan tangan)",
+        "Nyeri tekan sendi",
+        "Kaku pagi >30 menit",
+        "Deformitas sendi (ulnar deviation, swan neck, boutonniere) pada stadium lanjut",
+        "Nodul reumatoid pada siku"
+      ],
+      "diagnosis_banding": [
+        "Osteoartritis (M15-M19)",
+        "Artritis gout (M10)",
+        "Artritis psoriasis (M07)",
+        "SLE (M32)",
+        "Artritis reaktif (M02)"
+      ],
+      "komplikasi": [
+        "Deformitas sendi permanen",
+        "Vaskulitis reumatoid",
+        "Osteoporosis sekunder",
+        "Sindrom Sjögren sekunder"
+      ],
+      "red_flags": [
+        "Vaskulitis (ulkus kulit, neuropati)",
+        "Keterlibatan paru (fibrosis paru)",
+        "Subluksasi C1-C2 (mielopati servikal)"
+      ],
+      "terapi": [
+        {
+          "obat": "Meloxicam",
+          "dosis": "7.5-15 mg",
+          "frek": "1x sehari"
+        },
+        {
+          "obat": "Methotrexate",
+          "dosis": "7.5-15 mg",
+          "frek": "1x seminggu (oleh rheumatolog)"
+        },
+        {
+          "obat": "Asam folat",
+          "dosis": "1 mg",
+          "frek": "1x sehari (suplementasi MTX)"
+        },
+        {
+          "obat": "Prednison",
+          "dosis": "5-10 mg",
+          "frek": "1x sehari (bridging therapy)"
+        }
+      ],
+      "kriteria_rujukan": "Rujuk ke rheumatolog/internist untuk: diagnosis awal (pemeriksaan RF, anti-CCP, rontgen), inisiasi DMARD (Methotrexate), evaluasi kerusakan sendi, dan deformitas.",
+      "source": "Pedoman IRA + PPK IDI 2017"
+    },
+    {
+      "id": "DIS-156",
+      "kki_no": 156,
+      "nama": "Nekrosis Pulpa",
+      "nama_en": "NECROSIS OF PULP",
+      "icd10": "K04.1",
+      "kompetensi": "2",
+      "body_system": "GIGI DAN MULUT",
+      "can_refer": false,
+      "definisi": "Nekrosis pulpa adalah kematian jaringan pulpa gigi akibat infeksi bakteri (biasanya sekunder dari karies profunda) atau trauma. Gigi menjadi non-vital, tidak merespon tes vitalitas, dan dapat berkembang menjadi abses periapikal jika tidak ditangani.",
+      "gejala_klinis": [
+        "nyeri gigi spontan",
+        "gigi berubah warna kehitaman",
+        "nyeri saat menggigit",
+        "bau mulut",
+        "pembengkakan gusi",
+        "riwayat sakit gigi berulang"
+      ],
+      "pemeriksaan_fisik": [
+        "Gigi berubah warna (abu-abu atau kehitaman)",
+        "Kavitas karies besar atau tambalan lama",
+        "Tes vitalitas negatif",
+        "Perkusi positif (nyeri ketuk)"
+      ],
+      "diagnosis_banding": [
+        "Pulpitis ireversibel (K04.0)",
+        "Abses periapikal (K04.7)",
+        "Periodontitis (K05)"
+      ],
+      "komplikasi": [
+        "Abses periapikal",
+        "Selulitis fasial",
+        "Ludwig angina (jika infeksi menyebar)"
+      ],
+      "red_flags": [
+        "Pembengkakan wajah yang menyebar",
+        "Demam tinggi dengan trismus (sulit buka mulut)"
+      ],
+      "terapi": [
+        {
+          "obat": "Amoksisilin",
+          "dosis": "500 mg",
+          "frek": "3x sehari selama 5 hari"
+        },
+        {
+          "obat": "Asam mefenamat",
+          "dosis": "500 mg",
+          "frek": "3x sehari (analgesik)"
+        },
+        {
+          "obat": "Parasetamol",
+          "dosis": "500 mg",
+          "frek": "3x sehari (alternatif analgesik)"
+        }
+      ],
+      "kriteria_rujukan": "Rujuk ke dokter gigi (drg.) untuk perawatan saluran akar atau ekstraksi. Rujuk segera jika ada tanda selulitis atau Ludwig angina.",
+      "source": "PPK Gigi Mulut Kemenkes + Standard Medical Reference"
+    },
+    {
+      "id": "DIS-157",
+      "kki_no": 157,
+      "nama": "Periodontitis Akut",
+      "nama_en": "ACUTE PERIODONTITIS",
+      "icd10": "K05.2",
+      "kompetensi": "3A",
+      "body_system": "GIGI DAN MULUT",
+      "can_refer": false,
+      "definisi": "Periodontitis akut adalah infeksi dan inflamasi akut pada jaringan penyangga gigi (periodontium) meliputi gingiva, ligamen periodontal, sementum, dan tulang alveolar. Ditandai oleh nyeri gusi, perdarahan, dan poket periodontal.",
+      "gejala_klinis": [
+        "gusi bengkak dan merah",
+        "gusi berdarah",
+        "nyeri gusi",
+        "gigi goyang",
+        "bau mulut",
+        "nanah dari gusi"
+      ],
+      "pemeriksaan_fisik": [
+        "Gingiva edema, eritema, mudah berdarah",
+        "Poket periodontal >4 mm",
+        "Mobilitas gigi patologis",
+        "Pus dari sulkus gingiva"
+      ],
+      "diagnosis_banding": [
+        "Gingivitis akut (K05.0)",
+        "Abses periodontal (K05.2)",
+        "Nekrosis pulpa (K04.1)"
+      ],
+      "komplikasi": [
+        "Kehilangan gigi",
+        "Abses periodontal",
+        "Penyebaran infeksi sistemik"
+      ],
+      "red_flags": [
+        "Demam tinggi dengan pembengkakan gusi luas",
+        "Trismus (sulit buka mulut)"
+      ],
+      "terapi": [
+        {
+          "obat": "Amoksisilin",
+          "dosis": "500 mg",
+          "frek": "3x sehari selama 5 hari"
+        },
+        {
+          "obat": "Metronidazol",
+          "dosis": "500 mg",
+          "frek": "3x sehari selama 5 hari"
+        },
+        {
+          "obat": "Ibuprofen",
+          "dosis": "400 mg",
+          "frek": "3x sehari setelah makan"
+        }
+      ],
+      "kriteria_rujukan": "Rujuk ke dokter gigi (drg.) untuk scaling, root planing, dan tatalaksana definitif. Segera rujuk jika infeksi menyebar.",
+      "source": "PPK Gigi Mulut Kemenkes + Standard Medical Reference"
+    },
+    {
+      "id": "DIS-158",
+      "kki_no": 158,
+      "nama": "Abses Periapikal tanpa Sinus",
+      "nama_en": "PERIAPICAL ABSCESS WITHOUT SINUS",
+      "icd10": "K04.7",
+      "kompetensi": "2",
+      "body_system": "GIGI DAN MULUT",
+      "can_refer": false,
+      "definisi": "Abses periapikal adalah kumpulan pus di jaringan periapikal gigi akibat infeksi bakteri yang menyebar dari pulpa nekrotik melalui foramen apikal. Ditandai oleh nyeri berdenyut berat, pembengkakan, dan gigi terangkat dari soketnya.",
+      "gejala_klinis": [
+        "nyeri gigi berdenyut hebat",
+        "pembengkakan gusi atau wajah",
+        "gigi terasa meninggi",
+        "nyeri saat menggigit",
+        "demam",
+        "sulit makan"
+      ],
+      "pemeriksaan_fisik": [
+        "Pembengkakan fluktuatif pada gusi atau vestibulum",
+        "Gigi non-vital (tes vitalitas negatif)",
+        "Perkusi sangat positif",
+        "Limfadenopati submandibular"
+      ],
+      "diagnosis_banding": [
+        "Abses periodontal (K05.2)",
+        "Selulitis fasial",
+        "Sialadenitis (K11.2)"
+      ],
+      "komplikasi": [
+        "Selulitis fasial",
+        "Ludwig angina",
+        "Osteomielitis rahang",
+        "Sepsis"
+      ],
+      "red_flags": [
+        "Pembengkakan wajah menyebar ke leher (curiga Ludwig angina)",
+        "Sesak nafas (obstruksi jalan napas)",
+        "Demam tinggi dengan penurunan kesadaran (curiga sepsis)"
+      ],
+      "terapi": [
+        {
+          "obat": "Amoksisilin",
+          "dosis": "500 mg",
+          "frek": "3x sehari selama 5-7 hari"
+        },
+        {
+          "obat": "Metronidazol",
+          "dosis": "500 mg",
+          "frek": "3x sehari selama 5 hari"
+        },
+        {
+          "obat": "Ibuprofen",
+          "dosis": "400 mg",
+          "frek": "3x sehari (analgesik)"
+        }
+      ],
+      "kriteria_rujukan": "Rujuk ke dokter gigi (drg.) untuk insisi drainase dan perawatan definitif. SEGERA rujuk ke IGD RS jika ada tanda Ludwig angina, obstruksi jalan napas, atau sepsis.",
+      "source": "PPK Gigi Mulut Kemenkes + Standard Medical Reference"
+    },
+    {
+      "id": "DIS-159",
+      "kki_no": 159,
+      "nama": "Gangguan Erupsi Gigi",
+      "nama_en": "DISTURBANCES IN TOOTH ERUPTION",
+      "icd10": "K00.6",
+      "kompetensi": "2",
+      "body_system": "GIGI DAN MULUT",
+      "can_refer": false,
+      "definisi": "Gangguan erupsi gigi meliputi erupsi terlambat, erupsi ektopik, gigi impaksi, dan perikoronitis (inflamasi jaringan lunak sekitar gigi yang sedang erupsi, terutama molar ketiga/gigi bungsu). Paling sering terjadi pada gigi molar ketiga rahang bawah.",
+      "gejala_klinis": [
+        "nyeri gusi belakang",
+        "gusi bengkak di sekitar gigi yang tumbuh",
+        "sulit membuka mulut",
+        "nyeri saat mengunyah",
+        "demam",
+        "bau mulut"
+      ],
+      "pemeriksaan_fisik": [
+        "Gingiva eritema dan edema di sekitar gigi yang erupsi",
+        "Operkulum (jaringan gusi menutupi sebagian gigi)",
+        "Trismus ringan",
+        "Limfadenopati submandibular"
+      ],
+      "diagnosis_banding": [
+        "Perikoronitis (K05.2)",
+        "Abses periapikal (K04.7)",
+        "Kista dentigerous"
+      ],
+      "komplikasi": [
+        "Perikoronitis berulang",
+        "Kista dentigerous",
+        "Resorpsi gigi sebelahnya"
+      ],
+      "red_flags": [
+        "Trismus berat (buka mulut <2 cm)",
+        "Pembengkakan menyebar ke submandibular"
+      ],
+      "terapi": [
+        {
+          "obat": "Amoksisilin",
+          "dosis": "500 mg",
+          "frek": "3x sehari selama 5 hari"
+        },
+        {
+          "obat": "Asam mefenamat",
+          "dosis": "500 mg",
+          "frek": "3x sehari (analgesik)"
+        },
+        {
+          "obat": "Betadine kumur",
+          "dosis": "secukupnya",
+          "frek": "3x sehari"
+        }
+      ],
+      "kriteria_rujukan": "Rujuk ke dokter gigi (drg.) untuk evaluasi radiologi dan tatalaksana definitif (operkulektomi atau odontektomi). Rujuk jika perikoronitis berulang >2x atau curiga impaksi.",
+      "source": "PPK Gigi Mulut Kemenkes + Standard Medical Reference"
     }
   ]
 }

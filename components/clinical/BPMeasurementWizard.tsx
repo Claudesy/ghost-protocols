@@ -9,7 +9,7 @@
 
 import React, { useState } from 'react';
 import { Wizard, WizardStep, WizardStepWrapper, WizardStepProps } from './Wizard';
-import { BPReading } from '../../lib/inference/htn-classifier';
+import { BPReading } from '../../lib/emergency-detector/htn-classifier';
 
 // ============================================================================
 // TYPES
@@ -465,3 +465,4 @@ export const bpMeasurementStyles = `
   color: var(--accent-primary);
 }
 `;
+

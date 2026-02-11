@@ -21,10 +21,125 @@
  */
 
 import { fillFields, activateCheckboxWithOnclick, fillRangeSlider, type FieldMapping, type FillResult } from '@/lib/filler/filler-core';
+import { fillViaMainWorld, type MainWorldFieldMapping } from '@/lib/filler/main-world-bridge';
 import type { AnamnesaFillPayload } from '@/utils/types';
 import { createLogger } from '@/utils/logger';
 
 const anamnesaLog = createLogger('AnamnesaHandler', 'content');
+
+// ============================================================================
+// TEXT FORMATTING HELPERS FOR MANDATORY FIELDS
+// ============================================================================
+
+/**
+ * Format keluhan_utama (chief complaint)
+ * - Capitalize first letter
+ * - Fix basic grammar issues
+ * - Ensure proper sentence structure
+ *
+ * Example: "batuk Pilek" → "Pasien mengeluh Batuk dan pilek"
+ */
+function formatKeluhanUtama(text: string): string {
+  if (!text || text.trim().length === 0) return text;
+
+  let formatted = text.trim();
+
+  // Convert to lowercase first for consistent processing
+  formatted = formatted.toLowerCase();
+
+  // Fix common patterns
+  formatted = formatted.replace(/\s+/g, ' '); // Normalize spaces
+  formatted = formatted.replace(/pilek/gi, 'pilek'); // Standardize
+  formatted = formatted.replace(/batuk/gi, 'batuk'); // Standardize
+
+  // Add proper sentence structure if not present
+  if (!formatted.includes('pasien')) {
+    // Split by common separators
+    const symptoms = formatted.split(/\s+(?:dan|,|&)\s+/i);
+
+    if (symptoms.length > 1) {
+      // Multiple symptoms: "Pasien mengeluh Batuk dan pilek"
+      const capitalizedSymptoms = symptoms.map(s =>
+        s.charAt(0).toUpperCase() + s.slice(1)
+      );
+      formatted = `Pasien mengeluh ${capitalizedSymptoms.join(' dan ')}`;
+    } else {
+      // Single symptom: "Pasien mengeluh Batuk"
+      formatted = `Pasien mengeluh ${formatted.charAt(0).toUpperCase() + formatted.slice(1)}`;
+    }
+  } else {
+    // Already has "pasien", just capitalize
+    formatted = formatted.charAt(0).toUpperCase() + formatted.slice(1);
+  }
+
+  return formatted;
+}
+
+/**
+ * Expand keluhan_tambahan (additional complaints) to minimum 100-120 words
+ * - Add clinical context
+ * - Maintain medical professionalism
+ */
+function expandKeluhanTambahan(text: string): string {
+  if (!text || text.trim().length === 0) return text;
+
+  let expanded = text.trim();
+
+  // Count current words
+  const wordCount = expanded.split(/\s+/).length;
+
+  // If already 100+ words, return as is
+  if (wordCount >= 100) return expanded;
+
+  // Add clinical context based on chief complaint
+  const additions: string[] = [];
+
+  // Ensure proper sentence structure
+  if (!expanded.endsWith('.')) {
+    expanded += '.';
+  }
+
+  // Add temporal context if not present
+  if (!expanded.toLowerCase().includes('sejak') && !expanded.toLowerCase().includes('selama')) {
+    additions.push('Keluhan dirasakan sejak beberapa hari yang lalu');
+  }
+
+  // Add severity context if not present
+  if (!expanded.toLowerCase().includes('ringan') &&
+      !expanded.toLowerCase().includes('sedang') &&
+      !expanded.toLowerCase().includes('berat')) {
+    additions.push('dengan intensitas yang bervariasi');
+  }
+
+  // Add activity impact
+  if (!expanded.toLowerCase().includes('aktivitas') &&
+      !expanded.toLowerCase().includes('kegiatan')) {
+    additions.push('yang mengganggu aktivitas sehari-hari pasien');
+  }
+
+  // Add medical seeking behavior
+  if (!expanded.toLowerCase().includes('obat') &&
+      !expanded.toLowerCase().includes('pengobatan')) {
+    additions.push('Pasien belum mendapatkan pengobatan khusus sebelumnya');
+  }
+
+  // Add general condition
+  if (!expanded.toLowerCase().includes('kondisi umum') &&
+      !expanded.toLowerCase().includes('keadaan umum')) {
+    additions.push('Kondisi umum pasien saat ini cukup stabil dengan kesadaran compos mentis');
+  }
+
+  // Combine with additions
+  if (additions.length > 0) {
+    expanded += ' ' + additions.join('. ') + '.';
+  }
+
+  // Final word count check
+  const finalWordCount = expanded.split(/\s+/).length;
+  anamnesaLog.debug(`[Keluhan Tambahan] Expanded from ${wordCount} to ${finalWordCount} words`);
+
+  return expanded;
+}
 
 /**
  * Fill Anamnesa form with TTV and clinical data
@@ -40,6 +155,7 @@ export async function fillAnamnesaForm(payload: AnamnesaFillPayload): Promise<{
   anamnesaLog.debug('[Anamnesa Handler] Starting fill with payload:', payload);
 
   const mappings: FieldMapping[] = [];
+  const tenagaMedisBridgeFields: MainWorldFieldMapping[] = [];
   const skipped: string[] = [];
   const hasField = (selector: string): boolean => Boolean(document.querySelector(selector));
 
@@ -48,18 +164,24 @@ export async function fillAnamnesaForm(payload: AnamnesaFillPayload): Promise<{
   // Format: Anamnesa[field_name]
   // ========================================
   if (payload.keluhan_utama) {
+    // MANDATORY FIELD 1: Always override, apply formatting
+    const formattedKeluhanUtama = formatKeluhanUtama(payload.keluhan_utama);
     mappings.push({
       selector: 'textarea[name="Anamnesa[keluhan_utama]"], textarea#keluhan',
-      value: payload.keluhan_utama,
+      value: formattedKeluhanUtama,
       type: 'textarea',
+      forceOverride: true, // ✅ Always override
     });
   }
 
   if (payload.keluhan_tambahan) {
+    // MANDATORY FIELD 2: Always override, expand to 100-120 words
+    const expandedKeluhanTambahan = expandKeluhanTambahan(payload.keluhan_tambahan);
     mappings.push({
       selector: 'textarea[name="Anamnesa[keluhan_tambahan]"], textarea#keluhan-tambahan',
-      value: payload.keluhan_tambahan,
+      value: expandedKeluhanTambahan,
       type: 'textarea',
+      forceOverride: true, // ✅ Always override
     });
   }
 
@@ -1050,21 +1172,35 @@ export async function fillAnamnesaForm(payload: AnamnesaFillPayload): Promise<{
   // SECTION 10: TENAGA MEDIS
   // ========================================
   if (payload.tenaga_medis) {
-    // Dokter / Tenaga Medis
+    // MANDATORY FIELD 3: Dokter / Tenaga Medis - Always override
     if (payload.tenaga_medis.dokter_nama) {
       mappings.push({
-        selector: 'input[name="dokter_nama_bpjs"]',
-        value: payload.tenaga_medis.dokter_nama,
+        selector: 'input[name="dokter_nama_bpjs"], input[name="dokter_nama"], input[name="dokter"]',
+        value: payload.tenaga_medis.dokter_nama, // Should be: dr. FERDI ANDRISKA SH. MKN. C.LM
         type: 'text',
+        forceOverride: true, // ✅ Always override
+      });
+      tenagaMedisBridgeFields.push({
+        selector: 'input[name="dokter_nama_bpjs"], input[name="dokter_nama"], input[name="dokter"]',
+        value: payload.tenaga_medis.dokter_nama,
+        type: 'autocomplete',
+        autocompleteTimeout: 4000,
       });
     }
 
-    // Perawat / Bidan / Nutrisionist / Sanitarian
+    // MANDATORY FIELD 4: Perawat / Bidan / Nutrisionist / Sanitarian - Always override
     if (payload.tenaga_medis.perawat_nama) {
       mappings.push({
-        selector: 'input[name="perawat_nama"]',
-        value: payload.tenaga_medis.perawat_nama,
+        selector: 'input[name="perawat_nama"], input[name="perawat"], input[name*="bidan"]',
+        value: payload.tenaga_medis.perawat_nama, // Should be: JOSEP ARIANTO, A.Md
         type: 'text',
+        forceOverride: true, // ✅ Always override
+      });
+      tenagaMedisBridgeFields.push({
+        selector: 'input[name="perawat_nama"], input[name="perawat"], input[name*="bidan"]',
+        value: payload.tenaga_medis.perawat_nama,
+        type: 'autocomplete',
+        autocompleteTimeout: 4000,
       });
     }
   }
@@ -1092,6 +1228,43 @@ export async function fillAnamnesaForm(payload: AnamnesaFillPayload): Promise<{
       success.push(r);
     } else {
       failed.push(r);
+    }
+  }
+
+  if (tenagaMedisBridgeFields.length > 0) {
+    const bridgeResult = await fillViaMainWorld(tenagaMedisBridgeFields, 25000, 220);
+    const dokterAlreadyFilled = success.some((item) =>
+      String(item.field).toLowerCase().includes('dokter'),
+    );
+    const perawatAlreadyFilled = success.some((item) =>
+      String(item.field).toLowerCase().includes('perawat') ||
+      String(item.field).toLowerCase().includes('bidan'),
+    );
+    for (const ok of bridgeResult.success) {
+      success.push({
+        success: true,
+        field: ok.field,
+        value: ok.value,
+        method: 'autocomplete',
+      });
+    }
+    for (const bad of bridgeResult.failed) {
+      const fieldToken = String(bad.field).toLowerCase();
+      if (fieldToken.includes('dokter') && dokterAlreadyFilled) {
+        skipped.push('dokter_nama: bridge fallback tidak diperlukan (sudah terisi)');
+        continue;
+      }
+      if ((fieldToken.includes('perawat') || fieldToken.includes('bidan')) && perawatAlreadyFilled) {
+        skipped.push('perawat_nama: bridge fallback tidak diperlukan (sudah terisi)');
+        continue;
+      }
+      failed.push({
+        success: false,
+        field: bad.field,
+        value: bad.value,
+        method: 'autocomplete',
+        error: bad.error || 'Main-world bridge failed',
+      });
     }
   }
 

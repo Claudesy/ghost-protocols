@@ -114,12 +114,19 @@ export interface ResepRowSelectors {
  */
 export function getResepRowSelectors(n: number): ResepRowSelectors {
   const n1 = n + 1;
+  const firstRowOnly = (selectors: string[]): string[] => (n === 0 ? selectors : []);
   return {
     obat_racikan: [
       `select[name="obat_racikan[${n}]"]`,
       `select[name="obat_racikan[${n1}]"]`,
       `select[name="ResepDetail[${n}][obat_racikan]"]`,
       `select[name="ResepDetail[${n1}][obat_racikan]"]`,
+      `select[name="resepdetail[${n}][obat_racikan]"]`,
+      `select[name="resepdetail[${n1}][obat_racikan]"]`,
+      ...firstRowOnly([
+        'select[name="obat_racikan"]',
+        'select[name*="[obat_racikan]"]',
+      ]),
       `.medication-row:nth-child(${n + 1}) select[name*="racikan"]`,
     ].join(', '),
 
@@ -128,6 +135,12 @@ export function getResepRowSelectors(n: number): ResepRowSelectors {
       `input[name="obat_jumlah_permintaan[${n1}]"]`,
       `input[name="ResepDetail[${n}][obat_jumlah_permintaan]"]`,
       `input[name="ResepDetail[${n1}][obat_jumlah_permintaan]"]`,
+      `input[name="resepdetail[${n}][obat_jumlah_permintaan]"]`,
+      `input[name="resepdetail[${n1}][obat_jumlah_permintaan]"]`,
+      ...firstRowOnly([
+        'input[name="obat_jumlah_permintaan"]',
+        'input[name*="[obat_jumlah_permintaan]"]',
+      ]),
       `.medication-row:nth-child(${n + 1}) input[name*="jumlah_permintaan"]`,
     ].join(', '),
 
@@ -138,8 +151,16 @@ export function getResepRowSelectors(n: number): ResepRowSelectors {
       `input[name="obat_nama_${n1}"]`,
       `input[name="ResepDetail[${n}][obat_nama]"]`,
       `input[name="ResepDetail[${n1}][obat_nama]"]`,
+      `input[name="resepdetail[${n}][obat_nama]"]`,
+      `input[name="resepdetail[${n1}][obat_nama]"]`,
       `input[name="obat[${n}][nama]"]`,
       `input[name="obat[${n1}][nama]"]`,
+      ...firstRowOnly([
+        'input[name="obat_nama"]',
+        'input[name*="[obat_nama]"]',
+        'input[name*="resepdetail"][name*="obat_nama"]',
+        'input[placeholder*="Nama Obat"]',
+      ]),
       `.medication-row:nth-child(${n + 1}) input[name*="obat_nama"]`,
     ].join(', '),
 
@@ -148,8 +169,14 @@ export function getResepRowSelectors(n: number): ResepRowSelectors {
       `input[name="obat_jumlah[${n1}]"]`,
       `input[name="ResepDetail[${n}][obat_jumlah]"]`,
       `input[name="ResepDetail[${n1}][obat_jumlah]"]`,
+      `input[name="resepdetail[${n}][obat_jumlah]"]`,
+      `input[name="resepdetail[${n1}][obat_jumlah]"]`,
       `input[name="obat[${n}][jumlah]"]`,
       `input[name="obat[${n1}][jumlah]"]`,
+      ...firstRowOnly([
+        'input[name="obat_jumlah"]',
+        'input[name*="[obat_jumlah]"]',
+      ]),
       `.medication-row:nth-child(${n + 1}) input[name*="obat_jumlah"]:not([name*="permintaan"])`,
     ].join(', '),
 
@@ -158,8 +185,16 @@ export function getResepRowSelectors(n: number): ResepRowSelectors {
       `input[name="obat_signa[${n1}]"]`,
       `input[name="ResepDetail[${n}][obat_signa]"]`,
       `input[name="ResepDetail[${n1}][obat_signa]"]`,
+      `input[name="resepdetail[${n}][obat_signa]"]`,
+      `input[name="resepdetail[${n1}][obat_signa]"]`,
       `input[name="obat[${n}][signa]"]`,
       `input[name="obat[${n1}][signa]"]`,
+      ...firstRowOnly([
+        'input[name="obat_signa"]',
+        'input[name*="[obat_signa]"]',
+        'input[name*="resepdetail"][name*="obat_signa"]',
+        'input[placeholder*="Cari Resep"]',
+      ]),
       `.medication-row:nth-child(${n + 1}) input[name*="signa"]`,
     ].join(', '),
 
@@ -168,8 +203,14 @@ export function getResepRowSelectors(n: number): ResepRowSelectors {
       `select[name="aturan_pakai[${n1}]"]`,
       `select[name="ResepDetail[${n}][aturan_pakai]"]`,
       `select[name="ResepDetail[${n1}][aturan_pakai]"]`,
+      `select[name="resepdetail[${n}][aturan_pakai]"]`,
+      `select[name="resepdetail[${n1}][aturan_pakai]"]`,
       `select[name="obat[${n}][aturan]"]`,
       `select[name="obat[${n1}][aturan]"]`,
+      ...firstRowOnly([
+        'select[name="aturan_pakai"]',
+        'select[name*="[aturan_pakai]"]',
+      ]),
       `.medication-row:nth-child(${n + 1}) select[name*="aturan"]`,
     ].join(', '),
 
@@ -180,6 +221,14 @@ export function getResepRowSelectors(n: number): ResepRowSelectors {
       `textarea[name="obat_keterangan[${n1}]"]`,
       `input[name="ResepDetail[${n}][obat_keterangan]"]`,
       `input[name="ResepDetail[${n1}][obat_keterangan]"]`,
+      `input[name="resepdetail[${n}][obat_keterangan]"]`,
+      `input[name="resepdetail[${n1}][obat_keterangan]"]`,
+      ...firstRowOnly([
+        'input[name="obat_keterangan"]',
+        'textarea[name="obat_keterangan"]',
+        'input[name*="[obat_keterangan]"]',
+        'textarea[name*="[obat_keterangan]"]',
+      ]),
       `.medication-row:nth-child(${n + 1}) input[name*="keterangan"]`,
       `.medication-row:nth-child(${n + 1}) textarea[name*="keterangan"]`,
     ].join(', '),

@@ -8,7 +8,7 @@
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { FAST_CARBS_15G } from '../../lib/inference/glucose-classifier';
+import { FAST_CARBS_15G } from '../../lib/emergency-detector/glucose-classifier';
 
 // ============================================================================
 // TYPES
@@ -671,3 +671,4 @@ export const hypoglycemia1515Styles = `
   color: var(--text-secondary);
 }
 `;
+

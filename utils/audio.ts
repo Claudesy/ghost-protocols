@@ -11,7 +11,7 @@
  * Plays the UPLINK completion notification sound
  *
  * @remarks
- * This function creates a new Audio instance and plays the message.mp3
+ * This function creates a new Audio instance and plays the notif1.wav
  * notification sound when UPLINK sync completes successfully. Errors are
  * caught and logged but don't throw to avoid breaking the UI flow.
  *
@@ -31,13 +31,13 @@
 export function playNotificationSound(): void {
   try {
     // Get the correct path for the sound file in the extension
-    const soundPath = chrome.runtime.getURL('assets/sounds/message.mp3');
+    const soundPath = chrome.runtime.getURL('assets/sounds/notif1.wav');
 
     // Create and play the audio
     const audio = new Audio(soundPath);
 
-    // Set volume to a reasonable level (0.7 = 70%)
-    audio.volume = 0.7;
+    // Set volume to a reasonable level (0.8 = 80%)
+    audio.volume = 0.8;
 
     // Play the sound
     audio.play().catch((error) => {
@@ -61,7 +61,7 @@ export function playNotificationSound(): void {
  */
 export function playNotificationSoundWithVolume(volume: number): void {
   try {
-    const soundPath = chrome.runtime.getURL('assets/sounds/message.mp3');
+    const soundPath = chrome.runtime.getURL('assets/sounds/notif1.wav');
     const audio = new Audio(soundPath);
 
     // Clamp volume between 0 and 1

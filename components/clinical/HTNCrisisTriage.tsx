@@ -13,7 +13,7 @@ import {
   CAPTOPRIL_PROTOCOL,
   HMODRedFlags,
   triageHypertensiveCrisis,
-} from '../../lib/inference/htn-classifier';
+} from '../../lib/emergency-detector/htn-classifier';
 import { CrisisAlert, RecommendationList } from './ClinicalAlert';
 
 // ============================================================================
@@ -701,3 +701,4 @@ export const htnCrisisTriageStyles = `
   margin: 2px 0;
 }
 `;
+

@@ -16,6 +16,14 @@ export interface ScrapedVisitData {
   diagnosa: { icd_x: string; nama: string } | null;
 }
 
+const ICD_CODE_PATTERN = /\b([A-Z][0-9]{2}(?:\.[0-9A-Z]{1,2})?)\b/i;
+const ICD_EMERGENCY_HEAD_MAP: Record<string, string> = {
+  '0': 'O',
+  '1': 'I',
+  '5': 'S',
+  '8': 'B',
+};
+
 const getElementValue = (root: ParentNode, selector: string): string => {
   const node = root.querySelector(selector);
   if (!node) return '';
@@ -118,6 +126,54 @@ const getFieldValue = (
   return getLabelValueFromText(root, labelKeywords);
 };
 
+function escapeRegex(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function normalizeIcdCode(raw: string): string {
+  const cleaned = cleanText(raw)
+    .toUpperCase()
+    .replace(/\s+/g, '')
+    .trim();
+  if (!cleaned) return '';
+
+  const match = cleaned.match(ICD_CODE_PATTERN);
+  if (match?.[1]) return match[1].toUpperCase().trim();
+
+  const compact = cleaned.replace(/[^A-Z0-9.]/g, '');
+  if (!compact) return '';
+
+  const mappedHead = ICD_EMERGENCY_HEAD_MAP[compact[0]];
+  if (!mappedHead) return '';
+
+  const candidate = `${mappedHead}${compact.slice(1)}`;
+  const recovered = candidate.match(/^([A-Z][0-9]{2}(?:\.[0-9A-Z]{1,2})?)/);
+  return recovered?.[1]?.toUpperCase().trim() || '';
+}
+
+function isReadableDiagnosisLabel(raw: string): boolean {
+  const cleaned = cleanText(raw);
+  if (!cleaned) return false;
+  if (cleaned.length < 3) return false;
+  if (/^\d+$/.test(cleaned)) return false;
+  if (!/[A-Za-z]/.test(cleaned)) return false;
+  return true;
+}
+
+function normalizeDiagnosisName(raw: string, icdCode: string): string {
+  let cleaned = cleanText(raw);
+  if (!cleaned) return '';
+
+  if (icdCode) {
+    const icdPrefix = new RegExp(`^${escapeRegex(icdCode)}\\s*[-:]*\\s*`, 'i');
+    cleaned = cleaned.replace(icdPrefix, '').trim();
+  }
+
+  cleaned = cleaned.replace(/\bICD[-\s]*X?\b[:\s-]*/gi, '').trim();
+  if (!isReadableDiagnosisLabel(cleaned)) return '';
+  return cleaned;
+}
+
 export const extractVisitFromRoot = (
   root: ParentNode,
   encounterId: string,
@@ -148,12 +204,14 @@ export const extractVisitFromRoot = (
     VISIT_LABEL_KEYWORDS.keluhanUtama,
   );
 
-  const icd = getFieldValue(root, VISIT_FIELD_SELECTORS.diagnosis.icd, VISIT_LABEL_KEYWORDS.icd);
-  const diagnosaNama = getFieldValue(
+  const icdRaw = getFieldValue(root, VISIT_FIELD_SELECTORS.diagnosis.icd, VISIT_LABEL_KEYWORDS.icd);
+  const icd = normalizeIcdCode(icdRaw);
+  const diagnosaNamaRaw = getFieldValue(
     root,
     VISIT_FIELD_SELECTORS.diagnosis.nama,
     VISIT_LABEL_KEYWORDS.diagnosa,
   );
+  const diagnosaNama = normalizeDiagnosisName(diagnosaNamaRaw, icd);
 
   const hasUsableVitals = sbp > 0 || dbp > 0 || hr > 0 || rr > 0 || temp > 0;
   if (!hasUsableVitals) {
@@ -165,6 +223,6 @@ export const extractVisitFromRoot = (
     date: timestamp,
     vitals: { sbp, dbp, hr, rr, temp, glucose },
     keluhan_utama: keluhanUtama,
-    diagnosa: icd ? { icd_x: icd, nama: diagnosaNama || icd } : null,
+    diagnosa: icd ? { icd_x: icd, nama: diagnosaNama || `Diagnosis ${icd}` } : null,
   };
 };

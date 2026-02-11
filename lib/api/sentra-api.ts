@@ -42,10 +42,10 @@ import { getICD10Details, searchForDiagnosisSuggestions, searchICD10 } from '@/l
 import {
   generatePharmacotherapyPlan,
   type PharmacotherapyPlan,
-} from '@/lib/cdss/pharmacotherapy-reasoner';
+} from '@/lib/iskandar-diagnosis-engine/pharmacotherapy-reasoner';
 
 // Import DDInter-based DDI checker (173K+ interactions)
-import { checkDrugInteractions as checkDDInterInteractions, loadDDIDatabase } from '@/lib/cdss/ddi-checker';
+import { checkDrugInteractions as checkDDInterInteractions, loadDDIDatabase } from '@/lib/iskandar-diagnosis-engine/ddi-checker';
 
 // =============================================================================
 // CONFIGURATION

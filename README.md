@@ -1,4 +1,4 @@
-# ⚡ Sentra Assist - ePuskesmas CDSS Widget
+# ⚡ Sentra Assist — Iskandar Diagnosis Engine V1
 
 **Version**: 1.0.0 (Phase 1 Complete)  
 **Status**: Active Development  
@@ -8,7 +8,7 @@
 
 ## 🎯 Overview
 
-Sentra Assist is a Chrome Extension that provides Clinical Decision Support System (CDSS) capabilities for the ePuskesmas Electronic Medical Record system. Built with [WXT](https://wxt.dev) framework, it offers:
+Sentra Assist is a Chrome Extension that provides Clinical Decision Support System (CDSS) capabilities for the ePuskesmas Electronic Medical Record system, powered by **Iskandar Diagnosis Engine V1**. Built with [WXT](https://wxt.dev) framework, it offers:
 
 - ⚡ **60-80% faster prescription entry** through intelligent auto-fill
 - 🔄 **Cross-page data persistence** via chrome.storage.local
@@ -120,6 +120,9 @@ sentra-assist/
 │   ├── types.ts               ← TypeScript interfaces
 │   ├── messaging.ts           ← Typed message contracts
 │   └── storage.ts             ← chrome.storage wrapper
+│
+├── lib/
+│   └── iskandar-diagnosis-engine/ ← Iskandar Diagnosis Engine V1
 │
 ├── data/
 │   └── field-mappings.ts      ← Field configs (TODO)

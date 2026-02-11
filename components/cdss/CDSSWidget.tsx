@@ -24,9 +24,9 @@ import { sendMessage } from '@/utils/messaging';
 import { DiagnosisCard } from './DiagnosisCard';
 import { RedFlagAlert } from './RedFlagAlert';
 import { CDSSDisclaimer } from './CDSSDisclaimer';
-import type { CDSSEngineResult } from '@/lib/cdss/engine';
-import type { ValidatedSuggestion } from '@/lib/cdss/validation/types';
-import type { RedFlag } from '@/lib/cdss/red-flags';
+import type { CDSSEngineResult } from '@/lib/iskandar-diagnosis-engine/engine';
+import type { ValidatedSuggestion } from '@/lib/iskandar-diagnosis-engine/validation/types';
+import type { RedFlag } from '@/lib/iskandar-diagnosis-engine/red-flags';
 
 // =============================================================================
 // TYPES

@@ -16,7 +16,7 @@ import {
   HistoricalBP,
   PerfusionAssessment,
   ShockAssessmentVitals,
-} from '../../lib/inference/occult-shock-detector';
+} from '../../lib/emergency-detector/occult-shock-detector';
 import { CrisisAlert, ReasoningDisplay, ReasoningStep } from './ClinicalAlert';
 
 // ============================================================================
@@ -728,3 +728,4 @@ export const occultShockDetectorStyles = `
   margin: 4px 0;
 }
 `;
+

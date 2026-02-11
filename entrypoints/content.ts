@@ -92,6 +92,186 @@ export default defineContentScript({
       return null;
     };
 
+    const normalizeName = (value: string): string =>
+      value.replace(/\s+/g, ' ').replace(/[|]/g, '').trim();
+
+    const isPlausibleName = (value: string, role: 'dokter' | 'perawat'): boolean => {
+      const normalized = normalizeName(value);
+      if (!normalized || normalized.length < 3) return false;
+
+      const lower = normalized.toLowerCase();
+      const blocked = [
+        'dr. sentra ai',
+        'perawat sentra',
+        'unknown',
+        'tidak diketahui',
+        'n/a',
+        'null',
+        'undefined',
+        '-',
+      ];
+      if (blocked.some((item) => lower === item)) return false;
+      if (role === 'dokter' && lower.includes('perawat')) return false;
+      return true;
+    };
+
+    const readSelectorValue = (selector: string): string => {
+      const el = document.querySelector(selector);
+      if (!el) return '';
+      if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
+        return normalizeName(el.value || el.getAttribute('value') || '');
+      }
+      if (el instanceof HTMLSelectElement) {
+        return normalizeName(el.value || el.options[el.selectedIndex]?.text || '');
+      }
+      return normalizeName(el.textContent || '');
+    };
+
+    const firstNonEmpty = (selectors: string[]): string => {
+      for (const selector of selectors) {
+        const value = readSelectorValue(selector);
+        if (value) return value;
+      }
+      return '';
+    };
+
+    const persistTenagaMedis = (dokterNama: string, perawatNama: string): void => {
+      const snapshot = JSON.stringify({
+        dokterNama,
+        perawatNama,
+        capturedAt: new Date().toISOString(),
+      });
+      try {
+        localStorage.setItem('sentra_tenaga_medis', snapshot);
+        if (dokterNama) {
+          localStorage.setItem('epuskesmas_doctor_name', dokterNama);
+          sessionStorage.setItem('epuskesmas_doctor_name', dokterNama);
+        }
+        if (perawatNama) {
+          localStorage.setItem('epuskesmas_nurse_name', perawatNama);
+          sessionStorage.setItem('epuskesmas_nurse_name', perawatNama);
+        }
+      } catch {
+        // Storage may be blocked by browser policy; non-fatal.
+      }
+    };
+
+    const readStoredTenagaMedis = (): { dokterNama: string; perawatNama: string } => {
+      try {
+        const raw = localStorage.getItem('sentra_tenaga_medis');
+        if (raw) {
+          const parsed = JSON.parse(raw) as { dokterNama?: string; perawatNama?: string };
+          return {
+            dokterNama: normalizeName(parsed.dokterNama || ''),
+            perawatNama: normalizeName(parsed.perawatNama || ''),
+          };
+        }
+      } catch {
+        // ignore malformed storage
+      }
+
+      const dokterNama = normalizeName(
+        localStorage.getItem('epuskesmas_doctor_name') ||
+          sessionStorage.getItem('epuskesmas_doctor_name') ||
+          '',
+      );
+      const perawatNama = normalizeName(
+        localStorage.getItem('epuskesmas_nurse_name') ||
+          sessionStorage.getItem('epuskesmas_nurse_name') ||
+          '',
+      );
+      return { dokterNama, perawatNama };
+    };
+
+    const scrapeTenagaMedis = (): {
+      dokterNama: string;
+      perawatNama: string;
+      source: string[];
+    } => {
+      const source: string[] = [];
+      const stored = readStoredTenagaMedis();
+
+      const dokterSelectors = [
+        'input[name="dokter_nama_bpjs"]',
+        'input[name="dokter_nama"]',
+        'input[name="dokter"]',
+        'input[name*="dokter"]',
+        'input[placeholder*="Dokter"]',
+        'input[placeholder*="dokter"]',
+        'input[id*="dokter"]',
+      ];
+      const perawatSelectors = [
+        'input[name="perawat_nama"]',
+        'input[name="perawat"]',
+        'input[name*="perawat"]',
+        'input[name*="bidan"]',
+        'input[placeholder*="Perawat"]',
+        'input[placeholder*="perawat"]',
+        'input[placeholder*="Bidan"]',
+        'input[placeholder*="bidan"]',
+        'input[id*="perawat"]',
+      ];
+
+      let dokterNama = firstNonEmpty(dokterSelectors);
+      if (dokterNama) source.push('dom-input:dokter');
+      let perawatNama = firstNonEmpty(perawatSelectors);
+      if (perawatNama) source.push('dom-input:perawat');
+
+      const pageText = document.body?.innerText || '';
+      if (!dokterNama) {
+        const dokterMatch = pageText.match(
+          /(?:Dokter|Dokter Pemeriksa|DPJP)\s*[:-]\s*([^\n\r|,]{3,120})/i,
+        );
+        if (dokterMatch?.[1]) {
+          dokterNama = normalizeName(dokterMatch[1]);
+          source.push('dom-text:dokter');
+        }
+      }
+      if (!perawatNama) {
+        const perawatMatch = pageText.match(
+          /(?:Perawat|Bidan|Ners)\s*[:-]\s*([^\n\r|,]{3,120})/i,
+        );
+        if (perawatMatch?.[1]) {
+          perawatNama = normalizeName(perawatMatch[1]);
+          source.push('dom-text:perawat');
+        }
+      }
+
+      if (!dokterNama || !perawatNama) {
+        const userName = normalizeName(
+          firstNonEmpty(['.username', '.user-name', '.logged-in-user', '.current-user']),
+        );
+        if (userName) {
+          if (!dokterNama && /^dr\.?\s/i.test(userName)) {
+            dokterNama = userName;
+            source.push('user-banner:dokter');
+          }
+          if (!perawatNama && !/^dr\.?\s/i.test(userName)) {
+            perawatNama = userName;
+            source.push('user-banner:perawat');
+          }
+        }
+      }
+
+      if (!dokterNama && stored.dokterNama) {
+        dokterNama = stored.dokterNama;
+        source.push('storage:dokter');
+      }
+      if (!perawatNama && stored.perawatNama) {
+        perawatNama = stored.perawatNama;
+        source.push('storage:perawat');
+      }
+
+      if (!isPlausibleName(dokterNama, 'dokter')) dokterNama = '';
+      if (!isPlausibleName(perawatNama, 'perawat')) perawatNama = '';
+
+      if (dokterNama || perawatNama) {
+        persistTenagaMedis(dokterNama, perawatNama);
+      }
+
+      return { dokterNama, perawatNama, source };
+    };
+
     // Initialize content script
     const init = () => {
       contentLog.debug('Content script initialized on', window.location.href);
@@ -168,11 +348,14 @@ export default defineContentScript({
 
           if (payload.type === 'diagnosa') {
             // Use direct handler for diagnosa/ICD-10 - DO NOT require currentPage match
+            console.warn('🚨 [SENTRA DIAGNOSA] Content script received execFill for diagnosa');
+            console.warn('🚨 [SENTRA DIAGNOSA] Payload:', payload.encounter);
             contentLog.debug('[SentraContent] Routing to fillDiagnosaForm');
             debug('Using Diagnosa handler with DAS integration');
             const result = await fillDiagnosaForm(
               payload.encounter as unknown as DiagnosaFillPayload
             );
+            console.warn('🚨 [SENTRA DIAGNOSA] Fill result:', result);
             contentLog.debug(
               '[SentraContent] fillDiagnosaForm result:',
               JSON.stringify(result).substring(0, 300)
@@ -241,6 +424,31 @@ export default defineContentScript({
           pageType: detected || 'unknown',
           url: window.location.href,
           isReady,
+        };
+      },
+
+      resolveTenagaMedis: (_data: unknown) => {
+        const tenagaMedis = scrapeTenagaMedis();
+        if (!tenagaMedis.dokterNama && !tenagaMedis.perawatNama) {
+          return {
+            success: false,
+            error: 'Nama dokter/perawat tidak ditemukan di halaman aktif.',
+            tenagaMedis: {
+              dokterNama: '',
+              perawatNama: '',
+              source: tenagaMedis.source,
+              capturedAt: new Date().toISOString(),
+            },
+          };
+        }
+        return {
+          success: true,
+          tenagaMedis: {
+            dokterNama: tenagaMedis.dokterNama,
+            perawatNama: tenagaMedis.perawatNama,
+            source: tenagaMedis.source,
+            capturedAt: new Date().toISOString(),
+          },
         };
       },
 
@@ -1031,6 +1239,12 @@ export default defineContentScript({
 
       if (msg.type === 'getCurrentPageType') {
         const result = messageHandlers.getCurrentPageType(msg.data);
+        sendResponse(result);
+        return true;
+      }
+
+      if (msg.type === 'resolveTenagaMedis') {
+        const result = messageHandlers.resolveTenagaMedis(msg.data);
         sendResponse(result);
         return true;
       }

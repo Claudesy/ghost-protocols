@@ -14,7 +14,7 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import { piecesClient, type PiecesSnippet } from '../../lib/api';
-import { generateNarrative, getSuggestions } from '../../lib/inference/narrative-generator';
+import { generateNarrative, getSuggestions, correctTypos } from '../../lib/emergency-detector/narrative-generator';
 import { playNotificationSound } from '../../utils/audio';
 import type { AnamnesaFillPayload, FillResult } from '../../utils/types';
 import { diagnosisSuggestionsStyles } from './DiagnosisSuggestions';
@@ -59,7 +59,7 @@ import {
   classifyBloodGlucose,
   type GlucoseClassification,
   type GlucoseData,
-} from '../../lib/inference/glucose-classifier';
+} from '../../lib/emergency-detector/glucose-classifier';
 import {
   BP_THRESHOLDS,
   classifyHypertension,
@@ -68,14 +68,14 @@ import {
   getHTNSeverity,
   type BPMeasurementSession,
   type HTNClassification,
-} from '../../lib/inference/htn-classifier';
+} from '../../lib/emergency-detector/htn-classifier';
 import {
   calculateMAP,
   detectOccultShock,
   integratedTTVWorkflow,
   type ClinicalDecision,
   type OccultShockResult,
-} from '../../lib/inference/occult-shock-detector';
+} from '../../lib/emergency-detector/occult-shock-detector';
 
 // ============================================================================
 // TYPES
@@ -90,6 +90,7 @@ export interface TTVFormState {
   hr: string;
   rr: string;
   temp: string;
+  spo2: string; // ✅ SPO2 field
   glucose: string;
   symptomText: string;
   allergies: string[];
@@ -182,7 +183,7 @@ export const TTVInferenceUI = ({
   patientAge,
   patientRM,
   onComplete,
-  showMaskedName = false,
+  showMaskedName = true,
   onAlertsChange,
   patientDOB,
   patientBloodType,
@@ -200,6 +201,7 @@ export const TTVInferenceUI = ({
     hr: '',
     rr: '',
     temp: '',
+    spo2: '', // ✅ SPO2 default value
     glucose: '',
     symptomText: '',
     allergies: [],
@@ -232,6 +234,7 @@ export const TTVInferenceUI = ({
   const [localHr, setLocalHR] = useState<string>('');
   const [localRr, setLocalRR] = useState<string>('');
   const [localTemp, setLocalTemp] = useState<string>('');
+  const [localSpo2, setLocalSpo2] = useState<string>(''); // ✅ SPO2 state
   const [localGlucose, setLocalGlucose] = useState<string>('');
   const [localSymptomText, setLocalSymptomText] = useState<string>('');
   const [localAllergies, setLocalAllergies] = useState<string[]>([]);
@@ -244,6 +247,7 @@ export const TTVInferenceUI = ({
   const hr = isLifted ? liftedState.hr : localHr;
   const rr = isLifted ? liftedState.rr : localRr;
   const temp = isLifted ? liftedState.temp : localTemp;
+  const spo2 = isLifted ? liftedState.spo2 : localSpo2; // ✅ SPO2 derived
   const glucose = isLifted ? liftedState.glucose : localGlucose;
   const symptomText = isLifted ? liftedState.symptomText : localSymptomText;
   const allergies = isLifted ? liftedState.allergies : localAllergies;
@@ -313,6 +317,17 @@ export const TTVInferenceUI = ({
         liftedSetterRef.current({ ...liftedStateRef.current, glucose: value });
       } else {
         setLocalGlucose(value);
+      }
+    },
+    [isLifted]
+  );
+
+  const setSpo2 = useCallback(
+    (value: string) => {
+      if (isLifted) {
+        liftedSetterRef.current({ ...liftedStateRef.current, spo2: value });
+      } else {
+        setLocalSpo2(value);
       }
     },
     [isLifted]
@@ -408,22 +423,15 @@ export const TTVInferenceUI = ({
   }, [symptomText, piecesAvailable, patientRM]);
 
   // Allergy options
-  const allergyOptions = ['Obat', 'Makanan', 'Udara Dingin', 'Debu', 'Tidak Ada'];
+  const allergyOptions = ['Allergy', 'Mental Health', 'Nicotine Use'];
 
   const toggleAllergy = (allergy: string) => {
-    if (allergy === 'Tidak Ada') {
-      // If "Tidak Ada" selected, clear all others
-      setAllergies(['Tidak Ada']);
-    } else {
-      // If other selected, remove "Tidak Ada" and toggle
-      setAllergies((prev) => {
-        const filtered = prev.filter((a) => a !== 'Tidak Ada');
-        if (filtered.includes(allergy)) {
-          return filtered.filter((a) => a !== allergy);
-        }
-        return [...filtered, allergy];
-      });
-    }
+    setAllergies((prev) => {
+      if (prev.includes(allergy)) {
+        return prev.filter((a) => a !== allergy);
+      }
+      return [...prev, allergy];
+    });
   };
 
   // TTV Presets with realistic variation
@@ -439,6 +447,7 @@ export const TTVInferenceUI = ({
           hr: randomInRange(72, 88).toString(),
           rr: randomInRange(16, 20).toString(),
           temp: (36 + Math.random() * 0.6).toFixed(1),
+          spo2: randomInRange(97, 99).toString(), // ✅ Normal: 95-100%
           glucose: randomInRange(85, 110).toString(),
         };
 
@@ -450,6 +459,7 @@ export const TTVInferenceUI = ({
           hr: randomInRange(85, 100).toString(),
           rr: randomInRange(18, 24).toString(),
           temp: (36.2 + Math.random() * 0.5).toFixed(1),
+          spo2: randomInRange(95, 98).toString(), // ✅ Slightly lower with HT
           glucose: randomInRange(100, 140).toString(),
         };
 
@@ -461,6 +471,7 @@ export const TTVInferenceUI = ({
           hr: randomInRange(90, 110).toString(), // Tachycardia from hypoglycemia
           rr: randomInRange(18, 24).toString(),
           temp: (36 + Math.random() * 0.4).toFixed(1),
+          spo2: randomInRange(96, 99).toString(), // ✅ Usually normal with hypo
           glucose: randomInRange(40, 65).toString(), // Critical hypoglycemia
         };
 
@@ -472,6 +483,7 @@ export const TTVInferenceUI = ({
           hr: randomInRange(85, 100).toString(),
           rr: randomInRange(18, 22).toString(),
           temp: (36.5 + Math.random() * 0.5).toFixed(1),
+          spo2: randomInRange(95, 98).toString(), // ✅ May be slightly affected
           glucose: randomInRange(250, 450).toString(), // Significant hyperglycemia
         };
 
@@ -482,6 +494,7 @@ export const TTVInferenceUI = ({
           hr: randomInRange(72, 88).toString(),
           rr: randomInRange(16, 20).toString(),
           temp: (36 + Math.random() * 0.6).toFixed(1),
+          spo2: randomInRange(97, 99).toString(), // ✅ Normal default
           glucose: randomInRange(85, 110).toString(),
         };
     }
@@ -504,33 +517,39 @@ export const TTVInferenceUI = ({
 
     // For lifted state: batch update all values at once to avoid stale closure issues
     if (isLifted && onTTVStateChange && ttvState) {
-      console.log('[TTVInferenceUI] Using batch update for lifted state');
-      // Animate fields visually first
-      const fieldKeys = ['sbp', 'dbp', 'glucose', 'hr', 'rr', 'temp'];
-      const shuffled = [...fieldKeys].sort(() => Math.random() - 0.5);
+      console.log('[TTVInferenceUI] Using sequential update for lifted state');
+      // Sequential update - nilai muncul bergantian
+      const fieldUpdates = [
+        { key: 'sbp', value: values.sbp },
+        { key: 'dbp', value: values.dbp },
+        { key: 'glucose', value: values.glucose },
+        { key: 'hr', value: values.hr },
+        { key: 'rr', value: values.rr },
+        { key: 'temp', value: values.temp },
+        { key: 'spo2', value: values.spo2 }, // ✅ Add SPO2 to auto-fill
+      ];
+      const shuffled = [...fieldUpdates].sort(() => Math.random() - 0.5);
 
-      shuffled.forEach((key, index) => {
+      let currentState = { ...ttvState };
+
+      shuffled.forEach((field, index) => {
         setTimeout(() => {
-          setAnimatingField(key);
-          setTimeout(() => setAnimatingField(null), 150);
-        }, index * 80);
-      });
+          setAnimatingField(field.key);
 
-      // Batch update all values after animation starts
-      setTimeout(() => {
-        const newState = {
-          ...ttvState,
-          sbp: values.sbp,
-          dbp: values.dbp,
-          hr: values.hr,
-          rr: values.rr,
-          temp: values.temp,
-          glucose: values.glucose,
-        };
-        console.log('[TTVInferenceUI] Batch updating state to:', newState);
-        onTTVStateChange(newState);
-        setIsAutoFilling(false);
-      }, 100);
+          // Update state dengan nilai baru
+          currentState = {
+            ...currentState,
+            [field.key]: field.value,
+          };
+          onTTVStateChange(currentState);
+
+          setTimeout(() => setAnimatingField(null), 600);
+
+          if (index === shuffled.length - 1) {
+            setTimeout(() => setIsAutoFilling(false), 800);
+          }
+        }, index * 250);
+      });
 
       return;
     }
@@ -543,6 +562,7 @@ export const TTVInferenceUI = ({
       { key: 'hr', setter: setLocalHR, value: values.hr },
       { key: 'rr', setter: setLocalRR, value: values.rr },
       { key: 'temp', setter: setLocalTemp, value: values.temp },
+      { key: 'spo2', setter: setLocalSpo2, value: values.spo2 }, // ✅ Add SPO2
     ];
 
     const shuffled = [...fields].sort(() => Math.random() - 0.5);
@@ -552,12 +572,14 @@ export const TTVInferenceUI = ({
         setAnimatingField(field.key);
         field.setter(field.value);
 
-        setTimeout(() => setAnimatingField(null), 150);
+        setTimeout(() => setAnimatingField(null), 600);
 
         if (index === shuffled.length - 1) {
-          setTimeout(() => setIsAutoFilling(false), 200);
+          setTimeout(() => {
+            setIsAutoFilling(false);
+          }, 800);
         }
-      }, index * 120);
+      }, index * 250);
     });
   }, [autosenPreset, generateTTVValues, isAutoFilling, isLifted, ttvState, onTTVStateChange]);
 
@@ -1281,36 +1303,8 @@ export const TTVInferenceUI = ({
 
   // Autocomplete suggestions
   const handleSymptomChange = useCallback((value: string) => {
-    // Auto-correct: common spelling mistakes in Indonesian medical terms
-    const spellingCorrections: { [key: string]: string } = {
-      deman: 'demam',
-      batux: 'batuk',
-      panas: 'demam',
-      'sakit kepla': 'sakit kepala',
-      kepla: 'kepala',
-      pilek: 'pilek',
-      mencret: 'diare',
-      mual2: 'mual',
-      muntah2: 'muntah',
-      pusing2: 'pusing',
-      lemas: 'lemas',
-      letih: 'lemas',
-      nyri: 'nyeri',
-      nyer: 'nyeri',
-      saket: 'sakit',
-    };
-
-    // Apply spelling corrections (case-insensitive)
-    let correctedValue = value;
-    for (const [wrong, correct] of Object.entries(spellingCorrections)) {
-      const regex = new RegExp(`\\b${wrong}\\b`, 'gi');
-      correctedValue = correctedValue.replace(regex, correct);
-    }
-
-    // Auto-capitalize first letter of sentences (after ., ?, !, or at start)
-    correctedValue = correctedValue
-      .replace(/^\s*([a-z])/, (match, p1) => match.replace(p1, p1.toUpperCase()))
-      .replace(/([.!?]\s+)([a-z])/g, (_match, p1, p2) => p1 + p2.toUpperCase());
+    // Use comprehensive auto-correction from narrative-generator
+    const correctedValue = correctTypos(value);
 
     setSymptomText(correctedValue);
 
@@ -1373,14 +1367,14 @@ export const TTVInferenceUI = ({
   const [, setUplinkError] = useState<string | null>(null);
 
   // Scramble text state for UPLINK button animation
-  const [scrambleText, setScrambleText] = useState('UPLINK SENTRA NETWORK');
+  const [scrambleText, setScrambleText] = useState('Satellite Processing');
 
   // Text scramble effect based on uplink status
   useEffect(() => {
     if (uplinkStatus === 'sending') {
       // Start scramble animation
       const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%&';
-      const targetText = 'SYNCHRONIZING...';
+      const targetText = 'Satellite Processing';
       let frame = 0;
 
       const interval = setInterval(() => {
@@ -1405,7 +1399,7 @@ export const TTVInferenceUI = ({
     } else if (uplinkStatus === 'error') {
       setScrambleText('SYNC FAILED');
     } else {
-      setScrambleText('UPLINK SENTRA NETWORK');
+      setScrambleText('Satellite Processing');
     }
   }, [uplinkStatus]);
 
@@ -2061,7 +2055,7 @@ export const TTVInferenceUI = ({
         hubungan_keluarga: 'harmonis',
       },
       tenaga_medis: {
-        dokter_nama: 'dr. FERDI ANDRISKA SH. MKN. C.LM',
+        dokter_nama: 'dr. Ferdi Iskandar, S.H., M.Kn., C.LM., CMDC',
         perawat_nama: randomPerawat,
       },
     };
@@ -2140,7 +2134,7 @@ export const TTVInferenceUI = ({
   // INPUT (vitals + anamnesa + UPLINK)
   // ========================================================================
   return (
-    <div className="ttv-inference-ui">
+    <div className="ttv-inference-ui" style={{ position: 'relative', overflow: 'visible' }}>
       {/* Patient Header */}
       <PatientHeader
         name={patientName}
@@ -2172,7 +2166,10 @@ export const TTVInferenceUI = ({
         {/* LEFT COLUMN: Vital Signs */}
         <div className="ttv-section glass-card">
           <div className="ttv-section-header">
-            <h3 className="ttv-section-title">Vital Signs</h3>
+            <div>
+              <h3 className="ttv-section-title">Vital Signs</h3>
+              <p className="ttv-section-subtitle">Cardiopulmonary Metrics</p>
+            </div>
             <div className="ttv-autosen-controls">
               <select
                 value={autosenPreset}
@@ -2184,7 +2181,7 @@ export const TTVInferenceUI = ({
                 <option value="hypo">Hypoglycemia</option>
                 <option value="hyper">Hyperglycemia</option>
               </select>
-              <button onClick={handleAutoSen} className="ttv-autosen-btn">
+              <button onClick={handleAutoSen} className="ttv-autosen-btn" disabled={isAutoFilling}>
                 AutoSen
               </button>
             </div>
@@ -2293,34 +2290,129 @@ export const TTVInferenceUI = ({
                 </div>
               </div>
             </div>
+
+            {/* Row 3: SPO2 */}
+            <div className="ttv-vital-row ttv-vital-row-1">
+              <div className="ttv-form-group" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{ flex: 1 }}>
+                  <label
+                    className={`ttv-label ${parseInt(spo2) < 90 ? 'ttv-label-alert' : ''}`}
+                  >
+                    Saturasi O₂ (SpO2):
+                  </label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div style={{
+                      fontSize: '10px',
+                      fontFamily: 'JetBrains Mono, monospace',
+                      color: 'var(--text-tertiary)',
+                      fontStyle: 'italic',
+                      whiteSpace: 'nowrap'
+                    }}>
+                      SaO₂ = <sup>O₂Hb</sup>⁄<sub>O₂Hb+Hb</sub> × 100%
+                    </div>
+                    <div className="ttv-input-with-unit">
+                      <input
+                        type="number"
+                        value={spo2}
+                        onChange={(e) => setSpo2(e.target.value)}
+                        placeholder="---"
+                        className={`ttv-input ${animatingField === 'spo2' ? 'ttv-input-flash' : ''}`}
+                        min="70"
+                        max="100"
+                      />
+                      <span className="ttv-unit">%</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
 
-          {/* GUIDELINES BAR - Di bawah Vital Signs */}
-          <div className="clinical-guidelines-bar glass-panel">
-            <span className="guidelines-label">Guidelines:</span>
-            <span className="protocol-badge">FKTP 2024 HTN</span>
-            <span className="protocol-separator">·</span>
-            <span className="protocol-badge">PERKENI 2024 Glucose</span>
-            <span className="protocol-separator">·</span>
-            <span className="protocol-badge">MSF Occult Shock</span>
+          {/* MOVI STATUS BAR - Di bawah Vital Signs */}
+          <div className="movi-status-bar glass-panel">
+            <div className="movi-indicator">
+              <span className="movi-label">Multi-Output Vital Intelligence (MOVI)</span>
+            </div>
           </div>
         </div>
 
-        {/* RIGHT COLUMN: Anamnesa + AI Narrative */}
+        {/* RIGHT COLUMN: Medical History + AI Narrative */}
         <div className="ttv-right-column">
           <div className="ttv-section glass-card">
-            <h3 className="ttv-section-title">Anamnesa</h3>
+            <div className="ttv-section-header">
+              <div>
+                <h3 className="ttv-section-title">Medical History</h3>
+                <p className="ttv-section-subtitle">Anamnesa</p>
+              </div>
+              <div className="ttv-autosen-controls">
+                {patientGender === 'L' ? (
+                  <span className="ttv-pregnancy-btn-locked">
+                    Negative-
+                  </span>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setPregnancyStatus(false)}
+                      className={`ttv-autosen-btn ${pregnancyStatus === false ? 'ttv-pregnancy-active' : 'ttv-pregnancy-inactive'}`}
+                    >
+                      Negative-
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPregnancyStatus(true)}
+                      className={`ttv-autosen-btn ${pregnancyStatus === true ? 'ttv-pregnancy-active' : 'ttv-pregnancy-inactive'}`}
+                    >
+                      Positive+
+                    </button>
+                  </>
+                )}
+                <span className="ttv-pregnancy-separator">|</span>
+                <span className="ttv-pregnancy-label">Pregnancy</span>
+              </div>
+            </div>
+
+            {/* Screening Flags - Same style as top tab navigation */}
+            <div className="neu-card-inset p-1.5">
+              <div className="flex gap-1.5">
+                {allergyOptions.map((option) => (
+                  <button
+                    key={option}
+                    type="button"
+                    onClick={() => toggleAllergy(option)}
+                    className={`motion-press flex-1 py-2 px-2 rounded-lg text-body relative ${
+                      allergies.includes(option)
+                        ? 'neu-tab-active text-platinum font-semibold'
+                        : 'neu-tab text-muted font-medium'
+                    }`}
+                  >
+                    {option}
+                  </button>
+                ))}
+              </div>
+            </div>
 
             {/* Symptom Input */}
             <div className="ttv-symptom-input-container">
-              <label className="ttv-label">Gejala / Keluhan:</label>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+                <label className="ttv-label">Gejala / Keluhan:</label>
+                <div style={{
+                  fontSize: '10px',
+                  fontFamily: 'JetBrains Mono, monospace',
+                  color: 'var(--text-tertiary)',
+                  fontStyle: 'italic',
+                  whiteSpace: 'nowrap'
+                }}>
+                  Assessment = P+Q+R+S+T
+                </div>
+              </div>
               <div className="ttv-autocomplete-wrapper">
                 <div className="ttv-textarea-container">
                   <span className="ttv-prompt-indicator">&gt;</span>
                   <textarea
                     value={symptomText}
                     onChange={(e) => handleSymptomChange(e.target.value)}
-                    placeholder="Pisahkan gejala dengan koma. Autocomplete akan muncul saat mengetik."
+                    placeholder="Ketik gejala di sini... (Auto-koreksi istilah klinis)"
                     className="ttv-textarea"
                     rows={4}
                   />
@@ -2380,82 +2472,17 @@ export const TTVInferenceUI = ({
                 )}
               </div>
 
-              <p className="ttv-hint">
-                Pisahkan gejala dengan koma. Autocomplete akan muncul saat mengetik.
-              </p>
-            </div>
-
-            {/* Alergi Section - Moved inside Anamnesa */}
-            <div className="ttv-allergy-inline">
-              <span className="ttv-allergy-label">Alergi:</span>
-              <div className="ttv-allergy-chips-inline">
-                {allergyOptions.map((option) => (
-                  <button
-                    key={option}
-                    type="button"
-                    onClick={() => toggleAllergy(option)}
-                    className={`ttv-allergy-chip-sm ${allergies.includes(option) ? 'ttv-allergy-chip-active' : ''}`}
-                  >
-                    {option}
-                  </button>
-                ))}
+              {/* SENTRATYPE INTELLIGENCE STATUS BAR - Green themed like MOVI */}
+              <div className="sentratype-status-bar glass-panel">
+                <div className="sentratype-indicator">
+                  <span className="sentratype-label">SentraType Intelligence - Auto-correction</span>
+                </div>
               </div>
-            </div>
-
-            <div className="ttv-allergy-inline">
-              <span className="ttv-allergy-label">Kehamilan:</span>
-              <div className="ttv-allergy-chips-inline">
-                {patientGender === 'L' ? (
-                  <span className="ttv-allergy-chip-sm ttv-allergy-chip-active">
-                    Tidak Hamil (Locked)
-                  </span>
-                ) : (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => setPregnancyStatus(false)}
-                      className={`ttv-allergy-chip-sm ${pregnancyStatus === false ? 'ttv-allergy-chip-active' : ''}`}
-                    >
-                      Tidak Hamil
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setPregnancyStatus(true)}
-                      className={`ttv-allergy-chip-sm ${pregnancyStatus === true ? 'ttv-allergy-chip-active' : ''}`}
-                    >
-                      Hamil
-                    </button>
-                  </>
-                )}
-              </div>
-            </div>
-
-            {/* Action Buttons - Relocated below KEHAMILAN */}
-            <div className="ttv-action-buttons-inline">
-              <button
-                onClick={handleComplete}
-                disabled={!isFormValid || uplinkStatus === 'sending'}
-                className={`ttv-action-btn-inline ttv-action-uplink ${uplinkStatus === 'success' ? 'uplink-success' : ''} ${uplinkStatus === 'error' ? 'uplink-error' : ''}`}
-              >
-                <span className={uplinkStatus === 'sending' ? 'text-scramble' : ''}>
-                  {scrambleText}
-                </span>
-              </button>
-              <button
-                onClick={() => {
-                  console.log('[TTVInferenceUI] Clinical Trajectory clicked');
-                  onNavigateToTrajectory?.();
-                }}
-                disabled={!isFormValid}
-                className="ttv-action-btn-inline ttv-action-trajectory"
-              >
-                Clinical Trajectory
-              </button>
             </div>
 
             {/* AI Generated Narrative */}
             {narrative.keluhan_utama && (
-              <div className="ttv-ai-narrative glass-panel">
+              <div className="ttv-ai-narrative">
                 <div className="ttv-ai-header">
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <h4 className="ttv-ai-title">Sentra Agent Narrative</h4>
@@ -2532,6 +2559,42 @@ export const TTVInferenceUI = ({
           isVisible={!!(narrative.keluhan_utama || symptomText)}
         />
       </div> */}
+
+      {/* Bottom Action Tabs - Same style as top tab navigation */}
+      <div className="neu-card-inset p-1.5 mt-6 relative z-10">
+        <div className="flex gap-1.5">
+          <button
+            onClick={() => {
+              console.log('[TTVInferenceUI] ✅ Uplink tab clicked!', { isFormValid, uplinkStatus });
+              handleComplete();
+            }}
+            disabled={!isFormValid || uplinkStatus === 'sending'}
+            className={`motion-press flex-1 py-2 px-2 rounded-lg text-body relative ${
+              uplinkStatus === 'sending' || uplinkStatus === 'success'
+                ? 'neu-tab-active text-platinum font-semibold'
+                : 'neu-tab text-muted font-medium'
+            }`}
+          >
+            <span className={uplinkStatus === 'sending' ? 'text-scramble' : ''}>
+              {uplinkStatus === 'sending'
+                ? scrambleText
+                : uplinkStatus === 'success'
+                  ? 'Synced ✓'
+                  : 'Satellite Processing'}
+            </span>
+          </button>
+          <button
+            onClick={() => {
+              console.log('[TTVInferenceUI] ✅ Trajectory tab clicked!', { isFormValid });
+              onNavigateToTrajectory?.();
+            }}
+            disabled={!isFormValid}
+            className="motion-press flex-1 py-2 px-2 rounded-lg text-body relative neu-tab text-muted font-medium"
+          >
+            Clinical Trajectory
+          </button>
+        </div>
+      </div>
 
     </div>
   );
@@ -2613,6 +2676,73 @@ export const ttvInferenceUIStyles = `
   font-size: 11px;
   font-weight: 600;
   cursor: pointer;
+}
+
+.ttv-preset-select {
+  background: var(--surface-primary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-subtle);
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.ttv-preset-select:hover {
+  background: var(--surface-hover);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+/* Pregnancy Button States */
+.ttv-pregnancy-inactive {
+  background: var(--surface-primary);
+  color: var(--text-tertiary);
+  border: 1px solid var(--border-subtle);
+  opacity: 0.6;
+}
+
+.ttv-pregnancy-inactive:hover {
+  background: var(--surface-hover);
+  opacity: 0.8;
+}
+
+.ttv-pregnancy-active {
+  background: var(--accent-primary);
+  color: white;
+  border: none;
+  opacity: 1;
+}
+
+.ttv-pregnancy-active:hover {
+  background: var(--accent-hover);
+}
+
+.ttv-pregnancy-btn-locked {
+  background: var(--surface-primary);
+  color: var(--text-tertiary);
+  border: 1px solid var(--border-subtle);
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ttv-pregnancy-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-right: 8px;
+}
+
+.ttv-pregnancy-separator {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  margin: 0 4px;
+  opacity: 0.5;
 }
 
 .ttv-vital-form {
@@ -2719,22 +2849,26 @@ export const ttvInferenceUIStyles = `
 
 .ttv-textarea {
   width: 100%;
-  background: var(--surface-primary);
-  border: 1px solid var(--border-subtle);
-  border-radius: 4px;
+  background: linear-gradient(145deg, #1a1b1c 0%, #16161a 100%);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: 10px;
   padding: 12px;
-  font-size: 13px;
+  font-size: 15px;
+  font-weight: 600;
   color: var(--text-primary);
-  font-family: inherit;
+  font-family: 'JetBrains Mono', monospace;
   line-height: 1.5;
   resize: vertical;
   outline: none;
-  transition: border-color 0.2s;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   min-height: 80px;
+  box-shadow:
+    inset 0 2px 4px rgba(0, 0, 0, 0.35),
+    inset 0 1px 2px rgba(0, 0, 0, 0.25);
 }
 
 .ttv-textarea:focus {
-  border-color: var(--accent-primary);
+  border-color: rgba(255, 255, 255, 0.12);
 }
 
 .ttv-suggestions {
@@ -2777,14 +2911,13 @@ export const ttvInferenceUIStyles = `
   font-size: 11px;
   color: var(--text-tertiary);
   margin: 0 0 16px 0;
-  font-style: italic;
+  font-style: normal;
 }
 
 .ttv-ai-narrative {
-  background: var(--glass-bg, rgba(255, 255, 255, 0.03));
-  backdrop-filter: blur(12px);
-  border: 1px solid var(--accent-primary);
-  border-radius: 12px;
+  background: var(--surface-primary);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
   padding: 12px;
   margin-top: 12px;
 }
@@ -2800,12 +2933,12 @@ export const ttvInferenceUIStyles = `
 
 .ttv-ai-title {
   flex: 1;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--text-secondary);
   margin: 0;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.8px;
 }
 
 .ttv-ai-badge {
@@ -2832,15 +2965,16 @@ export const ttvInferenceUIStyles = `
 }
 
 .ttv-ai-field label {
-  font-size: 10px;
-  font-weight: 700;
+  font-size: 11px;
+  font-weight: 600;
   color: var(--text-tertiary);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 
 .ttv-ai-field p {
-  font-size: 13px;
+  font-size: 15px;
+  font-weight: 600;
   color: var(--text-primary);
   margin: 0;
   line-height: 1.6;
@@ -3058,8 +3192,13 @@ export const ttvInferenceUIStyles = `
 /* Text Scramble - NO ANIMATION (professional for doctors) */
 .text-scramble {
   font-family: 'JetBrains Mono', monospace;
-  letter-spacing: 1.5px;
-  /* NO animation, NO glow - clean and professional */
+  letter-spacing: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: inline-block;
+  max-width: 100%;
+  font-size: 12px;
 }
 
 /* Progress Indicator - Inside ttv-actions, above button */
@@ -3274,3 +3413,4 @@ export const ttvInferenceUIStyles = `
 /* Include DiagnosisSuggestions styles */
 ${diagnosisSuggestionsStyles}
 `;
+

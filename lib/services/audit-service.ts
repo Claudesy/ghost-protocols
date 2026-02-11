@@ -13,7 +13,7 @@ import { storage } from '@wxt-dev/storage';
 // TYPES
 // ============================================================================
 
-export type AuditActor = 'SYSTEM_AADI' | 'USER_DOCTOR' | 'SYSTEM_INTERNAL';
+export type AuditActor = 'SYSTEM_ISKANDAR_DIAGNOSIS_ENGINE' | 'USER_DOCTOR' | 'SYSTEM_INTERNAL';
 
 export interface AuditEntry {
   id: string;

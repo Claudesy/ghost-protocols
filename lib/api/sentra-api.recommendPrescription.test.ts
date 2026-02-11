@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { CDSSResponse, PrescriptionRequestContext } from '@/types/api';
-import type { PharmacotherapyPlan } from '@/lib/cdss/pharmacotherapy-reasoner';
+import type { PharmacotherapyPlan } from '@/lib/iskandar-diagnosis-engine/pharmacotherapy-reasoner';
 
 const callOrder: string[] = [];
 
@@ -17,7 +17,7 @@ vi.mock('@/lib/rag', () => ({
   searchICD10: mockSearchICD10,
 }));
 
-vi.mock('@/lib/cdss/pharmacotherapy-reasoner', () => ({
+vi.mock('@/lib/iskandar-diagnosis-engine/pharmacotherapy-reasoner', () => ({
   generatePharmacotherapyPlan: mockGeneratePharmacotherapyPlan,
 }));
 

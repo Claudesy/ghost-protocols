@@ -10,7 +10,7 @@ import React from 'react';
 import {
   classifyChronicDisease,
   type ChronicDiseaseClassification,
-} from '../../lib/cdss/chronic-disease-classifier';
+} from '../../lib/iskandar-diagnosis-engine/chronic-disease-classifier';
 import { formatPatientName } from '../../utils/name-masking';
 
 // ============================================================================
@@ -53,29 +53,11 @@ export const PatientHeader: React.FC<PatientHeaderProps> = ({
   name,
   age,
   masked = true,
-  bpjsStatus,
-  kelurahan,
   medicalHistory,
   onRefresh,
   isLoading,
 }) => {
   const displayName = formatPatientName(name, { masked });
-
-  // BPJS status display
-  const getBpjsLabel = () => {
-    if (!bpjsStatus) return null;
-    const labels: Record<string, string> = {
-      aktif: 'BPJS Aktif',
-      nonaktif: 'BPJS Nonaktif',
-      mandiri: 'Mandiri',
-    };
-    return labels[bpjsStatus];
-  };
-
-  const bpjsLabel = getBpjsLabel();
-
-  // Simplify kelurahan - remove "Kel. " prefix if present
-  const simpleKelurahan = kelurahan?.replace(/^Kel\.\s*/i, '');
 
   // Classify chronic diseases and deduplicate by type
   const classifyAndDedupe = (): ChronicDiseaseClassification[] => {
@@ -103,42 +85,40 @@ export const PatientHeader: React.FC<PatientHeaderProps> = ({
   const chronicDiseases = classifyAndDedupe();
 
   return (
-    <div className="patient-header-compact glass-card">
-      <span className="patient-name-compact">{displayName}</span>
-      <span className="patient-age-compact">{age} th</span>
-      {simpleKelurahan && <span className="patient-location-compact">{simpleKelurahan}</span>}
-      {bpjsLabel && (
-        <span
-          className={`patient-bpjs-compact ${bpjsStatus === 'aktif' ? 'bpjs-aktif' : bpjsStatus === 'nonaktif' ? 'bpjs-nonaktif' : 'bpjs-mandiri'}`}
-        >
-          {bpjsLabel}
-        </span>
-      )}
-      {/* Refresh Button */}
-      {onRefresh && (
-        <button
-          onClick={onRefresh}
-          disabled={isLoading}
-          className="patient-refresh-btn"
-          title="Refresh data pasien"
-        >
-          {isLoading ? '...' : '↻'}
-        </button>
-      )}
-      {/* Chronic Disease Badges - All red */}
-      {chronicDiseases.length > 0 && (
-        <div className="patient-history-badges">
-          {chronicDiseases.map((disease) => (
-            <span
-              key={disease.type}
-              className="history-badge"
-              title={`${disease.icdCode}: ${disease.fullName}`}
-            >
-              {disease.shortLabel}
-            </span>
-          ))}
+    <div className="neu-card-inset p-1.5 mb-4">
+      <div className="flex items-center gap-1.5">
+        {/* Patient Name - primary tab */}
+        <div className="neu-tab flex-1 py-2 px-2 rounded-lg relative">
+          <span className="text-body text-platinum font-medium" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'block', fontSize: '13px' }}>
+            {displayName}
+          </span>
         </div>
-      )}
+        {/* Age */}
+        <div className="neu-tab py-2 px-2 rounded-lg">
+          <span className="text-body text-muted font-medium">{age} th</span>
+        </div>
+        {/* Refresh */}
+        {onRefresh && (
+          <button
+            onClick={onRefresh}
+            disabled={isLoading}
+            className="motion-press neu-tab py-2 px-2 rounded-lg text-body text-muted font-medium"
+            title="Refresh data pasien"
+          >
+            {isLoading ? '...' : '↻'}
+          </button>
+        )}
+        {/* Chronic Disease Badges */}
+        {chronicDiseases.map((disease) => (
+          <div
+            key={disease.type}
+            className="neu-tab py-2 px-2 rounded-lg"
+            title={`${disease.icdCode}: ${disease.fullName}`}
+          >
+            <span className="text-body font-medium" style={{ color: '#EF4444' }}>{disease.shortLabel}</span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 };
@@ -148,43 +128,31 @@ export const PatientHeader: React.FC<PatientHeaderProps> = ({
 // ============================================================================
 
 export const patientHeaderStyles = `
-/* Compact Patient Header - Single Row Layout */
+/* Compact Patient Header - 2-Row Layout (inherits neu-card-inset) */
 .patient-header-compact {
   display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-  padding: 12px 16px;
-  background: 
-    linear-gradient(135deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.015) 100%),
-    linear-gradient(145deg, #1a1a1e 0%, #1e1e22 100%);
-  border-radius: 11px;
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 14px;
   margin-bottom: 18px;
-  box-shadow:
-    0 2px 6px rgba(0, 0, 0, 0.2),
-    0 4px 12px rgba(0, 0, 0, 0.12),
-    inset 0 1px 0 rgba(255, 255, 255, 0.03);
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   overflow: hidden;
 }
 
-.patient-header-compact::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08) 50%, transparent);
+.patient-metadata-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .patient-name-compact {
   font-size: 14px;
-  font-weight: 600;
-  color: var(--text-primary);
+  font-weight: 800;
+  color: #FFFFFF;
+  text-transform: uppercase;
   letter-spacing: 0.2px;
+  margin: 0;
+  line-height: 1.2;
 }
 
 .patient-age-compact {
@@ -264,14 +232,15 @@ export const patientHeaderStyles = `
   text-transform: uppercase;
   letter-spacing: 0.4px;
   font-family: 'Geist Mono', 'JetBrains Mono', monospace;
-  background: 
+  background:
     linear-gradient(135deg, rgba(239, 68, 68, 0.14) 0%, rgba(220, 38, 38, 0.1) 100%),
     rgba(20, 20, 22, 0.5);
   color: #EF4444;
   border: 1px solid rgba(239, 68, 68, 0.3);
-  box-shadow: 
+  box-shadow:
     0 1px 3px rgba(239, 68, 68, 0.15),
     inset 0 1px 0 rgba(255, 255, 255, 0.05);
   backdrop-filter: blur(8px);
+}
 }
 `;

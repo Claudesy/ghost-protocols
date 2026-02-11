@@ -8,40 +8,38 @@
  */
 
 /**
- * Mask a single word with asterisks
- * - Words ≤4 chars: show first char only (e.g., "Adi" → "A**")
- * - Words 5-7 chars: mask 3 chars (e.g., "Ahmad" → "Ah***")
- * - Words ≥8 chars: mask 4 chars (e.g., "Suryadi" → "Sur****")
+ * Mask a single word with asterisks - Maximum privacy (2-3 chars visible only)
+ * - Words ≤3 chars: show first 2 chars (e.g., "Adi" → "Ad*")
+ * - Words 4-6 chars: show first 2 chars, mask rest (e.g., "Ahmad" → "Ah***")
+ * - Words ≥7 chars: show first 3 chars, mask rest (e.g., "Suryadi" → "Sur****")
  *
  * @param word - Word to mask
  * @returns Masked word
  */
 function maskWord(word: string): string {
-  if (word.length <= 4) {
-    // Short word: show first char only
-    return word[0] + '*'.repeat(word.length - 1);
-  } else if (word.length <= 7) {
-    // Medium word: show first 2 chars, mask 3
+  if (word.length <= 3) {
+    // Very short word: show first 2 chars
+    return word.slice(0, 2) + '*'.repeat(Math.max(0, word.length - 2));
+  } else if (word.length <= 6) {
+    // Short-medium word: show first 2 chars, mask rest
     const visible = word.slice(0, 2);
-    const masked = '*'.repeat(3);
-    const remaining = word.slice(5);
-    return visible + masked + remaining;
+    const masked = '*'.repeat(word.length - 2);
+    return visible + masked;
   } else {
-    // Long word: show first 3 chars, mask 4
+    // Long word: show first 3 chars, mask rest
     const visible = word.slice(0, 3);
-    const masked = '*'.repeat(4);
-    const remaining = word.slice(7);
-    return visible + masked + remaining;
+    const masked = '*'.repeat(word.length - 3);
+    return visible + masked;
   }
 }
 
 /**
- * Mask patient name for privacy compliance
+ * Mask patient name for privacy compliance (Maximum Privacy Mode)
  *
  * Examples:
  * - "Ahmad Suryadi" → "Ah*** Sur****"
- * - "Siti Nurhaliza" → "Si** Nur****za"
- * - "Adi Wijaya" → "A** Wij***"
+ * - "Siti Nurhaliza" → "Si** Nur*******"
+ * - "Adi Wijaya" → "Ad* Wi****"
  *
  * @param fullName - Full patient name
  * @returns Masked name
@@ -92,12 +90,12 @@ export function formatPatientName(
 // ============================================================================
 
 /**
- * Example usage:
+ * Example usage (Maximum Privacy Mode):
  *
  * maskPatientName("Ahmad Suryadi") → "Ah*** Sur****"
- * maskPatientName("Siti Nurhaliza") → "Si** Nur****za"
- * maskPatientName("Adi") → "A**"
- * maskPatientName("Muhammad Abdullah") → "Muh**** Abd****h"
+ * maskPatientName("Siti Nurhaliza") → "Si** Nur*******"
+ * maskPatientName("Adi") → "Ad*"
+ * maskPatientName("Muhammad Abdullah") → "Muh***** Abd*****"
  *
  * getInitials("Ahmad Suryadi") → "AS"
  * getInitials("Siti Nurhaliza") → "SN"

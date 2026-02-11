@@ -3,7 +3,6 @@
  * Updated with TTV Inference UI + Emergency Dashboard
  */
 
-import { browser } from 'wxt/browser';
 import { ClinicalDifferential } from '@/components/clinical/ClinicalDifferential';
 import { ClinicalTrajectory } from '@/components/clinical/ClinicalTrajectory';
 import {
@@ -12,6 +11,8 @@ import {
   type ScreeningAlert,
   type TTVInferenceData,
 } from '@/components/clinical/TTVInferenceUI';
+import { SidePanelHeader } from '@/components/sidepanel/SidePanelHeader';
+import { SidePanelFooter } from '@/components/sidepanel/SidePanelFooter';
 import React, { useCallback, useEffect, useState } from 'react';
 import ReactDOM from 'react-dom/client';
 import './style.css';
@@ -32,8 +33,23 @@ interface PatientData {
 
 console.log('[SidePanel] main.tsx loading...');
 
-type TabType = 'ttv' | 'emergency' | 'developer';
+type TabType = 'ttv' | 'emergency' | 'developer' | 'agent';
 type ViewState = 'main' | 'trajectory' | 'differential';
+type AuthState = 'checking' | 'locked' | 'authenticated';
+
+interface AuthUserCredential {
+  username: string;
+  displayName: string;
+  salt: string;
+  passwordHash: string;
+}
+
+interface AuthSession {
+  username: string;
+  displayName: string;
+  authenticatedAt: number;
+  expiresAt: number;
+}
 
 // ============================================================================
 // TTV STATE (Lifted to parent to persist across tab switches)
@@ -44,6 +60,7 @@ export interface TTVFormState {
   hr: string;
   rr: string;
   temp: string;
+  spo2: string; // ✅ SPO2 field
   glucose: string;
   symptomText: string;
   allergies: string[];
@@ -57,6 +74,7 @@ const initialTTVState: TTVFormState = {
   hr: '',
   rr: '',
   temp: '',
+  spo2: '', // ✅ SPO2 initial value
   glucose: '',
   symptomText: '',
   allergies: [],
@@ -76,7 +94,100 @@ const defaultPatient: PatientData = {
   kelurahan: '',
 };
 
+const AUTH_USERS_KEY = 'sentra.auth.users.v1';
+const AUTH_SESSION_KEY = 'sentra.auth.session.v1';
+const AUTH_SESSION_TTL_MS = 12 * 60 * 60 * 1000;
+const DEFAULT_AUTH_USERS: AuthUserCredential[] = [
+  {
+    username: 'chief',
+    displayName: 'Chief',
+    salt: 'sentra-chief-v1',
+    passwordHash: '3d780091e09bfce6cfa9bfbfabaaa655f370b7f1a50435d88a1f7f082ddc4a51',
+  },
+];
+
+function normalizeUsername(value: string): string {
+  return value.trim().toLowerCase();
+}
+
+function isValidAuthUserCredential(value: unknown): value is AuthUserCredential {
+  if (!value || typeof value !== 'object') return false;
+  const candidate = value as Partial<AuthUserCredential>;
+  return (
+    typeof candidate.username === 'string' &&
+    typeof candidate.displayName === 'string' &&
+    typeof candidate.salt === 'string' &&
+    typeof candidate.passwordHash === 'string'
+  );
+}
+
+function isValidAuthSession(value: unknown): value is AuthSession {
+  if (!value || typeof value !== 'object') return false;
+  const candidate = value as Partial<AuthSession>;
+  return (
+    typeof candidate.username === 'string' &&
+    typeof candidate.displayName === 'string' &&
+    typeof candidate.authenticatedAt === 'number' &&
+    typeof candidate.expiresAt === 'number'
+  );
+}
+
+async function sha256Hex(value: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const digest = await crypto.subtle.digest('SHA-256', encoder.encode(value));
+  return Array.from(new Uint8Array(digest))
+    .map((byte) => byte.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+async function hashPasswordWithSalt(password: string, salt: string): Promise<string> {
+  return sha256Hex(`${salt}:${password}`);
+}
+
+async function ensureAuthUsers(): Promise<AuthUserCredential[]> {
+  try {
+    const stored = await chrome.storage.local.get(AUTH_USERS_KEY);
+    const users = stored?.[AUTH_USERS_KEY];
+    if (Array.isArray(users)) {
+      const normalized = users.filter(isValidAuthUserCredential);
+      if (normalized.length > 0) return normalized;
+    }
+  } catch (error) {
+    console.error('[SidePanel] Failed to read auth users:', error);
+  }
+
+  try {
+    await chrome.storage.local.set({ [AUTH_USERS_KEY]: DEFAULT_AUTH_USERS });
+  } catch (error) {
+    console.error('[SidePanel] Failed to initialize auth users:', error);
+  }
+  return DEFAULT_AUTH_USERS;
+}
+
+async function restoreAuthSession(): Promise<AuthSession | null> {
+  try {
+    const stored = await chrome.storage.local.get(AUTH_SESSION_KEY);
+    const session = stored?.[AUTH_SESSION_KEY];
+    if (!isValidAuthSession(session)) return null;
+    if (session.expiresAt <= Date.now()) {
+      await chrome.storage.local.remove(AUTH_SESSION_KEY);
+      return null;
+    }
+    return session;
+  } catch (error) {
+    console.error('[SidePanel] Failed to restore auth session:', error);
+    return null;
+  }
+}
+
 function App() {
+  const [authState, setAuthState] = useState<AuthState>('checking');
+  const [authSession, setAuthSession] = useState<AuthSession | null>(null);
+  const [usernameInput, setUsernameInput] = useState('');
+  const [passwordInput, setPasswordInput] = useState('');
+  const [authError, setAuthError] = useState('');
+  const [isAuthenticating, setIsAuthenticating] = useState(false);
+
   const [activeTab, setActiveTab] = useState<TabType>('ttv');
   const [viewState, setViewState] = useState<ViewState>('main');
   const [emergencyAlerts, setEmergencyAlerts] = useState<ScreeningAlert[]>([]);
@@ -88,13 +199,102 @@ function App() {
   const [patientData, setPatientData] = useState<PatientData>(defaultPatient);
   const [isLoadingPatient, setIsLoadingPatient] = useState(true);
 
+  // Trajectory state - passed from ClinicalTrajectory to ClinicalDifferential
+  const [trajectoryData, setTrajectoryData] = useState<import('@/lib/iskandar-diagnosis-engine/trajectory-analyzer').TrajectoryAnalysis | undefined>(undefined);
+  const [visitCount, setVisitCount] = useState<number>(0);
+
   // Check if there's any critical/high alert
   const hasEmergency = emergencyAlerts.some(
     (alert) => alert.severity === 'critical' || alert.severity === 'high'
   );
 
-  // Check if TTV data is sufficient for trajectory
-  const hasTTVData = Boolean(ttvState.sbp && ttvState.dbp && ttvState.hr);
+  useEffect(() => {
+    let cancelled = false;
+
+    const bootstrapAuth = async () => {
+      await ensureAuthUsers();
+      const session = await restoreAuthSession();
+      if (cancelled) return;
+
+      if (session) {
+        setAuthSession(session);
+        setAuthState('authenticated');
+        return;
+      }
+
+      setAuthSession(null);
+      setAuthState('locked');
+    };
+
+    void bootstrapAuth();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const handleLogin = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setAuthError('');
+
+    const username = normalizeUsername(usernameInput);
+    const password = passwordInput.trim();
+
+    if (!username || !password) {
+      setAuthError('Username dan password wajib diisi.');
+      return;
+    }
+
+    setIsAuthenticating(true);
+    try {
+      const users = await ensureAuthUsers();
+      const matchedUser = users.find((user) => normalizeUsername(user.username) === username);
+      if (!matchedUser) {
+        setAuthError('Username atau password tidak valid.');
+        return;
+      }
+
+      const passwordHash = await hashPasswordWithSalt(password, matchedUser.salt);
+      if (passwordHash !== matchedUser.passwordHash) {
+        setAuthError('Username atau password tidak valid.');
+        return;
+      }
+
+      const now = Date.now();
+      const nextSession: AuthSession = {
+        username: matchedUser.username,
+        displayName: matchedUser.displayName,
+        authenticatedAt: now,
+        expiresAt: now + AUTH_SESSION_TTL_MS,
+      };
+
+      await chrome.storage.local.set({ [AUTH_SESSION_KEY]: nextSession });
+      setPasswordInput('');
+      setAuthSession(nextSession);
+      setAuthState('authenticated');
+      setViewState('main');
+      setActiveTab('ttv');
+    } catch (error) {
+      console.error('[SidePanel] Login failed:', error);
+      setAuthError('Gagal memproses login. Coba lagi.');
+    } finally {
+      setIsAuthenticating(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await chrome.storage.local.remove(AUTH_SESSION_KEY);
+    } catch (error) {
+      console.error('[SidePanel] Failed to clear auth session:', error);
+    }
+    setAuthSession(null);
+    setAuthState('locked');
+    setPasswordInput('');
+    setAuthError('');
+    setViewState('main');
+    setActiveTab('ttv');
+  };
 
   // ========================================
   // Fetch patient data from ePuskesmas page
@@ -179,6 +379,91 @@ function App() {
     pregnancyStatus: ttvState.pregnancyStatus,
   });
 
+  if (authState === 'checking') {
+    return (
+      <div
+        className="doctor-static-ui w-full min-h-screen p-6 flex items-center justify-center"
+        style={{
+          background:
+            'radial-gradient(ellipse 80% 50% at 50% 0%, rgba(255,107,53,0.04) 0%, transparent 60%), linear-gradient(180deg, #1e1e24 0%, #16161a 100%)',
+        }}
+      >
+        <div className="neu-card p-5 text-center">
+          <p className="text-small text-muted">Memeriksa sesi login...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (authState === 'locked') {
+    return (
+      <div
+        className="doctor-static-ui w-full min-h-screen p-6 flex items-center justify-center"
+        style={{
+          background:
+            'radial-gradient(ellipse 80% 50% at 50% 0%, rgba(255,107,53,0.04) 0%, transparent 60%), linear-gradient(180deg, #1e1e24 0%, #16161a 100%)',
+        }}
+      >
+        <form onSubmit={handleLogin} className="neu-card p-5 w-full max-w-[360px] space-y-4" aria-label="Form login Sentra Assist">
+          <div>
+            <h2 className="text-title mb-1">Sentra Assist Login</h2>
+            <p className="text-small text-muted">
+              Masuk dengan akun terotorisasi untuk membuka panel klinis.
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <label htmlFor="sentra-login-username" className="text-small text-muted block">
+              Username
+            </label>
+            <input
+              id="sentra-login-username"
+              type="text"
+              autoComplete="username"
+              value={usernameInput}
+              onChange={(event) => setUsernameInput(event.target.value)}
+              className="w-full rounded-lg border border-carbon-700/60 bg-carbon-900/80 px-3 py-2 text-small text-platinum focus:outline-none focus:border-cyan-500/60"
+              aria-label="Username"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label htmlFor="sentra-login-password" className="text-small text-muted block">
+              Password
+            </label>
+            <input
+              id="sentra-login-password"
+              type="password"
+              autoComplete="current-password"
+              value={passwordInput}
+              onChange={(event) => setPasswordInput(event.target.value)}
+              className="w-full rounded-lg border border-carbon-700/60 bg-carbon-900/80 px-3 py-2 text-small text-platinum focus:outline-none focus:border-cyan-500/60"
+              aria-label="Password"
+            />
+          </div>
+
+          {authError && (
+            <div className="rounded-lg border border-critical/50 bg-critical/10 px-3 py-2 text-small text-critical">
+              {authError}
+            </div>
+          )}
+
+          <button
+            type="submit"
+            disabled={isAuthenticating}
+            className="w-full rounded-lg border border-cyan-500/40 bg-cyan-500/15 px-3 py-2 text-small font-semibold text-cyan-300 disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            {isAuthenticating ? 'Memverifikasi...' : 'Login'}
+          </button>
+
+          <p className="text-micro text-muted leading-relaxed">
+            Default credential: <code>chief</code> / <code>Sentra@2026!</code>
+          </p>
+        </form>
+      </div>
+    );
+  }
+
   // Trajectory view (full-screen overlay)
   if (viewState === 'trajectory') {
     return (
@@ -205,7 +490,11 @@ function App() {
           patientName={patientData.name}
           patientRM={patientData.rm}
           onBack={() => setViewState('main')}
-          onNextDifferential={() => setViewState('differential')}
+          onNextDifferential={(trajectory, count) => {
+            setTrajectoryData(trajectory);
+            setVisitCount(count);
+            setViewState('differential');
+          }}
         />
       </div>
     );
@@ -231,6 +520,8 @@ function App() {
             temp: parseFloat(ttvState.temp) || 0,
             glucose: parseInt(ttvState.glucose) || 0,
           }}
+          trajectory={trajectoryData}
+          hasVisitHistory={visitCount > 1}
           onBack={() => setViewState('main')}
         />
       </div>
@@ -257,58 +548,33 @@ function App() {
       />
 
       {/* Header */}
-      <header className="flex items-center justify-between mb-7 relative z-10">
-        <div className="flex items-center gap-3.5">
-          <div className="neu-logo w-12 h-12 flex items-center justify-center overflow-hidden rounded-xl relative">
-            <img
-              src={browser.runtime.getURL('/sentra.png')}
-              alt="Sentra"
-              className="w-9 h-9 object-contain relative z-10"
-            />
-          </div>
-          <div>
-            <h1
-              className="text-platinum font-semibold tracking-tight"
-              style={{ fontSize: '18px', lineHeight: '1.3' }}
-            >
-              Sentra Assist
-            </h1>
-            <p className="text-small text-muted mt-1 opacity-80">Clinical Decision Support</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="text-left">
-            <p className="text-[10px] text-muted leading-tight">Architected by</p>
-            <p className="text-[12px] text-platinum font-semibold leading-tight">
-              dr Ferdi Iskandar
-            </p>
-          </div>
-          <div className="w-14 h-14 flex items-center justify-center overflow-hidden rounded-xl relative bg-[var(--surface-secondary)] border border-[var(--border-subtle)]">
-            <img
-              src={browser.runtime.getURL('/docsy.png')}
-              alt="Codex"
-              className="w-11 h-11 object-contain relative z-10"
-            />
-          </div>
-        </div>
-      </header>
+      <SidePanelHeader variant="full" />
+      <div className="absolute top-6 right-6 z-20">
+        <button
+          onClick={handleLogout}
+          className="rounded-lg border border-carbon-700/60 bg-carbon-900/70 px-3 py-1.5 text-[11px] text-muted hover:text-platinum"
+          aria-label="Logout"
+        >
+          Logout {authSession?.displayName ? `(${authSession.displayName})` : ''}
+        </button>
+      </div>
 
       {/* Tab Navigation */}
       <div className="neu-card-inset p-1.5 mb-7 relative z-10">
         <div className="flex gap-1.5">
           <button
             onClick={() => setActiveTab('ttv')}
-            className={`motion-press flex-1 py-3 px-3.5 rounded-lg text-body relative ${
+            className={`motion-press flex-1 py-2 px-2 rounded-lg text-body relative ${
               activeTab === 'ttv'
                 ? 'neu-tab-active text-platinum font-semibold'
                 : 'neu-tab text-muted font-medium'
             }`}
           >
-            TTV Inference
+            VS Inference
           </button>
           <button
             onClick={() => setActiveTab('emergency')}
-            className={`motion-press flex-1 py-3 px-3.5 rounded-lg text-body flex items-center justify-center gap-2 relative ${
+            className={`motion-press flex-1 py-2 px-2 rounded-lg text-body flex items-center justify-center gap-2 relative ${
               activeTab === 'emergency'
                 ? 'neu-tab-active text-platinum font-semibold'
                 : 'neu-tab text-muted font-medium'
@@ -319,7 +585,7 @@ function App() {
           </button>
           <button
             onClick={() => setActiveTab('developer')}
-            className={`motion-press flex-1 py-3 px-3.5 rounded-lg text-body relative ${
+            className={`motion-press flex-1 py-2 px-2 rounded-lg text-body relative ${
               activeTab === 'developer'
                 ? 'neu-tab-active text-platinum font-semibold'
                 : 'neu-tab text-muted font-medium'
@@ -327,11 +593,30 @@ function App() {
           >
             Developer
           </button>
+          <button
+            onClick={() => setActiveTab('agent')}
+            className={`motion-press flex-1 py-2 px-2 rounded-lg text-body relative ${
+              activeTab === 'agent'
+                ? 'neu-tab-active text-platinum font-semibold'
+                : 'neu-tab text-muted font-medium'
+            }`}
+          >
+            Agent
+          </button>
         </div>
       </div>
 
       {/* Content - Use CSS visibility instead of conditional rendering to preserve state */}
-      <div className="space-y-3">
+      <div
+        className="space-y-3"
+        style={{
+          position: 'relative',
+          zIndex: 10,
+          isolation: 'isolate',
+          minHeight: 'fit-content',
+          paddingBottom: '20px',
+        }}
+      >
         <div className={activeTab === 'ttv' ? 'tab-panel-active' : 'tab-panel-hidden'}>
           <TTVInferenceUI
             patientName={patientData.name}
@@ -358,44 +643,13 @@ function App() {
         <div className={activeTab === 'developer' ? 'tab-panel-active' : 'tab-panel-hidden'}>
           <DeveloperTools />
         </div>
+        <div className={activeTab === 'agent' ? 'tab-panel-active' : 'tab-panel-hidden'}>
+          <AgentPanel />
+        </div>
       </div>
 
       {/* Footer */}
-      <footer className="mt-10 pt-5 border-t" style={{ borderColor: 'rgba(255,255,255,0.04)' }}>
-        <div className="flex items-center justify-between text-small text-muted mb-4">
-          <div className="flex items-center gap-2.5">
-            <div
-              className="w-2 h-2 rounded-full bg-pulse-500 relative"
-              style={{
-                boxShadow: '0 0 8px rgba(255,107,53,0.5)',
-                animation: 'none',
-              }}
-            />
-            <span className="font-medium">Connected</span>
-          </div>
-          <span className="opacity-70">Puskesmas Balowerti</span>
-        </div>
-        {/* Alpha Version Disclaimer */}
-        <div className="mt-4 text-center space-y-2 px-2">
-          <div
-            className="text-[10px] font-semibold tracking-wider"
-            style={{
-              color: 'rgba(245,158,11,0.85)',
-              textShadow: '0 1px 2px rgba(0,0,0,0.3)',
-            }}
-          >
-            ALPHA VERSION – INTERNAL TESTING
-          </div>
-          <p
-            className="text-[9px] leading-relaxed opacity-60"
-            style={{ color: 'var(--text-secondary)' }}
-          >
-            Warning: This system is under active development. Outputs are not intended and must not
-            be relied upon for diagnosis, treatment, or any clinical decision-making. Compliance
-            with Indonesian healthcare regulations is a core commitment.
-          </p>
-        </div>
-      </footer>
+      <SidePanelFooter variant="full" institutionName="Puskesmas Balowerti" />
     </div>
   );
 }
@@ -445,7 +699,7 @@ function DeveloperTools() {
               style={{ background: 'var(--carbon-800)', border: '1px solid var(--carbon-700)' }}
             >
               <span>📝 Auto-Document</span>
-              <code className="text-[10px] bg-carbon-900 px-2 py-1 rounded">docs:auto</code>
+              <code className="text-micro bg-carbon-900 px-2 py-1 rounded" style={{ textTransform: 'none', fontWeight: 500 }}>docs:auto</code>
             </button>
 
             <button
@@ -455,7 +709,7 @@ function DeveloperTools() {
               style={{ background: 'var(--carbon-800)', border: '1px solid var(--carbon-700)' }}
             >
               <span>📚 Generate Full Docs</span>
-              <code className="text-[10px] bg-carbon-900 px-2 py-1 rounded">docs:all</code>
+              <code className="text-micro bg-carbon-900 px-2 py-1 rounded" style={{ textTransform: 'none', fontWeight: 500 }}>docs:all</code>
             </button>
           </div>
         </div>
@@ -483,10 +737,10 @@ function DeveloperTools() {
 
         {lastExecuted && (
           <div className="mt-4 p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
-            <p className="text-[11px] text-emerald-400 font-medium">
+            <p className="text-small text-emerald-400 font-medium">
               {isExecuting ? '⏳ Sedang menjalankan...' : `✅ Berhasil memicu: ${lastExecuted}`}
             </p>
-            <p className="text-[9px] text-muted mt-1 italic">
+            <p className="text-micro text-muted mt-1 italic" style={{ textTransform: 'none', fontWeight: 400 }}>
               (Antigravity akan mengeksekusi di terminal)
             </p>
           </div>
@@ -494,7 +748,7 @@ function DeveloperTools() {
       </div>
 
       <div className="p-3 rounded-xl bg-amber-500/5 border border-amber-500/10">
-        <p className="text-[10px] text-amber-500/70 leading-relaxed">
+        <p className="text-micro text-amber-500/70 leading-relaxed" style={{ textTransform: 'none', fontWeight: 400 }}>
           <strong>Note:</strong> Tombol di atas akan mengirimkan sinyal ke Antigravity untuk
           menjalankan command di terminal local kamu.
         </p>
@@ -622,6 +876,32 @@ function EmergencyCard({ alert }: { alert: ScreeningAlert }) {
             {rec.startsWith('━━━') ? rec : `→ ${rec}`}
           </div>
         ))}
+      </div>
+    </div>
+  );
+}
+
+// Agent Panel Component
+function AgentPanel() {
+  return (
+    <div className="agent-panel space-y-4">
+      <div className="emergency-header">
+        <h2>Agent</h2>
+        <span className="emergency-count">AI</span>
+      </div>
+
+      <div className="neu-card p-4 space-y-4">
+        <div>
+          <h3 className="text-title mb-2">Sentra Agent</h3>
+          <p className="text-body text-muted">
+            AI-powered clinical assistant for automated workflows and intelligent decision support.
+          </p>
+        </div>
+
+        <div className="emergency-empty">
+          <p>Agent features coming soon...</p>
+          <span>Advanced AI capabilities for clinical automation</span>
+        </div>
       </div>
     </div>
   );
