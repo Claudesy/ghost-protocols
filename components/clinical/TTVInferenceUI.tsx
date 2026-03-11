@@ -423,7 +423,7 @@ export const TTVInferenceUI = ({
   }, [symptomText, piecesAvailable, patientRM]);
 
   // Allergy options
-  const allergyOptions = ['Allergy', 'Mental Health', 'Nicotine Use'];
+  const allergyOptions = ['Allergy', 'Mental Health', 'Nicotine Use', 'Obesity', 'Malnutrition', 'DOA'];
 
   const toggleAllergy = (allergy: string) => {
     setAllergies((prev) => {
@@ -2163,7 +2163,220 @@ export const TTVInferenceUI = ({
 
       {/* Main Content: Two Columns */}
       <div className="ttv-content">
-        {/* LEFT COLUMN: Vital Signs */}
+        {/* FIRST SECTION: Medical History + AI Narrative */}
+        <div className="ttv-right-column">
+          <div className="ttv-section glass-card">
+            <div className="ttv-section-header">
+              <div>
+                <h3 className="ttv-section-title">Medical History</h3>
+              </div>
+              <div className="ttv-autosen-controls">
+                {patientGender === 'L' ? (
+                  <span className="ttv-pregnancy-btn-locked">
+                    Negative-
+                  </span>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setPregnancyStatus(false)}
+                      className={`ttv-autosen-btn ${pregnancyStatus === false ? 'ttv-pregnancy-active' : 'ttv-pregnancy-inactive'}`}
+                    >
+                      Negative-
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPregnancyStatus(true)}
+                      className={`ttv-autosen-btn ${pregnancyStatus === true ? 'ttv-pregnancy-active' : 'ttv-pregnancy-inactive'}`}
+                    >
+                      Positive+
+                    </button>
+                  </>
+                )}
+                <span className="ttv-pregnancy-separator">|</span>
+                <span className="ttv-pregnancy-label">Pregnancy</span>
+              </div>
+            </div>
+
+            {/* Screening Flags */}
+            <div style={{ background: 'var(--carbon-900)', border: '1px solid var(--carbon-700)', borderRadius: '10px', padding: '6px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '4px' }}>
+                {allergyOptions.map((option) => (
+                  <button
+                    key={option}
+                    type="button"
+                    onClick={() => toggleAllergy(option)}
+                    className={`motion-press rounded-md relative ${
+                      allergies.includes(option)
+                        ? 'neu-tab-active text-platinum font-semibold'
+                        : 'text-muted font-medium'
+                    }`}
+                    style={{
+                      padding: '5px 6px',
+                      fontSize: '10.5px',
+                      lineHeight: '1.2',
+                      background: allergies.includes(option) ? undefined : 'var(--carbon-800)',
+                      border: allergies.includes(option) ? undefined : '1px solid var(--carbon-700)',
+                      borderRadius: '6px',
+                    }}
+                  >
+                    {option}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Symptom Input */}
+            <div className="ttv-symptom-input-container">
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+                <label className="ttv-label">Gejala / Keluhan:</label>
+                <div style={{
+                  fontSize: '10px',
+                  fontFamily: 'JetBrains Mono, monospace',
+                  color: 'var(--text-tertiary)',
+                  fontStyle: 'italic',
+                  whiteSpace: 'nowrap'
+                }}>
+                  Assessment = P+Q+R+S+T
+                </div>
+              </div>
+              <div className="ttv-autocomplete-wrapper">
+                <div className="ttv-textarea-container">
+                  <span className="ttv-prompt-indicator">&gt;</span>
+                  <textarea
+                    value={symptomText}
+                    onChange={(e) => handleSymptomChange(e.target.value)}
+                    placeholder="Ketik gejala di sini... (Auto-koreksi istilah klinis)"
+                    className="ttv-textarea"
+                    rows={4}
+                  />
+                  {piecesAvailable && (
+                    <button
+                      onClick={handleRecallMemory}
+                      className={`ttv-recall-btn ${showMemory ? 'active' : ''}`}
+                      title="Recall from Pieces Clinical Memory"
+                    >
+                      <span className="recall-icon">↺</span>
+                      Recall
+                    </button>
+                  )}
+                </div>
+
+                {/* Autocomplete Suggestions */}
+                {showSuggestions && (
+                  <div className="ttv-suggestions">
+                    {suggestions.map((suggestion, index) => (
+                      <button
+                        key={index}
+                        onClick={() => handleSuggestionClick(suggestion)}
+                        className="ttv-suggestion-item"
+                      >
+                        {suggestion}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {/* Pieces Memory Suggestions */}
+                {showMemory && (
+                  <div className="ttv-memory-suggestions">
+                    <div className="memory-header">Clinical Memory</div>
+                    {memorySuggestions.length > 0 ? (
+                      memorySuggestions.map((snippet, index) => (
+                        <button
+                          key={index}
+                          onClick={() => {
+                            setSymptomText(symptomText + (symptomText ? ', ' : '') + snippet.title);
+                            setShowMemory(false);
+                          }}
+                          className="ttv-memory-item"
+                        >
+                          <span className="memory-title">{snippet.title}</span>
+                          <span className="memory-preview">
+                            {snippet.content?.substring(0, 50)}...
+                          </span>
+                        </button>
+                      ))
+                    ) : (
+                      <div className="memory-empty">
+                        No clinical insights found for this context
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* SENTRATYPE INTELLIGENCE STATUS BAR - Green themed like MOVI */}
+              <div className="sentratype-status-bar glass-panel">
+                <div className="sentratype-indicator">
+                  <span className="sentratype-label">SentraType Intelligence - Auto-correction</span>
+                </div>
+              </div>
+            </div>
+
+            {/* AI Generated Narrative */}
+            {narrative.keluhan_utama && (
+              <div className="ttv-ai-narrative">
+                <div className="ttv-ai-header">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <h4 className="ttv-ai-title">Sentra Agent Narrative</h4>
+                    {isSearchingMemory && (
+                      <span className="ttv-memory-pulse" title="Searching Local Memory...">
+                        <span className="pulse-dot"></span>
+                        Auto-Recall...
+                      </span>
+                    )}
+                  </div>
+                  <div className="ttv-ai-badges">
+                    <span className="ttv-ai-badge">{narrative.is_akut ? 'Akut' : 'Kronik'}</span>
+                    {piecesAvailable && (
+                      <button
+                        onClick={handleSaveToPieces}
+                        disabled={saveStatus === 'saving' || saveStatus === 'saved'}
+                        className={`ttv-save-pieces-btn ${saveStatus}`}
+                      >
+                        {saveStatus === 'saving'
+                          ? 'Saving...'
+                          : saveStatus === 'saved'
+                            ? 'Saved to Pieces'
+                            : saveStatus === 'error'
+                              ? 'Connection Error'
+                              : 'Save to Pieces'}
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                <div className="ttv-ai-content">
+                  <div className="ttv-ai-field">
+                    <label>Keluhan Utama:</label>
+                    <p>{narrative.keluhan_utama}</p>
+                  </div>
+
+                  <div className="ttv-ai-field">
+                    <label>Lama Sakit:</label>
+                    <p>{narrative.lama_sakit}</p>
+                  </div>
+                </div>
+
+                <div className="ttv-ai-confidence">
+                  <span className="ttv-confidence-label">Confidence:</span>
+                  <div className="ttv-confidence-bar">
+                    <div
+                      className="ttv-confidence-fill"
+                      style={{ width: `${narrative.confidence * 100}%` }}
+                    />
+                  </div>
+                  <span className="ttv-confidence-value">
+                    {Math.round(narrative.confidence * 100)}%
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* SECOND SECTION: Vital Signs */}
         <div className="ttv-section glass-card">
           <div className="ttv-section-header">
             <div>
@@ -2333,212 +2546,6 @@ export const TTVInferenceUI = ({
             <div className="movi-indicator">
               <span className="movi-label">Multi-Output Vital Intelligence (MOVI)</span>
             </div>
-          </div>
-        </div>
-
-        {/* RIGHT COLUMN: Medical History + AI Narrative */}
-        <div className="ttv-right-column">
-          <div className="ttv-section glass-card">
-            <div className="ttv-section-header">
-              <div>
-                <h3 className="ttv-section-title">Medical History</h3>
-                <p className="ttv-section-subtitle">Anamnesa</p>
-              </div>
-              <div className="ttv-autosen-controls">
-                {patientGender === 'L' ? (
-                  <span className="ttv-pregnancy-btn-locked">
-                    Negative-
-                  </span>
-                ) : (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => setPregnancyStatus(false)}
-                      className={`ttv-autosen-btn ${pregnancyStatus === false ? 'ttv-pregnancy-active' : 'ttv-pregnancy-inactive'}`}
-                    >
-                      Negative-
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setPregnancyStatus(true)}
-                      className={`ttv-autosen-btn ${pregnancyStatus === true ? 'ttv-pregnancy-active' : 'ttv-pregnancy-inactive'}`}
-                    >
-                      Positive+
-                    </button>
-                  </>
-                )}
-                <span className="ttv-pregnancy-separator">|</span>
-                <span className="ttv-pregnancy-label">Pregnancy</span>
-              </div>
-            </div>
-
-            {/* Screening Flags - Same style as top tab navigation */}
-            <div className="neu-card-inset p-1.5">
-              <div className="flex gap-1.5">
-                {allergyOptions.map((option) => (
-                  <button
-                    key={option}
-                    type="button"
-                    onClick={() => toggleAllergy(option)}
-                    className={`motion-press flex-1 py-2 px-2 rounded-lg text-body relative ${
-                      allergies.includes(option)
-                        ? 'neu-tab-active text-platinum font-semibold'
-                        : 'neu-tab text-muted font-medium'
-                    }`}
-                  >
-                    {option}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Symptom Input */}
-            <div className="ttv-symptom-input-container">
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
-                <label className="ttv-label">Gejala / Keluhan:</label>
-                <div style={{
-                  fontSize: '10px',
-                  fontFamily: 'JetBrains Mono, monospace',
-                  color: 'var(--text-tertiary)',
-                  fontStyle: 'italic',
-                  whiteSpace: 'nowrap'
-                }}>
-                  Assessment = P+Q+R+S+T
-                </div>
-              </div>
-              <div className="ttv-autocomplete-wrapper">
-                <div className="ttv-textarea-container">
-                  <span className="ttv-prompt-indicator">&gt;</span>
-                  <textarea
-                    value={symptomText}
-                    onChange={(e) => handleSymptomChange(e.target.value)}
-                    placeholder="Ketik gejala di sini... (Auto-koreksi istilah klinis)"
-                    className="ttv-textarea"
-                    rows={4}
-                  />
-                  {piecesAvailable && (
-                    <button
-                      onClick={handleRecallMemory}
-                      className={`ttv-recall-btn ${showMemory ? 'active' : ''}`}
-                      title="Recall from Pieces Clinical Memory"
-                    >
-                      <span className="recall-icon">↺</span>
-                      Recall
-                    </button>
-                  )}
-                </div>
-
-                {/* Autocomplete Suggestions */}
-                {showSuggestions && (
-                  <div className="ttv-suggestions">
-                    {suggestions.map((suggestion, index) => (
-                      <button
-                        key={index}
-                        onClick={() => handleSuggestionClick(suggestion)}
-                        className="ttv-suggestion-item"
-                      >
-                        {suggestion}
-                      </button>
-                    ))}
-                  </div>
-                )}
-
-                {/* Pieces Memory Suggestions */}
-                {showMemory && (
-                  <div className="ttv-memory-suggestions">
-                    <div className="memory-header">Clinical Memory</div>
-                    {memorySuggestions.length > 0 ? (
-                      memorySuggestions.map((snippet, index) => (
-                        <button
-                          key={index}
-                          onClick={() => {
-                            setSymptomText(symptomText + (symptomText ? ', ' : '') + snippet.title);
-                            setShowMemory(false);
-                          }}
-                          className="ttv-memory-item"
-                        >
-                          <span className="memory-title">{snippet.title}</span>
-                          <span className="memory-preview">
-                            {snippet.content?.substring(0, 50)}...
-                          </span>
-                        </button>
-                      ))
-                    ) : (
-                      <div className="memory-empty">
-                        No clinical insights found for this context
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* SENTRATYPE INTELLIGENCE STATUS BAR - Green themed like MOVI */}
-              <div className="sentratype-status-bar glass-panel">
-                <div className="sentratype-indicator">
-                  <span className="sentratype-label">SentraType Intelligence - Auto-correction</span>
-                </div>
-              </div>
-            </div>
-
-            {/* AI Generated Narrative */}
-            {narrative.keluhan_utama && (
-              <div className="ttv-ai-narrative">
-                <div className="ttv-ai-header">
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <h4 className="ttv-ai-title">Sentra Agent Narrative</h4>
-                    {isSearchingMemory && (
-                      <span className="ttv-memory-pulse" title="Searching Local Memory...">
-                        <span className="pulse-dot"></span>
-                        Auto-Recall...
-                      </span>
-                    )}
-                  </div>
-                  <div className="ttv-ai-badges">
-                    <span className="ttv-ai-badge">{narrative.is_akut ? 'Akut' : 'Kronik'}</span>
-                    {piecesAvailable && (
-                      <button
-                        onClick={handleSaveToPieces}
-                        disabled={saveStatus === 'saving' || saveStatus === 'saved'}
-                        className={`ttv-save-pieces-btn ${saveStatus}`}
-                      >
-                        {saveStatus === 'saving'
-                          ? 'Saving...'
-                          : saveStatus === 'saved'
-                            ? 'Saved to Pieces'
-                            : saveStatus === 'error'
-                              ? 'Connection Error'
-                              : 'Save to Pieces'}
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                <div className="ttv-ai-content">
-                  <div className="ttv-ai-field">
-                    <label>Keluhan Utama:</label>
-                    <p>{narrative.keluhan_utama}</p>
-                  </div>
-
-                  <div className="ttv-ai-field">
-                    <label>Lama Sakit:</label>
-                    <p>{narrative.lama_sakit}</p>
-                  </div>
-                </div>
-
-                <div className="ttv-ai-confidence">
-                  <span className="ttv-confidence-label">Confidence:</span>
-                  <div className="ttv-confidence-bar">
-                    <div
-                      className="ttv-confidence-fill"
-                      style={{ width: `${narrative.confidence * 100}%` }}
-                    />
-                  </div>
-                  <span className="ttv-confidence-value">
-                    {Math.round(narrative.confidence * 100)}%
-                  </span>
-                </div>
-              </div>
-            )}
           </div>
         </div>
       </div>

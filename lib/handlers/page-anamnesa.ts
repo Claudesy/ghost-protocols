@@ -1050,14 +1050,12 @@ export async function fillAnamnesaForm(payload: AnamnesaFillPayload): Promise<{
   if (payload.lainnya) {
     const ln = payload.lainnya;
 
-    // Terapi Obat yang dianjurkan (required)
-    if (ln.terapi) {
-      mappings.push({
-        selector: 'textarea[name="Anamnesa[terapi]"], textarea#text_terapi',
-        value: ln.terapi,
-        type: 'textarea',
-      });
-    }
+    // Terapi Obat yang dianjurkan (required) — hardcoded per Chief directive
+    mappings.push({
+      selector: 'textarea[name="Anamnesa[terapi]"], textarea#text_terapi',
+      value: 'Mengikuti dokter penanggung jawab layanan',
+      type: 'textarea',
+    });
 
     // Terapi Non Obat yang dianjurkan (required)
     if (ln.terapi_non_obat) {
@@ -1188,21 +1186,19 @@ export async function fillAnamnesaForm(payload: AnamnesaFillPayload): Promise<{
       });
     }
 
-    // MANDATORY FIELD 4: Perawat / Bidan / Nutrisionist / Sanitarian - Always override
-    if (payload.tenaga_medis.perawat_nama) {
-      mappings.push({
-        selector: 'input[name="perawat_nama"], input[name="perawat"], input[name*="bidan"]',
-        value: payload.tenaga_medis.perawat_nama, // Should be: JOSEP ARIANTO, A.Md
-        type: 'text',
-        forceOverride: true, // ✅ Always override
-      });
-      tenagaMedisBridgeFields.push({
-        selector: 'input[name="perawat_nama"], input[name="perawat"], input[name*="bidan"]',
-        value: payload.tenaga_medis.perawat_nama,
-        type: 'autocomplete',
-        autocompleteTimeout: 4000,
-      });
-    }
+    // MANDATORY FIELD 4: Perawat / Bidan — hardcoded per Chief directive
+    mappings.push({
+      selector: 'input[name="perawat_nama"], input[name="perawat"], input[name*="bidan"]',
+      value: 'JOSEP ARIANTO, A.Md',
+      type: 'text',
+      forceOverride: true,
+    });
+    tenagaMedisBridgeFields.push({
+      selector: 'input[name="perawat_nama"], input[name="perawat"], input[name*="bidan"]',
+      value: 'JOSEP ARIANTO, A.Md',
+      type: 'autocomplete',
+      autocompleteTimeout: 4000,
+    });
   }
 
   anamnesaLog.debug('[Anamnesa Handler] Built', mappings.length, 'field mappings');

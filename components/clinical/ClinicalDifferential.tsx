@@ -1146,7 +1146,7 @@ export const ClinicalDifferential: React.FC<ClinicalDifferentialProps> = ({
             <img src="/logosen.png" alt="Sentra" className="w-8 h-8 object-contain" />
           </div>
           <div>
-            <h1 className="text-title text-platinum">Sentra Assist</h1>
+            <h1 className="text-title text-platinum">Ghost Protocols</h1>
             <p className="text-small text-muted mt-0.5">Halaman 3 • Diagnosis dan Resep</p>
           </div>
         </div>

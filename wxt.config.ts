@@ -2,7 +2,7 @@ import { defineConfig } from 'wxt';
 
 export default defineConfig({
   manifest: {
-    name: 'Sentra Assist — Iskandar Diagnosis Engine V1',
+    name: 'Ghost Protocols — Iskandar Diagnosis Engine V1',
     description:
       'Sentra Assist delivers trustworthy clinical decision support for ePuskesmas with safer diagnosis workflows, smarter medication guidance, and doctor-first efficiency.',
     version: '1.0.4',
@@ -16,7 +16,7 @@ export default defineConfig({
     permissions: ['activeTab', 'storage', 'sidePanel', 'identity', 'scripting'],
     host_permissions: ['https://kotakediri.epuskesmas.id/*', 'https://*.googleapis.com/*'],
     action: {
-      default_title: 'Open Sentra Assist',
+      default_title: 'Open Ghost Protocols',
       default_icon: {
         16: 'icon/16.png',
         32: 'icon/32.png',

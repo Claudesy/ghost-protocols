@@ -61,7 +61,7 @@ export function SidePanelHeader({
                 variant === 'compact' ? 'header-title-emboss text-base' : 'header-title-emboss'
               }
             >
-              Sentra Assist
+              Ghost Protocols
             </h1>
             {variant === 'full' && (
               <>
