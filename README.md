@@ -1,16 +1,25 @@
+<div align="center">
+
 # Ghost Protocols V2
 
-<div align="center">
+<img src="public/ui-uix.png" alt="Ghost Protocols V2" width="100%" style="border-radius:12px;" />
 
-<img src="public/ui-uix.png" alt="Sentra Ghost Protocols" width="100%" style="border-radius:12px;" />
-<div align="center">
+</div>
+
+---
+
+**Document ID**: SENTRA-SPEC-002 v2.0.0
+**Version**: 2.0.0
+**Status**: Active Development
+**Date**: March 2026
+
 ---
 
 ## Abstract
 
-Sentra Ghost Protocols V2 is a Chrome Extension implementing a Clinical Decision Support System (CDSS) layer on top of the ePuskesmas Electronic Medical Record platform. Powered by the Iskandar Diagnosis Engine V1, the system operates entirely client-side via DOM instrumentation — requiring no backend, no proxy, and no modification to the host EMR application. The architecture is designed for zero-footprint integration: the extension mounts a React-based Side Panel, injects a content script into the host page's isolated world, and coordinates state through a typed messaging layer backed by `chrome.storage.local`.
+Ghost Protocols V2 is a Chrome Extension implementing a Clinical Decision Support System (CDSS) layer on top of the ePuskesmas Electronic Medical Record platform. Powered by the Iskandar Diagnosis Engine V1, the system operates entirely client-side via DOM instrumentation — requiring no backend, no proxy, and no modification to the host EMR application. The architecture is designed for zero-footprint integration: the extension mounts a React-based Side Panel, injects a content script into the host page's isolated world, and coordinates state through a typed messaging layer backed by `chrome.storage.local`.
 
-This document serves as the primary technical reference for engineers contributing to or auditing the SentraGhost Protocols V2 codebase.
+This document serves as the primary technical reference for engineers contributing to or auditing the Ghost Protocols V2 codebase.
 
 ---
 
@@ -35,7 +44,7 @@ This document serves as the primary technical reference for engineers contributi
 
 ## 1. Project Scope
 
-SentraGhost Protocols V2 targets three primary clinical workflows executed daily within the ePuskesmas (ePus Klaster) EMR:
+Ghost Protocols V2 targets three primary clinical workflows executed daily within the ePuskesmas (ePus Klaster) EMR:
 
 - **Anamnesa** — structured intake of chief complaint and allergy history
 - **Diagnosa** — ICD-10 code selection and chronic disease flagging
@@ -47,14 +56,14 @@ The engine introduces a 60–80% reduction in manual prescription entry time thr
 
 ## 2. Target Deployment Environment
 
-| Attribute         | Value                                              |
-|-------------------|----------------------------------------------------|
-| Platform          | ePuskesmas (ePus Klaster)                          |
-| Host URL          | Configured via `wxt.config.ts` (internal)          |
-| Facility          | Puskesmas Balowerti, Kota Kediri, East Java        |
-| Target Users      | Licensed Physicians and Nursing Staff              |
-| Browser Runtime   | Chrome 114+ (Manifest V3)                          |
-| Extension Context | Side Panel + Content Script (Isolated World)       |
+| Attribute         | Value                                        |
+|-------------------|----------------------------------------------|
+| Platform          | ePuskesmas (ePus Klaster)                    |
+| Host URL          | Configured via `wxt.config.ts` (internal)    |
+| Facility          | Primary Healthcare Center, East Java         |
+| Target Users      | Licensed Physicians and Nursing Staff        |
+| Browser Runtime   | Chrome 114+ (Manifest V3)                    |
+| Extension Context | Side Panel + Content Script (Isolated World) |
 
 ---
 
@@ -106,16 +115,16 @@ Encounter data is serialized and stored in `chrome.storage.local` under a schema
 
 ## 4. Technology Stack
 
-| Layer              | Technology                         | Version   |
-|--------------------|------------------------------------|-----------|
-| Extension Framework| WXT                                | 0.20.13   |
-| Build Tool         | Vite (via WXT)                     | latest    |
-| Language           | TypeScript (strict mode)           | 5.8+      |
-| UI Runtime         | React                              | 18.3+     |
-| Extension Manifest | Chrome Manifest V3                 | —         |
-| Messaging          | @webext-core/messaging             | latest    |
-| Package Manager    | npm                                | 18+       |
-| Node Requirement   | Node.js                            | 18+       |
+| Layer               | Technology               | Version |
+|---------------------|--------------------------|---------|
+| Extension Framework | WXT                      | 0.20.13 |
+| Build Tool          | Vite (via WXT)           | latest  |
+| Language            | TypeScript (strict mode) | 5.8+    |
+| UI Runtime          | React                    | 18.3+   |
+| Extension Manifest  | Chrome Manifest V3       | —       |
+| Messaging           | @webext-core/messaging   | latest  |
+| Package Manager     | npm                      | 18+     |
+| Node Requirement    | Node.js                  | 18+     |
 
 TypeScript strict mode is enforced project-wide. Implicit `any` is disallowed. All DOM interactions are typed against the Chrome Extension API typings.
 
@@ -124,7 +133,7 @@ TypeScript strict mode is enforced project-wide. Implicit `any` is disallowed. A
 ## 5. Repository Structure
 
 ```
- ghost-protocolv2/
+ghost-protocolv2/
 |
 |-- wxt.config.ts                    # WXT + Vite configuration, manifest declarations
 |-- tsconfig.json                    # TypeScript strict config
@@ -174,7 +183,7 @@ TypeScript strict mode is enforced project-wide. Implicit `any` is disallowed. A
 
 ```bash
 # Navigate to the project root
-cd  Ghost Protocols V2
+cd ghost-protocolv2
 
 # Install all dependencies
 npm install
@@ -188,8 +197,8 @@ WXT will automatically open Chrome with the extension loaded as an unpacked exte
 Expected console output on a target page:
 
 ```
-[Sentra/Content] Page detected: anamnesa | pelayananId: 12345
-[Sentra/Background] Side Panel unlocked for tab 1
+[GhostProtocol/Content] Page detected: anamnesa | pelayananId: 12345
+[GhostProtocol/Background] Side Panel unlocked for tab 1
 ```
 
 ---
@@ -207,10 +216,10 @@ npm run zip
 npm run dev:firefox
 ```
 
-| Command            | Output Path                                      |
-|--------------------|--------------------------------------------------|
-| `npm run build`    | `.output/chrome-mv3/` (Load Unpacked target)     |
-| `npm run zip`      | `.output/ Ghost Protocols V2-1.0.0-chrome.zip`         |
+| Command         | Output Path                                 |
+|-----------------|---------------------------------------------|
+| `npm run build` | `.output/chrome-mv3/` (Load Unpacked target)|
+| `npm run zip`   | `.output/ghost-protocolv2-2.0.0-chrome.zip` |
 
 WXT handles manifest auto-generation from `wxt.config.ts` declarations. No manual `manifest.json` editing is required.
 
@@ -222,11 +231,11 @@ WXT handles manifest auto-generation from `wxt.config.ts` declarations. No manua
 
 Classifies the current ePuskesmas page by evaluating the URL against three RegExp patterns:
 
-| Page Type  | URL Pattern                        |
-|------------|------------------------------------|
-| `anamnesa` | `/anamnesa/(create\|edit)/*`        |
-| `diagnosa` | `/diagnosa/(create\|edit)/*`        |
-| `resep`    | `/resep/(create\|edit)/*`           |
+| Page Type  | URL Pattern                  |
+|------------|------------------------------|
+| `anamnesa` | `/anamnesa/(create\|edit)/*`  |
+| `diagnosa` | `/diagnosa/(create\|edit)/*`  |
+| `resep`    | `/resep/(create\|edit)/*`     |
 
 On classification, the content script dispatches a `pageReady` message to the service worker containing the detected page type and extracted `pelayananId`.
 
@@ -277,14 +286,14 @@ This approach requires no modification to the host application and is resilient 
 
 ## 9. Security Model
 
-| Control                  | Implementation                                                  |
-|--------------------------|-----------------------------------------------------------------|
-| Isolated World           | Content script JS context is fully isolated from page scripts   |
-| No Remote Code Execution | All code bundled at build time; no eval, no remote imports      |
-| Host Permission Scoping  | `host_permissions` restricted to the configured EMR host only   |
+| Control                  | Implementation                                                             |
+|--------------------------|----------------------------------------------------------------------------|
+| Isolated World           | Content script JS context is fully isolated from page scripts              |
+| No Remote Code Execution | All code bundled at build time; no eval, no remote imports                 |
+| Host Permission Scoping  | `host_permissions` restricted to the configured EMR host only              |
 | Storage Isolation        | `chrome.storage.local` is extension-private; inaccessible to the host page |
-| CSRF Preservation        | Auto-fill engine never targets hidden CSRF token fields         |
-| Typed Contracts          | Message schema validation eliminates injection via malformed payloads |
+| CSRF Preservation        | Auto-fill engine never targets hidden CSRF token fields                    |
+| Typed Contracts          | Message schema validation eliminates injection via malformed payloads      |
 
 The extension does not transmit any patient data to external endpoints. All state is local to the browser session and expires within 24 hours.
 
@@ -312,29 +321,29 @@ npm run dev
 
 ### Environment Variables
 
-| Variable                             | Effect                                              |
-|--------------------------------------|-----------------------------------------------------|
-| `VITE_DEBUG=true`                    | Enables verbose logging across all entrypoints      |
-| `VITE_DEBUG_BACKGROUND`              | Scoped logging for service worker                   |
-| `VITE_DEBUG_CONTENT`                 | Scoped logging for content script                   |
-| `VITE_DEBUG_RIWAYAT`                 | Scoped logging for visit history module             |
-| `VITE_MESSAGE_TIMEOUT_DEFAULT`       | Default IPC message timeout (ms)                    |
-| `VITE_MESSAGE_TIMEOUT_FILL`          | Timeout for auto-fill operations                    |
-| `VITE_MESSAGE_TIMEOUT_SCRAPE`        | Timeout for DOM scrape operations                   |
-| `VITE_MESSAGE_TIMEOUT_VISIT_FETCH`   | Timeout for visit data retrieval                    |
-| `VITE_MESSAGE_TIMEOUT_AI`            | Timeout for CDSS inference calls                   |
+| Variable                           | Effect                                         |
+|------------------------------------|------------------------------------------------|
+| `VITE_DEBUG=true`                  | Enables verbose logging across all entrypoints |
+| `VITE_DEBUG_BACKGROUND`            | Scoped logging for service worker              |
+| `VITE_DEBUG_CONTENT`               | Scoped logging for content script              |
+| `VITE_DEBUG_RIWAYAT`               | Scoped logging for visit history module        |
+| `VITE_MESSAGE_TIMEOUT_DEFAULT`     | Default IPC message timeout (ms)               |
+| `VITE_MESSAGE_TIMEOUT_FILL`        | Timeout for auto-fill operations               |
+| `VITE_MESSAGE_TIMEOUT_SCRAPE`      | Timeout for DOM scrape operations              |
+| `VITE_MESSAGE_TIMEOUT_VISIT_FETCH` | Timeout for visit data retrieval               |
+| `VITE_MESSAGE_TIMEOUT_AI`          | Timeout for CDSS inference calls               |
 
 ---
 
 ## 11. Debugging Reference
 
-| Target                | Access Method                                                     |
-|-----------------------|-------------------------------------------------------------------|
-| Service Worker logs   | `chrome://extensions` > SentraGhost Protocols V2 > "service worker" link     |
-| Content Script logs   | DevTools on the ePuskesmas page > Console tab                     |
-| Side Panel logs       | Right-click the Side Panel > Inspect                              |
-| Storage state         | DevTools > Application > Storage > Extension Storage              |
-| Message traffic       | DevTools > Network (filter: `chrome-extension://`)                |
+| Target              | Access Method                                                      |
+|---------------------|--------------------------------------------------------------------|
+| Service Worker logs | `chrome://extensions` > Ghost Protocols V2 > "service worker" link |
+| Content Script logs | DevTools on the ePuskesmas page > Console tab                      |
+| Side Panel logs     | Right-click the Side Panel > Inspect                               |
+| Storage state       | DevTools > Application > Storage > Extension Storage               |
+| Message traffic     | DevTools > Network (filter: `chrome-extension://`)                 |
 
 ---
 
@@ -358,8 +367,6 @@ npm run dev
 - Zero TypeScript compilation errors
 - HMR cycle completes in under 2 seconds
 
----
-
 ### Phase 2 — Prescription Auto-Fill (Weeks 2–3)
 
 - Implement `filler-core.ts` event dispatch engine
@@ -368,15 +375,11 @@ npm run dev
 - Resep DOM field mapping registry (29 fields)
 - Side Panel Resep form builder with live preview
 
----
-
 ### Phase 3 — Cross-Page Persistence (Weeks 4–5)
 
 - DOM scraper modules for all three page types
 - Anamnesa and Diagnosa field mapping registry
 - Cross-page allergy propagation to Resep contraindication layer
-
----
 
 ### Phase 4 — Full Panel UI (Weeks 6–7)
 
@@ -385,23 +388,17 @@ npm run dev
 - Field highlighting for filled elements
 - Structured error reporting with user-facing retry interface
 
----
-
 ### Phase 5 — CDSS Phase 1 (Weeks 8–9)
 
 - Drug allergy alert system
 - Duplicate medication detection within a single encounter
 - Chronic disease contraindication rule engine
 
----
-
 ### Phase 6 — CDSS Phase 2 (Weeks 10–11)
 
 - Drug-Drug Interaction database integration
 - ICD-10 suggestion from symptom keyword extraction
 - Pediatric weight-based dosing calculator
-
----
 
 ### Phase 7 — Production Hardening (Week 12+)
 
@@ -414,7 +411,7 @@ npm run dev
 
 ## 13. Contributing
 
-SentraGhost Protocols V2 is an internal Sentra Infrastructure project. All contributions must conform to the following engineering standards:
+Ghost Protocols V2 is an internal Sentra Infrastructure project. All contributions must conform to the following engineering standards:
 
 - **Specification-driven development**: all features must be traceable to a PRD entry in `.taskmaster/docs/prd.txt`
 - **TypeScript strict mode**: `noImplicitAny`, `strictNullChecks`, and `strictFunctionTypes` are non-negotiable
@@ -428,7 +425,7 @@ SentraGhost Protocols V2 is an internal Sentra Infrastructure project. All contr
 
 **INTERNAL — Sentra Infrastructure**
 
-This software is proprietary and confidential. Unauthorized distribution, reproduction, or deployment outside of Puskesmas Balowerti, Kota Kediri, is prohibited.
+This software is proprietary and confidential. Unauthorized distribution, reproduction, or deployment outside of authorized facilities is prohibited.
 
 ---
 
@@ -442,4 +439,4 @@ This software is proprietary and confidential. Unauthorized distribution, reprod
 
 ---
 
-*SentraGhost Protocols V2 is developed and maintained by Claudesy under the Sentra Healthcare Artificial Intelligence engineering division. Document ID: SENTRA-SPEC-001 v1.2.0.*
+*Ghost Protocols V2 is developed and maintained under the Sentra Healthcare Artificial Intelligence engineering division. Document ID: SENTRA-SPEC-002 v2.0.0.*
