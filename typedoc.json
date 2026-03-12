@@ -1,5 +1,4 @@
 {
-  "_brand": "Masterplan and masterpiece by Claudesy.",
   "$schema": "https://typedoc.org/schema.json",
   "entryPoints": ["./entrypoints", "./components", "./lib", "./utils", "./types"],
   "entryPointStrategy": "expand",
