@@ -2,7 +2,9 @@
 
 # Ghost Protocols V2
 
-<img src="public/ui-uix.png" alt="Ghost Protocols V2" width="100%" style="border-radius:12px;" />
+<img src="public/ui-uix.png" alt="Ghost Protocols V2" width="50%" style="border-radius:12px;" />
+</div><img src="public/ui-uix.png" alt="Ghost Protocols V2" width="50%" style="border-radius:12px;" />
+</div>
 
 </div>
 
