@@ -8,9 +8,25 @@
 import type { TherapyWidgetData, WidgetBaseProps } from '@/types/medlink';
 import { ChevronRight, Pill, Shield } from 'lucide-react';
 
+/**
+ * TherapyWidgetProps interface
+ * 
+ * @remarks
+ * TODO: Add type description and property documentation
+ * Auto-generated on 2026-03-12
+ */
+
 export interface TherapyWidgetProps extends WidgetBaseProps {
   data: TherapyWidgetData;
 }
+
+/**
+ * TherapyWidget
+ * 
+ * @remarks
+ * TODO: Add detailed description, parameters, and examples
+ * Auto-generated on 2026-03-12
+ */
 
 export function TherapyWidget({ mode: _mode, data, onClick, className = '' }: TherapyWidgetProps) {
   const medicationCount = data.medications.length;

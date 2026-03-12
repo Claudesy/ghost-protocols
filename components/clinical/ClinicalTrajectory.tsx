@@ -19,6 +19,14 @@ import { DosageCalculator } from './DosageCalculator';
 // Lazy import ApexCharts
 const Chart = React.lazy(() => import('react-apexcharts'));
 
+/**
+ * ClinicalTrajectoryProps interface
+ * 
+ * @remarks
+ * TODO: Add type description and property documentation
+ * Auto-generated on 2026-03-12
+ */
+
 export interface ClinicalTrajectoryProps {
   vitals: {
     sbp: number;

@@ -9,9 +9,41 @@
 
 export type PageType = 'anamnesa' | 'diagnosa' | 'resep' | 'unknown';
 
+/**
+ * AturanPakai type
+ * 
+ * @remarks
+ * TODO: Add type description and property documentation
+ * Auto-generated on 2026-03-12
+ */
+
 export type AturanPakai = '1' | '2' | '3' | '4' | '5';
+/**
+ * DiagnosaJenis type
+ * 
+ * @remarks
+ * TODO: Add type description and property documentation
+ * Auto-generated on 2026-03-12
+ */
+
 export type DiagnosaJenis = 'PRIMER' | 'SEKUNDER';
+/**
+ * DiagnosaKasus type
+ * 
+ * @remarks
+ * TODO: Add type description and property documentation
+ * Auto-generated on 2026-03-12
+ */
+
 export type DiagnosaKasus = 'BARU' | 'LAMA';
+/**
+ * Prioritas type
+ * 
+ * @remarks
+ * TODO: Add type description and property documentation
+ * Auto-generated on 2026-03-12
+ */
+
 export type Prioritas = '0' | '1';
 
 // Encounter state (Section 11.1)
@@ -87,6 +119,14 @@ export interface ResepFillPayload {
   }>;
   prioritas: Prioritas;
 }
+
+/**
+ * AnamnesaFillPayload interface
+ * 
+ * @remarks
+ * TODO: Add type description and property documentation
+ * Auto-generated on 2026-03-12
+ */
 
 export interface AnamnesaFillPayload {
   keluhan_utama: string; // Singkat
@@ -234,6 +274,14 @@ export interface AnamnesaFillPayload {
   };
 }
 
+/**
+ * DiagnosaFillPayload interface
+ * 
+ * @remarks
+ * TODO: Add type description and property documentation
+ * Auto-generated on 2026-03-12
+ */
+
 export interface DiagnosaFillPayload {
   icd_x: string;
   nama: string;
@@ -273,6 +321,14 @@ export interface ScrapeRequest {
   fields?: string[];
 }
 
+/**
+ * ScrapePayload interface
+ * 
+ * @remarks
+ * TODO: Add type description and property documentation
+ * Auto-generated on 2026-03-12
+ */
+
 export interface ScrapePayload {
   pageType: PageType;
   data: Record<string, unknown>;
@@ -287,6 +343,14 @@ export interface FieldConfig {
   readonly?: boolean;
 }
 
+/**
+ * PageFieldMap interface
+ * 
+ * @remarks
+ * TODO: Add type description and property documentation
+ * Auto-generated on 2026-03-12
+ */
+
 export interface PageFieldMap {
   [fieldName: string]: FieldConfig;
 }
@@ -297,6 +361,14 @@ export interface PageFieldMap {
 
 export type RMETransferStepStatus = 'anamnesa' | 'diagnosa' | 'resep';
 
+/**
+ * RMETransferStepState type
+ * 
+ * @remarks
+ * TODO: Add type description and property documentation
+ * Auto-generated on 2026-03-12
+ */
+
 export type RMETransferStepState =
   | 'pending'
   | 'running'
@@ -306,7 +378,23 @@ export type RMETransferStepState =
   | 'skipped'
   | 'cancelled';
 
+/**
+ * RMETransferErrorClass type
+ * 
+ * @remarks
+ * TODO: Add type description and property documentation
+ * Auto-generated on 2026-03-12
+ */
+
 export type RMETransferErrorClass = 'recoverable' | 'fatal';
+
+/**
+ * RMETransferReasonCode type
+ * 
+ * @remarks
+ * TODO: Add type description and property documentation
+ * Auto-generated on 2026-03-12
+ */
 
 export type RMETransferReasonCode =
   | 'DUPLICATE_SUPPRESSED'
@@ -324,6 +412,14 @@ export type RMETransferReasonCode =
   | 'PREGNANCY_UNKNOWN_DEFAULT_FALSE'
   | 'UNKNOWN_STEP_FAILURE';
 
+/**
+ * RMETransferStepResult interface
+ * 
+ * @remarks
+ * TODO: Add type description and property documentation
+ * Auto-generated on 2026-03-12
+ */
+
 export interface RMETransferStepResult {
   step: RMETransferStepStatus;
   state: RMETransferStepState;
@@ -337,7 +433,23 @@ export interface RMETransferStepResult {
   message?: string;
 }
 
+/**
+ * RMETransferState type
+ * 
+ * @remarks
+ * TODO: Add type description and property documentation
+ * Auto-generated on 2026-03-12
+ */
+
 export type RMETransferState = 'success' | 'partial' | 'failed' | 'cancelled';
+
+/**
+ * RMETransferPayload interface
+ * 
+ * @remarks
+ * TODO: Add type description and property documentation
+ * Auto-generated on 2026-03-12
+ */
 
 export interface RMETransferPayload {
   anamnesa: AnamnesaFillPayload;
@@ -357,6 +469,14 @@ export interface RMETransferPayload {
   };
 }
 
+/**
+ * RMETransferResult interface
+ * 
+ * @remarks
+ * TODO: Add type description and property documentation
+ * Auto-generated on 2026-03-12
+ */
+
 export interface RMETransferResult {
   runId: string;
   fingerprint: string;
@@ -367,6 +487,14 @@ export interface RMETransferResult {
   reasonCodes: RMETransferReasonCode[];
   steps: Record<RMETransferStepStatus, RMETransferStepResult>;
 }
+
+/**
+ * RMETransferProgressEvent interface
+ * 
+ * @remarks
+ * TODO: Add type description and property documentation
+ * Auto-generated on 2026-03-12
+ */
 
 export interface RMETransferProgressEvent {
   runId: string;

@@ -9,6 +9,14 @@ import {
 import type { TrajectoryAnalysis } from './trajectory-analyzer';
 import { ChronicDiseaseType } from './chronic-disease-classifier';
 
+/**
+ * DiagnosisAlgorithmInput interface
+ * 
+ * @remarks
+ * TODO: Add type description and property documentation
+ * Auto-generated on 2026-03-12
+ */
+
 export interface DiagnosisAlgorithmInput {
   suggestions: DiagnosisSuggestion[];
   keluhanUtama: string;
@@ -18,7 +26,23 @@ export interface DiagnosisAlgorithmInput {
   maxResults?: number;
 }
 
+/**
+ * ConfidenceBand type
+ * 
+ * @remarks
+ * TODO: Add type description and property documentation
+ * Auto-generated on 2026-03-12
+ */
+
 export type ConfidenceBand = 'very_high' | 'high' | 'moderate' | 'low';
+
+/**
+ * RankedDiagnosis interface
+ * 
+ * @remarks
+ * TODO: Add type description and property documentation
+ * Auto-generated on 2026-03-12
+ */
 
 export interface RankedDiagnosis {
   rank: number;
@@ -284,6 +308,14 @@ function deriveClinicalMismatchPenalty(
 
   return round(clamp(penalty, 0, 70), 2);
 }
+
+/**
+ * runDiagnosisAlgorithm
+ * 
+ * @remarks
+ * TODO: Add detailed description, parameters, and examples
+ * Auto-generated on 2026-03-12
+ */
 
 export function runDiagnosisAlgorithm(input: DiagnosisAlgorithmInput): RankedDiagnosis[] {
   const {

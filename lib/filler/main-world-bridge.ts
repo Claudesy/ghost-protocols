@@ -14,12 +14,28 @@ import { createLogger } from '@/utils/logger';
 
 const bridgeLog = createLogger('FillBridge', 'filler');
 
+/**
+ * MainWorldFieldMapping interface
+ * 
+ * @remarks
+ * TODO: Add type description and property documentation
+ * Auto-generated on 2026-03-12
+ */
+
 export interface MainWorldFieldMapping {
   selector: string;
   value: string;
   type: 'text' | 'select' | 'autocomplete';
   autocompleteTimeout?: number;
 }
+
+/**
+ * MainWorldFillResult interface
+ * 
+ * @remarks
+ * TODO: Add type description and property documentation
+ * Auto-generated on 2026-03-12
+ */
 
 export interface MainWorldFillResult {
   success: boolean;
@@ -77,6 +93,14 @@ async function pingMainWorld(
     }, timeoutMs);
   });
 }
+
+/**
+ * fillViaMainWorld
+ * 
+ * @remarks
+ * TODO: Add detailed description, parameters, and examples
+ * Auto-generated on 2026-03-12
+ */
 
 export async function fillViaMainWorld(
   fields: MainWorldFieldMapping[],

@@ -20,6 +20,14 @@ export interface MatcherInput {
   jenisKelamin?: 'L' | 'P';
 }
 
+/**
+ * MatchedCandidate interface
+ * 
+ * @remarks
+ * TODO: Add type description and property documentation
+ * Auto-generated on 2026-03-12
+ */
+
 export interface MatchedCandidate {
   diseaseId: string;
   nama: string;

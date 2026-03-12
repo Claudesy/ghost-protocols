@@ -36,11 +36,27 @@ interface EpiWeightRegistry {
   weights: Record<string, EpiWeightEntry>;
 }
 
+/**
+ * EpiWeightResult interface
+ * 
+ * @remarks
+ * TODO: Add type description and property documentation
+ * Auto-generated on 2026-03-12
+ */
+
 export interface EpiWeightResult {
   weight: number;
   genderAdjusted: number;
   localPrevalence: number;
 }
+
+/**
+ * EpiMeta interface
+ * 
+ * @remarks
+ * TODO: Add type description and property documentation
+ * Auto-generated on 2026-03-12
+ */
 
 export interface EpiMeta {
   source: string;

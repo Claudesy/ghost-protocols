@@ -1,6 +1,14 @@
 // Designed and constructed by Claudesy.
 import type { DiagnosisSuggestion } from '@/types/api';
 
+/**
+ * DifferentialVitals interface
+ * 
+ * @remarks
+ * TODO: Add type description and property documentation
+ * Auto-generated on 2026-03-12
+ */
+
 export interface DifferentialVitals {
   sbp: number;
   dbp: number;
@@ -10,11 +18,27 @@ export interface DifferentialVitals {
   glucose: number;
 }
 
+/**
+ * SupportingExamPlan interface
+ * 
+ * @remarks
+ * TODO: Add type description and property documentation
+ * Auto-generated on 2026-03-12
+ */
+
 export interface SupportingExamPlan {
   needLevel: 'required' | 'recommended' | 'optional';
   summary: string;
   tests: string[];
 }
+
+/**
+ * DifferentialInsight interface
+ * 
+ * @remarks
+ * TODO: Add type description and property documentation
+ * Auto-generated on 2026-03-12
+ */
 
 export interface DifferentialInsight {
   matchedSymptoms: string[];
@@ -70,6 +94,14 @@ function uniq(values: string[]): string[] {
   return Array.from(new Set(values));
 }
 
+/**
+ * extractComplaintSignals
+ * 
+ * @remarks
+ * TODO: Add detailed description, parameters, and examples
+ * Auto-generated on 2026-03-12
+ */
+
 export function extractComplaintSignals(
   keluhanUtama: string,
   keluhanTambahan = '',
@@ -86,6 +118,14 @@ export function extractComplaintSignals(
 
   return uniq([...compoundHits, ...tokens]).slice(0, max);
 }
+
+/**
+ * deriveVitalDrivers
+ * 
+ * @remarks
+ * TODO: Add detailed description, parameters, and examples
+ * Auto-generated on 2026-03-12
+ */
 
 export function deriveVitalDrivers(vitals: DifferentialVitals): string[] {
   const drivers: string[] = [];
@@ -116,6 +156,14 @@ export function deriveVitalDrivers(vitals: DifferentialVitals): string[] {
   return drivers;
 }
 
+/**
+ * matchSuggestionSignals
+ * 
+ * @remarks
+ * TODO: Add detailed description, parameters, and examples
+ * Auto-generated on 2026-03-12
+ */
+
 export function matchSuggestionSignals(
   suggestion: DiagnosisSuggestion,
   complaintSignals: string[]
@@ -139,6 +187,14 @@ function upperIcdPrefix(icdX: string): string {
   const match = normalized.match(/^[A-Z][0-9]{1,2}/);
   return match ? match[0] : normalized.slice(0, 3);
 }
+
+/**
+ * deriveSupportingExamPlan
+ * 
+ * @remarks
+ * TODO: Add detailed description, parameters, and examples
+ * Auto-generated on 2026-03-12
+ */
 
 export function deriveSupportingExamPlan(
   suggestion: DiagnosisSuggestion,
@@ -220,6 +276,14 @@ export function deriveSupportingExamPlan(
     tests: uniqTests,
   };
 }
+
+/**
+ * buildDifferentialInsight
+ * 
+ * @remarks
+ * TODO: Add detailed description, parameters, and examples
+ * Auto-generated on 2026-03-12
+ */
 
 export function buildDifferentialInsight(
   input: BuildDifferentialInsightInput

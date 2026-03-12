@@ -553,6 +553,14 @@ export interface CDSSEngineStatus {
   last_error?: string;
 }
 
+/**
+ * getCDSSEngineStatus
+ * 
+ * @remarks
+ * TODO: Add detailed description, parameters, and examples
+ * Auto-generated on 2026-03-12
+ */
+
 export async function getCDSSEngineStatus(): Promise<CDSSEngineStatus> {
   try {
     const { icd10DB } = await import('@/lib/rag/icd10-db');
@@ -576,6 +584,14 @@ export async function getCDSSEngineStatus(): Promise<CDSSEngineStatus> {
     };
   }
 }
+
+/**
+ * initCDSSEngine
+ * 
+ * @remarks
+ * TODO: Add detailed description, parameters, and examples
+ * Auto-generated on 2026-03-12
+ */
 
 export async function initCDSSEngine(): Promise<boolean> {
   try {

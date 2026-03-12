@@ -49,6 +49,14 @@ export interface MedlinkEncounterPayload {
   userId?: string;
 }
 
+/**
+ * MedlinkApiResponse interface
+ * 
+ * @remarks
+ * TODO: Add type description and property documentation
+ * Auto-generated on 2026-03-12
+ */
+
 export interface MedlinkApiResponse {
   success: boolean;
   data?: {

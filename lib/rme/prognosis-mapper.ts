@@ -18,6 +18,14 @@
 
 import type { TrajectoryAnalysis } from '@/lib/iskandar-diagnosis-engine/trajectory-analyzer';
 
+/**
+ * PrognosisValue type
+ * 
+ * @remarks
+ * TODO: Add type description and property documentation
+ * Auto-generated on 2026-03-12
+ */
+
 export type PrognosisValue =
   | 'Sanam (Sembuh)'
   | 'Bonam (Baik)'

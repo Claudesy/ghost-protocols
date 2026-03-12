@@ -24,7 +24,23 @@ export interface MedicalHistoryItem {
   shortLabel: string; // Short display label (e.g., 'HT')
 }
 
+/**
+ * ProfileStatus type
+ * 
+ * @remarks
+ * TODO: Add type description and property documentation
+ * Auto-generated on 2026-03-12
+ */
+
 export type ProfileStatus = 'loading' | 'loaded' | 'error' | 'idle';
+
+/**
+ * PatientHeaderProps interface
+ * 
+ * @remarks
+ * TODO: Add type description and property documentation
+ * Auto-generated on 2026-03-12
+ */
 
 export interface PatientHeaderProps {
   name: string;

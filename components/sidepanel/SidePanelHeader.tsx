@@ -12,6 +12,14 @@ interface SidePanelHeaderProps {
   onBack?: () => void;
 }
 
+/**
+ * SidePanelHeader
+ * 
+ * @remarks
+ * TODO: Add detailed description, parameters, and examples
+ * Auto-generated on 2026-03-12
+ */
+
 export function SidePanelHeader({
   variant = 'full',
   showBackButton = false,

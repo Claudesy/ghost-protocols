@@ -24,6 +24,14 @@ const ALARM_NAME = 'sentra-bridge-poll';
 let isPolling = false;
 let listenerRegistered = false;
 
+/**
+ * BridgeTransferExecutor type
+ * 
+ * @remarks
+ * TODO: Add type description and property documentation
+ * Auto-generated on 2026-03-12
+ */
+
 export type BridgeTransferExecutor = (
   entryId: string,
   pelayananId: string,

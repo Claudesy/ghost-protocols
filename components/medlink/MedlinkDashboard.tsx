@@ -19,6 +19,14 @@ import { AssessmentWidget } from './widgets/AssessmentWidget';
 import { DiagnosisWidget } from './widgets/DiagnosisWidget';
 import { TherapyWidget } from './widgets/TherapyWidget';
 
+/**
+ * MedlinkDashboardProps interface
+ * 
+ * @remarks
+ * TODO: Add type description and property documentation
+ * Auto-generated on 2026-03-12
+ */
+
 export interface MedlinkDashboardProps {
   // Optional: Override patient context
   patientId?: string;
@@ -28,6 +36,14 @@ export interface MedlinkDashboardProps {
   initialDiagnosis?: DiagnosisWidgetData;
   initialTherapy?: TherapyWidgetData;
 }
+
+/**
+ * MedlinkDashboard
+ * 
+ * @remarks
+ * TODO: Add detailed description, parameters, and examples
+ * Auto-generated on 2026-03-12
+ */
 
 export function MedlinkDashboard({
   patientId: _patientId,

@@ -91,6 +91,14 @@ import {
 // Lifted TTV Form State (from parent component)
 export type AutosenPreset = 'normal' | 'ht' | 'hypo' | 'hyper';
 
+/**
+ * TTVFormState interface
+ * 
+ * @remarks
+ * TODO: Add type description and property documentation
+ * Auto-generated on 2026-03-12
+ */
+
 export interface TTVFormState {
   sbp: string;
   dbp: string;
@@ -104,6 +112,14 @@ export interface TTVFormState {
   pregnancyStatus: boolean | null;
   autosenPreset: AutosenPreset;
 }
+
+/**
+ * TTVInferenceUIProps interface
+ * 
+ * @remarks
+ * TODO: Add type description and property documentation
+ * Auto-generated on 2026-03-12
+ */
 
 export interface TTVInferenceUIProps {
   patientName: string;

@@ -14,6 +14,14 @@ import {
   type AgeGroup,
 } from '@/lib/clinical/dosage-database';
 
+/**
+ * DosageCalculatorProps interface
+ * 
+ * @remarks
+ * TODO: Add type description and property documentation
+ * Auto-generated on 2026-03-12
+ */
+
 export interface DosageCalculatorProps {
   patientAge: number; // in years
   patientWeight?: number; // in kg (optional, can be entered)

@@ -2,6 +2,14 @@
 import { VISIT_FIELD_SELECTORS, VISIT_LABEL_KEYWORDS } from './field-selectors';
 import { cleanText, toFloat, toInt } from './normalizers';
 
+/**
+ * ScrapedVisitData interface
+ * 
+ * @remarks
+ * TODO: Add type description and property documentation
+ * Auto-generated on 2026-03-12
+ */
+
 export interface ScrapedVisitData {
   encounter_id: string;
   date: string;
@@ -174,6 +182,14 @@ function normalizeDiagnosisName(raw: string, icdCode: string): string {
   if (!isReadableDiagnosisLabel(cleaned)) return '';
   return cleaned;
 }
+
+/**
+ * extractVisitFromRoot
+ * 
+ * @remarks
+ * TODO: Add detailed description, parameters, and examples
+ * Auto-generated on 2026-03-12
+ */
 
 export const extractVisitFromRoot = (
   root: ParentNode,

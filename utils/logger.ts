@@ -34,6 +34,14 @@ function sanitizeObject(
   return output;
 }
 
+/**
+ * sanitizeForLog
+ * 
+ * @remarks
+ * TODO: Add detailed description, parameters, and examples
+ * Auto-generated on 2026-03-12
+ */
+
 export function sanitizeForLog(
   value: unknown,
   depth: number = 0,
@@ -72,6 +80,14 @@ export function sanitizeForLog(
 
   return sanitizeObject(value as Record<string, unknown>, depth, seen);
 }
+
+/**
+ * isDebugScopeEnabled
+ * 
+ * @remarks
+ * TODO: Add detailed description, parameters, and examples
+ * Auto-generated on 2026-03-12
+ */
 
 export const isDebugScopeEnabled = (scope: LoggerScope): boolean => {
   const globalEnabled = toBool(import.meta.env.VITE_DEBUG);
@@ -126,6 +142,14 @@ export const logger = {
     emit('error', '[ERROR]', args);
   },
 };
+
+/**
+ * createLogger
+ * 
+ * @remarks
+ * TODO: Add detailed description, parameters, and examples
+ * Auto-generated on 2026-03-12
+ */
 
 export const createLogger = (scope: string, debugScope: LoggerScope = 'global') => ({
   debug: (...args: unknown[]): void => {

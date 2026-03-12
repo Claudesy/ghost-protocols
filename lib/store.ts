@@ -19,7 +19,23 @@ import type { DiagnosisSuggestion, VitalSigns } from '@/types/api';
 // =============================================================================
 
 export type PageType = 'anamnesa' | 'diagnosa' | 'resep' | 'unknown';
+/**
+ * Gender type
+ * 
+ * @remarks
+ * TODO: Add type description and property documentation
+ * Auto-generated on 2026-03-12
+ */
+
 export type Gender = 'L' | 'P';
+
+/**
+ * PatientContext interface
+ * 
+ * @remarks
+ * TODO: Add type description and property documentation
+ * Auto-generated on 2026-03-12
+ */
 
 export interface PatientContext {
   patientId: string;
@@ -28,6 +44,14 @@ export interface PatientContext {
   gender: Gender;
   medicalRecordNumber?: string;
 }
+
+/**
+ * AnamnesaData interface
+ * 
+ * @remarks
+ * TODO: Add type description and property documentation
+ * Auto-generated on 2026-03-12
+ */
 
 export interface AnamnesaData {
   complaint: string;
@@ -38,12 +62,28 @@ export interface AnamnesaData {
   history?: string;
 }
 
+/**
+ * DiagnosisData interface
+ * 
+ * @remarks
+ * TODO: Add type description and property documentation
+ * Auto-generated on 2026-03-12
+ */
+
 export interface DiagnosisData {
   recommendations: DiagnosisSuggestion[];
   selectedDiagnosis: string | null;
   selectedICD10: string | null;
   confidence: number | null;
 }
+
+/**
+ * MedicationRow interface
+ * 
+ * @remarks
+ * TODO: Add type description and property documentation
+ * Auto-generated on 2026-03-12
+ */
 
 export interface MedicationRow {
   id: string;
@@ -56,6 +96,14 @@ export interface MedicationRow {
   keterangan: string;
 }
 
+/**
+ * TherapyData interface
+ * 
+ * @remarks
+ * TODO: Add type description and property documentation
+ * Auto-generated on 2026-03-12
+ */
+
 export interface TherapyData {
   medications: MedicationRow[];
   prioritas: '0' | '1';
@@ -63,6 +111,14 @@ export interface TherapyData {
   dokter: string;
   perawat: string;
 }
+
+/**
+ * EncounterMetadata interface
+ * 
+ * @remarks
+ * TODO: Add type description and property documentation
+ * Auto-generated on 2026-03-12
+ */
 
 export interface EncounterMetadata {
   pelayananId: string | null;

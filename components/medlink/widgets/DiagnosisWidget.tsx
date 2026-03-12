@@ -8,9 +8,25 @@
 import type { DiagnosisWidgetData, WidgetBaseProps } from '@/types/medlink';
 import { Brain, ChevronRight, TrendingUp } from 'lucide-react';
 
+/**
+ * DiagnosisWidgetProps interface
+ * 
+ * @remarks
+ * TODO: Add type description and property documentation
+ * Auto-generated on 2026-03-12
+ */
+
 export interface DiagnosisWidgetProps extends WidgetBaseProps {
   data: DiagnosisWidgetData;
 }
+
+/**
+ * DiagnosisWidget
+ * 
+ * @remarks
+ * TODO: Add detailed description, parameters, and examples
+ * Auto-generated on 2026-03-12
+ */
 
 export function DiagnosisWidget({
   mode: _mode,

@@ -13,15 +13,71 @@
 import type { VisitRecord } from './visit-history-store';
 import { classifyChronicDisease, type ChronicDiseaseType } from './chronic-disease-classifier';
 
+/**
+ * TrendDirection type
+ * 
+ * @remarks
+ * TODO: Add type description and property documentation
+ * Auto-generated on 2026-03-12
+ */
+
 export type TrendDirection = 'improving' | 'declining' | 'stable' | 'insufficient_data';
+/**
+ * RiskLevel type
+ * 
+ * @remarks
+ * TODO: Add type description and property documentation
+ * Auto-generated on 2026-03-12
+ */
+
 export type RiskLevel = 'low' | 'moderate' | 'high' | 'critical';
+/**
+ * GlobalDeteriorationState type
+ * 
+ * @remarks
+ * TODO: Add type description and property documentation
+ * Auto-generated on 2026-03-12
+ */
+
 export type GlobalDeteriorationState = 'improving' | 'stable' | 'deteriorating' | 'critical';
+/**
+ * MortalityProxyTier type
+ * 
+ * @remarks
+ * TODO: Add type description and property documentation
+ * Auto-generated on 2026-03-12
+ */
+
 export type MortalityProxyTier = 'low' | 'moderate' | 'high' | 'very_high';
+/**
+ * ClinicalUrgencyTier type
+ * 
+ * @remarks
+ * TODO: Add type description and property documentation
+ * Auto-generated on 2026-03-12
+ */
+
 export type ClinicalUrgencyTier = 'low' | 'moderate' | 'high' | 'immediate';
+/**
+ * StabilityLabel type
+ * 
+ * @remarks
+ * TODO: Add type description and property documentation
+ * Auto-generated on 2026-03-12
+ */
+
 export type StabilityLabel = 'true_stable' | 'pseudo_stable' | 'unstable';
 
 const MAX_VISITS = 5;
 const MAX_ETA_HOURS = 24 * 7;
+
+/**
+ * VitalTrend interface
+ * 
+ * @remarks
+ * TODO: Add type description and property documentation
+ * Auto-generated on 2026-03-12
+ */
 
 export interface VitalTrend {
   parameter: VitalKey;
@@ -36,16 +92,40 @@ export interface VitalTrend {
   note: string;
 }
 
+/**
+ * TrajectoryRecommendation interface
+ * 
+ * @remarks
+ * TODO: Add type description and property documentation
+ * Auto-generated on 2026-03-12
+ */
+
 export interface TrajectoryRecommendation {
   category: 'improvement' | 'concern' | 'action' | 'monitoring';
   priority: 'high' | 'medium' | 'low';
   text: string;
 }
 
+/**
+ * GlobalDeterioration interface
+ * 
+ * @remarks
+ * TODO: Add type description and property documentation
+ * Auto-generated on 2026-03-12
+ */
+
 export interface GlobalDeterioration {
   state: GlobalDeteriorationState;
   deterioration_score: number;
 }
+
+/**
+ * AcuteAttackRisk24h interface
+ * 
+ * @remarks
+ * TODO: Add type description and property documentation
+ * Auto-generated on 2026-03-12
+ */
 
 export interface AcuteAttackRisk24h {
   hypertensive_crisis_risk: number;
@@ -54,6 +134,14 @@ export interface AcuteAttackRisk24h {
   shock_decompensation_risk: number;
   stroke_acs_suspicion_risk: number;
 }
+
+/**
+ * EarlyWarningBurden interface
+ * 
+ * @remarks
+ * TODO: Add type description and property documentation
+ * Auto-generated on 2026-03-12
+ */
 
 export interface EarlyWarningBurden {
   total_breaches_last5: number;
@@ -67,10 +155,26 @@ export interface EarlyWarningBurden {
   };
 }
 
+/**
+ * TrajectoryVolatility interface
+ * 
+ * @remarks
+ * TODO: Add type description and property documentation
+ * Auto-generated on 2026-03-12
+ */
+
 export interface TrajectoryVolatility {
   volatility_index: number;
   stability_label: StabilityLabel;
 }
+
+/**
+ * TimeToCriticalEstimate interface
+ * 
+ * @remarks
+ * TODO: Add type description and property documentation
+ * Auto-generated on 2026-03-12
+ */
 
 export interface TimeToCriticalEstimate {
   sbp_hours_to_critical: number | null;
@@ -81,11 +185,27 @@ export interface TimeToCriticalEstimate {
   rr_hours_to_critical: number | null;
 }
 
+/**
+ * MortalityProxyRisk interface
+ * 
+ * @remarks
+ * TODO: Add type description and property documentation
+ * Auto-generated on 2026-03-12
+ */
+
 export interface MortalityProxyRisk {
   mortality_proxy_tier: MortalityProxyTier;
   mortality_proxy_score: number;
   clinical_urgency_tier: ClinicalUrgencyTier;
 }
+
+/**
+ * ClinicalSafeOutput interface
+ * 
+ * @remarks
+ * TODO: Add type description and property documentation
+ * Auto-generated on 2026-03-12
+ */
 
 export interface ClinicalSafeOutput {
   risk_tier: RiskLevel;
@@ -96,12 +216,28 @@ export interface ClinicalSafeOutput {
   review_window: '24h';
 }
 
+/**
+ * ConfirmedChronicDiagnosis interface
+ * 
+ * @remarks
+ * TODO: Add type description and property documentation
+ * Auto-generated on 2026-03-12
+ */
+
 export interface ConfirmedChronicDiagnosis {
   icd_x: string;
   nama: string;
   disease_type: ChronicDiseaseType;
   confirmed_at: string;
 }
+
+/**
+ * TrajectoryAnalysis interface
+ * 
+ * @remarks
+ * TODO: Add type description and property documentation
+ * Auto-generated on 2026-03-12
+ */
 
 export interface TrajectoryAnalysis {
   overallTrend: TrendDirection;
@@ -786,6 +922,14 @@ function extractConfirmedChronicDiagnoses(visits: VisitRecord[]): ConfirmedChron
     (a, b) => new Date(b.confirmed_at).getTime() - new Date(a.confirmed_at).getTime(),
   );
 }
+
+/**
+ * analyzeTrajectory
+ * 
+ * @remarks
+ * TODO: Add detailed description, parameters, and examples
+ * Auto-generated on 2026-03-12
+ */
 
 export function analyzeTrajectory(visits: VisitRecord[]): TrajectoryAnalysis {
   const sorted = [...visits]

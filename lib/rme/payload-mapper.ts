@@ -15,6 +15,14 @@ import stockDatabase from '@/public/data/stok_obat.json';
 
 type TriadRole = 'utama' | 'adjuvant' | 'vitamin';
 
+/**
+ * RMETransferMapperInput interface
+ * 
+ * @remarks
+ * TODO: Add type description and property documentation
+ * Auto-generated on 2026-03-12
+ */
+
 export interface RMETransferMapperInput {
   keluhanUtama: string;
   keluhanTambahan?: string;
@@ -39,6 +47,14 @@ export interface RMETransferMapperInput {
   trajectory?: TrajectoryAnalysis;
   hasVisitHistory?: boolean;
 }
+
+/**
+ * PregnancyMappingResult interface
+ * 
+ * @remarks
+ * TODO: Add type description and property documentation
+ * Auto-generated on 2026-03-12
+ */
 
 export interface PregnancyMappingResult {
   is_pregnant: boolean;
@@ -437,6 +453,14 @@ function normalizeAllergies(allergies: string[]): AnamnesaFillPayload['alergi'] 
   return result;
 }
 
+/**
+ * mapPregnancyStatusToBoolean
+ * 
+ * @remarks
+ * TODO: Add detailed description, parameters, and examples
+ * Auto-generated on 2026-03-12
+ */
+
 export function mapPregnancyStatusToBoolean(
   patientGender: 'L' | 'P',
   pregnancyStatus?: boolean | null,
@@ -597,6 +621,14 @@ function buildResepPayload(input: RMETransferMapperInput): {
     triadMissingRoles,
   };
 }
+
+/**
+ * buildRMETransferPayload
+ * 
+ * @remarks
+ * TODO: Add detailed description, parameters, and examples
+ * Auto-generated on 2026-03-12
+ */
 
 export function buildRMETransferPayload(input: RMETransferMapperInput): {
   payload: RMETransferPayload;

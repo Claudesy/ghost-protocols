@@ -12,8 +12,32 @@
  */
 
 export type DrugCategory = 'antibiotic' | 'antipyretic' | 'antihistamine' | 'cardiovascular' | 'respiratory' | 'analgesic';
+/**
+ * AgeGroup type
+ * 
+ * @remarks
+ * TODO: Add type description and property documentation
+ * Auto-generated on 2026-03-12
+ */
+
 export type AgeGroup = 'neonate' | 'infant' | 'child' | 'adolescent' | 'adult' | 'elderly';
+/**
+ * RouteOfAdmin type
+ * 
+ * @remarks
+ * TODO: Add type description and property documentation
+ * Auto-generated on 2026-03-12
+ */
+
 export type RouteOfAdmin = 'oral' | 'iv' | 'im' | 'topical' | 'rectal';
+
+/**
+ * DosageRule interface
+ * 
+ * @remarks
+ * TODO: Add type description and property documentation
+ * Auto-generated on 2026-03-12
+ */
 
 export interface DosageRule {
   ageGroup: AgeGroup;
@@ -27,6 +51,14 @@ export interface DosageRule {
   hepaticAdjustment?: string;
   contraindications?: string[];
 }
+
+/**
+ * Drug interface
+ * 
+ * @remarks
+ * TODO: Add type description and property documentation
+ * Auto-generated on 2026-03-12
+ */
 
 export interface Drug {
   id: string;

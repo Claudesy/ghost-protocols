@@ -19,11 +19,27 @@ import type { RedFlag } from './red-flags';
 
 export type TrafficLightLevel = 'GREEN' | 'YELLOW' | 'RED';
 
+/**
+ * GateResult interface
+ * 
+ * @remarks
+ * TODO: Add type description and property documentation
+ * Auto-generated on 2026-03-12
+ */
+
 export interface GateResult {
   rule: string;
   triggered: boolean;
   detail: string;
 }
+
+/**
+ * TrafficLightOutput interface
+ * 
+ * @remarks
+ * TODO: Add type description and property documentation
+ * Auto-generated on 2026-03-12
+ */
 
 export interface TrafficLightOutput {
   level: TrafficLightLevel;
@@ -31,6 +47,14 @@ export interface TrafficLightOutput {
   gateResults: GateResult[];
   overrideApplied: boolean;
 }
+
+/**
+ * TrafficLightInput interface
+ * 
+ * @remarks
+ * TODO: Add type description and property documentation
+ * Auto-generated on 2026-03-12
+ */
 
 export interface TrafficLightInput {
   candidates: MatchedCandidate[];

@@ -25,6 +25,14 @@ export interface ReasonerInput {
   epiContext?: string;
 }
 
+/**
+ * ReasonerOutput interface
+ * 
+ * @remarks
+ * TODO: Add type description and property documentation
+ * Auto-generated on 2026-03-12
+ */
+
 export interface ReasonerOutput {
   suggestions: AIDiagnosisSuggestion[];
   source: 'ai' | 'local';

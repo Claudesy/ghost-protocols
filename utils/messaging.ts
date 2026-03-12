@@ -90,6 +90,14 @@ function asDiagnosaKasus(value: unknown): Encounter['diagnosa']['kasus'] {
   return value === 'LAMA' ? 'LAMA' : 'BARU';
 }
 
+/**
+ * ParseResult interface
+ * 
+ * @remarks
+ * TODO: Add type description and property documentation
+ * Auto-generated on 2026-03-12
+ */
+
 export interface ParseResult<T> {
   ok: boolean;
   reasons: string[];
@@ -104,7 +112,23 @@ export const MESSAGE_TIMEOUTS = {
   ai: toTimeout(import.meta.env.VITE_MESSAGE_TIMEOUT_AI, 30000),
 } as const;
 
+/**
+ * TabMessageErrorKind type
+ * 
+ * @remarks
+ * TODO: Add type description and property documentation
+ * Auto-generated on 2026-03-12
+ */
+
 export type TabMessageErrorKind = 'TIMEOUT' | 'NO_RECEIVER' | 'TAB_CLOSED' | 'UNKNOWN';
+
+/**
+ * classifyTabMessageError
+ * 
+ * @remarks
+ * TODO: Add detailed description, parameters, and examples
+ * Auto-generated on 2026-03-12
+ */
 
 export function classifyTabMessageError(error: unknown): TabMessageErrorKind {
   const message = error instanceof Error ? error.message : String(error);
@@ -313,6 +337,14 @@ export function isDiagnosaPayload(payload: unknown): payload is DiagnosaFillPayl
   );
 }
 
+/**
+ * sendMessageToTabWithTimeout
+ * 
+ * @remarks
+ * TODO: Add detailed description, parameters, and examples
+ * Auto-generated on 2026-03-12
+ */
+
 export async function sendMessageToTabWithTimeout<T>(
   tabId: number,
   message: { type: string; data?: unknown; [key: string]: unknown },
@@ -352,6 +384,14 @@ export async function sendMessageToTabWithTimeout<T>(
     if (timeoutHandle) clearTimeout(timeoutHandle);
   }
 }
+
+/**
+ * parseAnamnesaData
+ * 
+ * @remarks
+ * TODO: Add detailed description, parameters, and examples
+ * Auto-generated on 2026-03-12
+ */
 
 export function parseAnamnesaData(data: unknown): ParseResult<Encounter['anamnesa']> {
   const reasons: string[] = [];
@@ -395,6 +435,14 @@ export function parseAnamnesaData(data: unknown): ParseResult<Encounter['anamnes
   return { ok: true, reasons, value: normalized };
 }
 
+/**
+ * parseDiagnosaData
+ * 
+ * @remarks
+ * TODO: Add detailed description, parameters, and examples
+ * Auto-generated on 2026-03-12
+ */
+
 export function parseDiagnosaData(data: unknown): ParseResult<Encounter['diagnosa']> {
   const reasons: string[] = [];
   const candidate = asRecord(data);
@@ -421,6 +469,14 @@ export function parseDiagnosaData(data: unknown): ParseResult<Encounter['diagnos
 
   return { ok: true, reasons, value: normalized };
 }
+
+/**
+ * parseResepData
+ * 
+ * @remarks
+ * TODO: Add detailed description, parameters, and examples
+ * Auto-generated on 2026-03-12
+ */
 
 export function parseResepData(data: unknown): ParseResult<Encounter['resep']> {
   if (!Array.isArray(data)) {
@@ -460,13 +516,37 @@ export function parseResepData(data: unknown): ParseResult<Encounter['resep']> {
   return { ok: true, reasons, value: normalized };
 }
 
+/**
+ * isAnamnesaData
+ * 
+ * @remarks
+ * TODO: Add detailed description, parameters, and examples
+ * Auto-generated on 2026-03-12
+ */
+
 export function isAnamnesaData(data: unknown): boolean {
   return parseAnamnesaData(data).ok;
 }
 
+/**
+ * isDiagnosaData
+ * 
+ * @remarks
+ * TODO: Add detailed description, parameters, and examples
+ * Auto-generated on 2026-03-12
+ */
+
 export function isDiagnosaData(data: unknown): boolean {
   return parseDiagnosaData(data).ok;
 }
+
+/**
+ * isResepData
+ * 
+ * @remarks
+ * TODO: Add detailed description, parameters, and examples
+ * Auto-generated on 2026-03-12
+ */
 
 export function isResepData(data: unknown): boolean {
   return parseResepData(data).ok;

@@ -9,6 +9,14 @@ interface SidePanelFooterProps {
   showConnectionStatus?: boolean;
 }
 
+/**
+ * SidePanelFooter
+ * 
+ * @remarks
+ * TODO: Add detailed description, parameters, and examples
+ * Auto-generated on 2026-03-12
+ */
+
 export function SidePanelFooter({
   variant: _variant = 'full',
   institutionName: _institutionName = 'Puskesmas Balowerti',

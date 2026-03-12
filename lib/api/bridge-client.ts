@@ -29,6 +29,14 @@ export interface BridgeEntry {
   hasResep: boolean;
 }
 
+/**
+ * BridgeEntryDetail interface
+ * 
+ * @remarks
+ * TODO: Add type description and property documentation
+ * Auto-generated on 2026-03-12
+ */
+
 export interface BridgeEntryDetail {
   id: string;
   status: string;
@@ -64,6 +72,14 @@ interface BridgePatchResponse {
 
 const STORAGE_KEY = 'sentra:bridge-config';
 
+/**
+ * BridgeConfig interface
+ * 
+ * @remarks
+ * TODO: Add type description and property documentation
+ * Auto-generated on 2026-03-12
+ */
+
 export interface BridgeConfig {
   dashboardUrl: string;
   authToken: string;
@@ -78,6 +94,14 @@ const DEFAULT_CONFIG: BridgeConfig = {
   pollIntervalMinutes: 0.5,
 };
 
+/**
+ * getBridgeConfig
+ * 
+ * @remarks
+ * TODO: Add detailed description, parameters, and examples
+ * Auto-generated on 2026-03-12
+ */
+
 export async function getBridgeConfig(): Promise<BridgeConfig> {
   try {
     const raw = await browser.storage.local.get(STORAGE_KEY);
@@ -89,6 +113,14 @@ export async function getBridgeConfig(): Promise<BridgeConfig> {
     return DEFAULT_CONFIG;
   }
 }
+
+/**
+ * saveBridgeConfig
+ * 
+ * @remarks
+ * TODO: Add detailed description, parameters, and examples
+ * Auto-generated on 2026-03-12
+ */
 
 export async function saveBridgeConfig(config: Partial<BridgeConfig>): Promise<BridgeConfig> {
   const current = await getBridgeConfig();
@@ -139,11 +171,27 @@ export async function fetchPendingEntries(): Promise<BridgeEntry[]> {
   return res.items;
 }
 
+/**
+ * fetchEntryDetail
+ * 
+ * @remarks
+ * TODO: Add detailed description, parameters, and examples
+ * Auto-generated on 2026-03-12
+ */
+
 export async function fetchEntryDetail(id: string): Promise<BridgeEntryDetail> {
   const res = await bridgeFetch<BridgeDetailResponse>(`/api/emr/bridge/${id}`);
   if (!res.ok) throw new Error(res.error || 'Failed to fetch entry detail');
   return res.entry;
 }
+
+/**
+ * claimEntry
+ * 
+ * @remarks
+ * TODO: Add detailed description, parameters, and examples
+ * Auto-generated on 2026-03-12
+ */
 
 export async function claimEntry(id: string): Promise<void> {
   const res = await bridgeFetch<BridgePatchResponse>(`/api/emr/bridge/${id}`, {
@@ -153,6 +201,14 @@ export async function claimEntry(id: string): Promise<void> {
   if (!res.ok) throw new Error(res.error || 'Failed to claim entry');
 }
 
+/**
+ * reportProcessing
+ * 
+ * @remarks
+ * TODO: Add detailed description, parameters, and examples
+ * Auto-generated on 2026-03-12
+ */
+
 export async function reportProcessing(id: string): Promise<void> {
   await bridgeFetch<BridgePatchResponse>(`/api/emr/bridge/${id}`, {
     method: 'PATCH',
@@ -160,12 +216,28 @@ export async function reportProcessing(id: string): Promise<void> {
   });
 }
 
+/**
+ * reportComplete
+ * 
+ * @remarks
+ * TODO: Add detailed description, parameters, and examples
+ * Auto-generated on 2026-03-12
+ */
+
 export async function reportComplete(id: string, result: RMETransferResult): Promise<void> {
   await bridgeFetch<BridgePatchResponse>(`/api/emr/bridge/${id}`, {
     method: 'PATCH',
     body: JSON.stringify({ action: 'complete', result }),
   });
 }
+
+/**
+ * reportFailed
+ * 
+ * @remarks
+ * TODO: Add detailed description, parameters, and examples
+ * Auto-generated on 2026-03-12
+ */
 
 export async function reportFailed(id: string, error: string, result?: RMETransferResult): Promise<void> {
   await bridgeFetch<BridgePatchResponse>(`/api/emr/bridge/${id}`, {
@@ -190,6 +262,14 @@ interface OnlineDoctorsResponse {
   doctors: OnlineDoctor[];
   error?: string;
 }
+
+/**
+ * ConsultPayload interface
+ * 
+ * @remarks
+ * TODO: Add type description and property documentation
+ * Auto-generated on 2026-03-12
+ */
 
 export interface ConsultPayload {
   patient: {
@@ -227,11 +307,27 @@ interface ConsultResponse {
   error?: string;
 }
 
+/**
+ * getOnlineDoctors
+ * 
+ * @remarks
+ * TODO: Add detailed description, parameters, and examples
+ * Auto-generated on 2026-03-12
+ */
+
 export async function getOnlineDoctors(): Promise<OnlineDoctor[]> {
   const res = await bridgeFetch<OnlineDoctorsResponse>('/api/doctors/online');
   if (!res.ok) throw new Error(res.error || 'Failed to fetch online doctors');
   return res.doctors;
 }
+
+/**
+ * sendConsultToDoctor
+ * 
+ * @remarks
+ * TODO: Add detailed description, parameters, and examples
+ * Auto-generated on 2026-03-12
+ */
 
 export async function sendConsultToDoctor(payload: ConsultPayload): Promise<string> {
   const res = await bridgeFetch<ConsultResponse>('/api/consult', {

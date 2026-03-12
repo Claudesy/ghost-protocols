@@ -8,9 +8,25 @@
 import type { AssessmentWidgetData, WidgetBaseProps } from '@/types/medlink';
 import { Activity, AlertTriangle, ChevronRight, Stethoscope } from 'lucide-react';
 
+/**
+ * AssessmentWidgetProps interface
+ * 
+ * @remarks
+ * TODO: Add type description and property documentation
+ * Auto-generated on 2026-03-12
+ */
+
 export interface AssessmentWidgetProps extends WidgetBaseProps {
   data: AssessmentWidgetData;
 }
+
+/**
+ * AssessmentWidget
+ * 
+ * @remarks
+ * TODO: Add detailed description, parameters, and examples
+ * Auto-generated on 2026-03-12
+ */
 
 export function AssessmentWidget({ mode, data, onClick, className = '' }: AssessmentWidgetProps) {
   const hasEmergencyFlags = (data.emergencyFlags || 0) > 0;

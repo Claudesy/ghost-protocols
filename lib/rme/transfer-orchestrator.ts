@@ -25,10 +25,26 @@ interface NormalizedStepExecution {
   errors: string[];
 }
 
+/**
+ * RMETransferStepExecutor type
+ * 
+ * @remarks
+ * TODO: Add type description and property documentation
+ * Auto-generated on 2026-03-12
+ */
+
 export type RMETransferStepExecutor = <TStep extends RMETransferStepStatus>(
   step: TStep,
   payload: StepPayloadMap[TStep],
 ) => Promise<unknown>;
+
+/**
+ * RMETransferRunOptions interface
+ * 
+ * @remarks
+ * TODO: Add type description and property documentation
+ * Auto-generated on 2026-03-12
+ */
 
 export interface RMETransferRunOptions {
   now?: () => number;
@@ -323,6 +339,14 @@ function resolveStepOrder(
   if (startIndex < 0) return DEFAULT_STEP_ORDER;
   return DEFAULT_STEP_ORDER.slice(startIndex);
 }
+
+/**
+ * RMETransferOrchestrator class
+ * 
+ * @remarks
+ * TODO: Add class description and usage examples
+ * Auto-generated on 2026-03-12
+ */
 
 export class RMETransferOrchestrator {
   private readonly recentFingerprints = new Map<string, { runId: string; timestampMs: number }>();

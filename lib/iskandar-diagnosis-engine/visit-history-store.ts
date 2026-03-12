@@ -51,6 +51,14 @@ const STORE_NAME = 'visits';
 
 let db: IDBDatabase | null = null;
 
+/**
+ * initVisitHistoryStore
+ * 
+ * @remarks
+ * TODO: Add detailed description, parameters, and examples
+ * Auto-generated on 2026-03-12
+ */
+
 export async function initVisitHistoryStore(): Promise<void> {
   if (db) return;
 

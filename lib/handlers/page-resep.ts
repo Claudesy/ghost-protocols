@@ -35,6 +35,14 @@ const ATURAN_PAKAI_ENTRIES = Object.entries(ATURAN_PAKAI_OPTIONS) as Array<[Atur
 type ResepAddControl = HTMLButtonElement | HTMLAnchorElement | HTMLInputElement;
 type MedicationFormPreference = 'solid' | 'liquid' | 'unknown';
 
+/**
+ * ResepRuntimeReasonCode type
+ * 
+ * @remarks
+ * TODO: Add type description and property documentation
+ * Auto-generated on 2026-03-12
+ */
+
 export type ResepRuntimeReasonCode =
   | 'STOCK_INSUFFICIENT'
   | 'FORMULATION_MISMATCH'
@@ -436,6 +444,14 @@ function extractDoseMgValues(value: string): number[] {
   return values;
 }
 
+/**
+ * detectPreferredMedicationForm
+ * 
+ * @remarks
+ * TODO: Add detailed description, parameters, and examples
+ * Auto-generated on 2026-03-12
+ */
+
 export function detectPreferredMedicationForm(value: string): MedicationFormPreference {
   const normalized = normalizeMedicationLabel(value);
   if (!normalized) return 'unknown';
@@ -459,6 +475,14 @@ function extractMedicationTokens(value: string): string[] {
     .filter((token) => token.length >= 3)
     .filter((token) => !stopwords.has(token));
 }
+
+/**
+ * scoreMedicationNameCandidate
+ * 
+ * @remarks
+ * TODO: Add detailed description, parameters, and examples
+ * Auto-generated on 2026-03-12
+ */
 
 export function scoreMedicationNameCandidate(requestedName: string, candidate: string): number {
   const requestedNorm = normalizeMedicationLabel(requestedName);
@@ -497,6 +521,14 @@ export function scoreMedicationNameCandidate(requestedName: string, candidate: s
 
   return score;
 }
+
+/**
+ * rankMedicationNameCandidates
+ * 
+ * @remarks
+ * TODO: Add detailed description, parameters, and examples
+ * Auto-generated on 2026-03-12
+ */
 
 export function rankMedicationNameCandidates(requestedName: string, rawCandidates: string[]): string[] {
   const unique = Array.from(new Set(rawCandidates.filter(Boolean)));
@@ -537,6 +569,14 @@ function isSameMedicationName(a: string, b: string): boolean {
   return an === bn;
 }
 
+/**
+ * isStockInsufficientAlert
+ * 
+ * @remarks
+ * TODO: Add detailed description, parameters, and examples
+ * Auto-generated on 2026-03-12
+ */
+
 export function isStockInsufficientAlert(text: string): boolean {
   const normalized = normalizeMedicationLabel(text);
   if (!normalized) return false;
@@ -548,6 +588,14 @@ export function isStockInsufficientAlert(text: string): boolean {
     normalized.includes('pilih obat lain');
   return hasStockCue && hasFailureCue;
 }
+
+/**
+ * extractMedicationNameFromStockAlert
+ * 
+ * @remarks
+ * TODO: Add detailed description, parameters, and examples
+ * Auto-generated on 2026-03-12
+ */
 
 export function extractMedicationNameFromStockAlert(text: string): string {
   const compact = text.replace(/\s+/g, ' ').trim();

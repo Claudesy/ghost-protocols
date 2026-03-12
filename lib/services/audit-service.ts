@@ -16,6 +16,14 @@ import { storage } from '@wxt-dev/storage';
 
 export type AuditActor = 'SYSTEM_ISKANDAR_DIAGNOSIS_ENGINE' | 'USER_DOCTOR' | 'SYSTEM_INTERNAL';
 
+/**
+ * AuditEntry interface
+ * 
+ * @remarks
+ * TODO: Add type description and property documentation
+ * Auto-generated on 2026-03-12
+ */
+
 export interface AuditEntry {
   id: string;
   timestamp: string; // ISO-8601
@@ -26,6 +34,14 @@ export interface AuditEntry {
   previousHash: string; // Hash of the previous entry (integrity link)
   hash: string; // Hash of THIS entry
 }
+
+/**
+ * AuditLogConfig interface
+ * 
+ * @remarks
+ * TODO: Add type description and property documentation
+ * Auto-generated on 2026-03-12
+ */
 
 export interface AuditLogConfig {
   storageKey: `local:${string}` | `session:${string}` | `sync:${string}` | `managed:${string}`;

@@ -64,6 +64,14 @@ interface Candidate {
   intent: IntentId;
 }
 
+/**
+ * PharmacotherapyPlan interface
+ * 
+ * @remarks
+ * TODO: Add type description and property documentation
+ * Auto-generated on 2026-03-12
+ */
+
 export interface PharmacotherapyPlan {
   medications: MedicationRecommendation[];
   alerts: CDSSAlert[];
@@ -836,6 +844,14 @@ function computeConfidence(
     Math.min(95, Math.round(base + coverageScore + stockScore - missingPenalty - missingDataPenalty)),
   );
 }
+
+/**
+ * generatePharmacotherapyPlan
+ * 
+ * @remarks
+ * TODO: Add detailed description, parameters, and examples
+ * Auto-generated on 2026-03-12
+ */
 
 export async function generatePharmacotherapyPlan(
   context: PrescriptionRequestContext,
