@@ -4,8 +4,6 @@
 
 <img src="public/ui-uix.png" alt="Sentra Ghost Protocols" width="100%" style="border-radius:12px;" />
 <div align="center">
-
-<img src="public/gt.png" alt="Sentra AI — Intelligent Healthcare Infrastructure" width="100%" style="border-radius:12px;" />
 ---
 
 ## Abstract
