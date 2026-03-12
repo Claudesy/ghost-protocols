@@ -13,6 +13,12 @@ import {
 } from '@/components/clinical/TTVInferenceUI';
 import { SidePanelHeader } from '@/components/sidepanel/SidePanelHeader';
 import { SidePanelFooter } from '@/components/sidepanel/SidePanelFooter';
+import {
+  getBridgeConfig,
+  saveBridgeConfig,
+  getOnlineDoctors,
+  type BridgeConfig,
+} from '@/lib/api/bridge-client';
 import React, { useCallback, useEffect, useState } from 'react';
 import ReactDOM from 'react-dom/client';
 import './style.css';
@@ -302,7 +308,7 @@ function App() {
                 : 'neu-tab text-muted font-medium'
             }`}
           >
-            Agent
+            Pengaturan
           </button>
         </div>
       </div>
@@ -476,30 +482,202 @@ function EmergencyCard({ alert }: { alert: ScreeningAlert }) {
   );
 }
 
-// Agent Panel Component
-function AgentPanel() {
+// Pengaturan (Bridge Config) Panel
+function PengaturanPanel() {
+  const [config, setConfig] = useState<BridgeConfig>({
+    dashboardUrl: '',
+    authToken: '',
+    enabled: false,
+    pollIntervalMinutes: 0.5,
+  });
+  const [showToken, setShowToken] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'ok' | 'err'>('idle');
+  const [testStatus, setTestStatus] = useState<'idle' | 'loading' | 'ok' | 'err'>('idle');
+  const [testMsg, setTestMsg] = useState('');
+
+  useEffect(() => {
+    void getBridgeConfig().then(setConfig);
+  }, []);
+
+  const handleSave = async () => {
+    setSaving(true);
+    setSaveStatus('idle');
+    try {
+      await saveBridgeConfig(config);
+      setSaveStatus('ok');
+    } catch {
+      setSaveStatus('err');
+    } finally {
+      setSaving(false);
+      setTimeout(() => setSaveStatus('idle'), 2500);
+    }
+  };
+
+  const handleTest = async () => {
+    setTestStatus('loading');
+    setTestMsg('');
+    try {
+      const docs = await getOnlineDoctors();
+      setTestStatus('ok');
+      setTestMsg(docs.length > 0 ? `${docs.length} dokter online` : 'Terhubung — tidak ada dokter online');
+    } catch (e) {
+      setTestStatus('err');
+      setTestMsg(e instanceof Error ? e.message : 'Koneksi gagal');
+    }
+    setTimeout(() => setTestStatus('idle'), 4000);
+  };
+
+  const inputStyle: React.CSSProperties = {
+    width: '100%',
+    background: 'rgba(255,255,255,0.04)',
+    border: '1px solid rgba(255,255,255,0.10)',
+    borderRadius: 6,
+    padding: '9px 12px',
+    color: '#d4d4d4',
+    fontSize: 12,
+    fontFamily: 'var(--font-mono, monospace)',
+    outline: 'none',
+    boxSizing: 'border-box',
+  };
+
+  const labelStyle: React.CSSProperties = {
+    fontSize: 10,
+    color: '#777',
+    letterSpacing: '0.12em',
+    textTransform: 'uppercase',
+    marginBottom: 5,
+    display: 'block',
+  };
+
   return (
-    <div className="agent-panel space-y-4">
-      <div className="emergency-header">
-        <h2>Agent</h2>
-        <span className="emergency-count">AI</span>
+    <div style={{ padding: '2px 0', display: 'flex', flexDirection: 'column', gap: 12 }}>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div>
+          <div style={{ fontSize: 11, color: '#E67E22', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 2 }}>
+            Ghost Protocols
+          </div>
+          <div style={{ fontSize: 13, color: '#d4d4d4' }}>Konfigurasi Bridge</div>
+        </div>
+        {/* Enable toggle */}
+        <label style={{ display: 'flex', alignItems: 'center', gap: 7, cursor: 'pointer' }}>
+          <span style={{ fontSize: 11, color: config.enabled ? '#4ADE80' : '#777' }}>
+            {config.enabled ? 'Aktif' : 'Nonaktif'}
+          </span>
+          <div
+            onClick={() => setConfig((c) => ({ ...c, enabled: !c.enabled }))}
+            style={{
+              width: 36, height: 20, borderRadius: 10, position: 'relative', cursor: 'pointer',
+              background: config.enabled ? 'rgba(74,222,128,0.3)' : 'rgba(255,255,255,0.08)',
+              border: `1px solid ${config.enabled ? '#4ADE80' : 'rgba(255,255,255,0.12)'}`,
+              transition: 'all 0.2s',
+            }}
+          >
+            <div style={{
+              position: 'absolute', top: 2,
+              left: config.enabled ? 17 : 2,
+              width: 14, height: 14, borderRadius: '50%',
+              background: config.enabled ? '#4ADE80' : '#555',
+              transition: 'left 0.2s',
+            }} />
+          </div>
+        </label>
       </div>
 
-      <div className="neu-card p-4 space-y-4">
-        <div>
-          <h3 className="text-title mb-2">Sentra Agent</h3>
-          <p className="text-body text-muted">
-            AI-powered clinical assistant for automated workflows and intelligent decision support.
-          </p>
-        </div>
+      {/* Dashboard URL */}
+      <div>
+        <label style={labelStyle}>URL Dashboard</label>
+        <input
+          style={inputStyle}
+          type="url"
+          placeholder="https://dashboard.puskesmas.id"
+          value={config.dashboardUrl}
+          onChange={(e) => setConfig((c) => ({ ...c, dashboardUrl: e.target.value }))}
+        />
+      </div>
 
-        <div className="emergency-empty">
-          <p>Agent features coming soon...</p>
-          <span>Advanced AI capabilities for clinical automation</span>
+      {/* Auth Token */}
+      <div>
+        <label style={labelStyle}>Access Token</label>
+        <div style={{ position: 'relative' }}>
+          <input
+            style={{ ...inputStyle, paddingRight: 36 }}
+            type={showToken ? 'text' : 'password'}
+            placeholder="Crew access token"
+            value={config.authToken}
+            onChange={(e) => setConfig((c) => ({ ...c, authToken: e.target.value }))}
+          />
+          <button
+            onClick={() => setShowToken((v) => !v)}
+            style={{
+              position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
+              background: 'none', border: 'none', cursor: 'pointer',
+              color: '#555', fontSize: 12, padding: 0,
+            }}
+          >
+            {showToken ? '🙈' : '👁'}
+          </button>
         </div>
+      </div>
+
+      {/* Buttons */}
+      <div style={{ display: 'flex', gap: 8 }}>
+        <button
+          onClick={() => void handleTest()}
+          disabled={testStatus === 'loading'}
+          style={{
+            flex: 1, padding: '8px 0', borderRadius: 6, fontSize: 12, cursor: 'pointer',
+            background: 'rgba(255,255,255,0.04)',
+            border: `1px solid ${testStatus === 'ok' ? '#4ADE80' : testStatus === 'err' ? '#f87171' : 'rgba(255,255,255,0.12)'}`,
+            color: testStatus === 'ok' ? '#4ADE80' : testStatus === 'err' ? '#f87171' : '#999',
+            fontFamily: 'var(--font-mono, monospace)',
+            letterSpacing: '0.06em',
+          }}
+        >
+          {testStatus === 'loading' ? '...' : 'Test'}
+        </button>
+        <button
+          onClick={() => void handleSave()}
+          disabled={saving}
+          style={{
+            flex: 2, padding: '8px 0', borderRadius: 6, fontSize: 12, cursor: 'pointer',
+            background: saveStatus === 'ok' ? 'rgba(74,222,128,0.15)' : 'rgba(230,126,34,0.15)',
+            border: `1px solid ${saveStatus === 'ok' ? '#4ADE80' : saveStatus === 'err' ? '#f87171' : '#E67E22'}`,
+            color: saveStatus === 'ok' ? '#4ADE80' : saveStatus === 'err' ? '#f87171' : '#E67E22',
+            fontFamily: 'var(--font-mono, monospace)',
+            letterSpacing: '0.06em',
+            fontWeight: 600,
+          }}
+        >
+          {saving ? 'Menyimpan...' : saveStatus === 'ok' ? '✓ Tersimpan' : 'Simpan'}
+        </button>
+      </div>
+
+      {/* Test result message */}
+      {testMsg && (
+        <div style={{
+          fontSize: 11, padding: '6px 10px', borderRadius: 4,
+          background: testStatus === 'ok' ? 'rgba(74,222,128,0.08)' : 'rgba(248,113,113,0.08)',
+          color: testStatus === 'ok' ? '#4ADE80' : '#f87171',
+          border: `1px solid ${testStatus === 'ok' ? 'rgba(74,222,128,0.2)' : 'rgba(248,113,113,0.2)'}`,
+          fontFamily: 'var(--font-mono, monospace)',
+        }}>
+          {testMsg}
+        </div>
+      )}
+
+      {/* Info note */}
+      <div style={{ fontSize: 10, color: '#555', lineHeight: 1.5, marginTop: 4 }}>
+        Diisi sekali oleh admin. Token didapat dari Intelligence Dashboard → Pengaturan Klinik.
       </div>
     </div>
   );
+}
+
+// AgentPanel — alias ke PengaturanPanel
+function AgentPanel() {
+  return <PengaturanPanel />;
 }
 
 // Error Boundary to catch runtime crashes and SHOW the error

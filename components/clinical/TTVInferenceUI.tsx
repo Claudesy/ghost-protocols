@@ -25,12 +25,6 @@ import {
   type OnlineDoctor,
   type ConsultPayload,
 } from '../../lib/api/bridge-client';
-import {
-  getOnlineDoctors,
-  sendConsultToDoctor,
-  type OnlineDoctor,
-  type ConsultPayload,
-} from '../../lib/api/bridge-client';
 
 // ============================================================================
 // NATIVE CHROME MESSAGING (Bypass @webext-core/messaging for reliability)
