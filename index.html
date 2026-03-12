@@ -1,0 +1,440 @@
+<!DOCTYPE html><html class="default" lang="en" data-base="./"><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>Sentra Assist API Documentation - v1.0.1</title><meta name="description" content="Documentation for Sentra Assist API Documentation"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="assets/style.css"/><link rel="stylesheet" href="assets/highlight.css"/><script defer src="assets/main.js"></script><script async src="assets/icons.js" id="tsd-icons-script"></script><script async src="assets/search.js" id="tsd-search-script"></script><script async src="assets/navigation.js" id="tsd-nav-script"></script><script async src="assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => window.app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><a href="index.html" class="title">Sentra Assist API Documentation - v1.0.1</a><div id="tsd-toolbar-links"></div><button id="tsd-search-trigger" class="tsd-widget" aria-label="Search"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="assets/icons.svg#icon-search"></use></svg></button><dialog id="tsd-search" aria-label="Search"><input role="combobox" id="tsd-search-input" aria-controls="tsd-search-results" aria-autocomplete="list" aria-expanded="true" autocapitalize="off" autocomplete="off" placeholder="Search the docs" maxLength="100"/><ul role="listbox" id="tsd-search-results"></ul><div id="tsd-search-status" aria-live="polite" aria-atomic="true"><div>Preparing search index...</div></div></dialog><a href="#" class="tsd-widget menu" id="tsd-toolbar-menu-trigger" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="assets/icons.svg#icon-menu"></use></svg></a></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><h1>Sentra Assist API Documentation - v1.0.1</h1></div><div class="tsd-panel tsd-typography"><div align="center">
+<h1 id="ghost-protocols-v2" class="tsd-anchor-link">Ghost Protocols V2<a href="#ghost-protocols-v2" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h1>
+<img src="media/ui-uix.png" alt="Ghost Protocols V2" width="50%" style="border-radius:12px;" />
+</div>
+<hr>
+<p><strong>Document ID</strong>: SENTRA-SPEC-002 v2.0.0
+<strong>Version</strong>: 2.0.0
+<strong>Status</strong>: Active Development
+<strong>Date</strong>: March 2026</p>
+<hr>
+<h2 id="abstract" class="tsd-anchor-link">Abstract<a href="#abstract" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<p>Ghost Protocols V2 is a Chrome Extension implementing a Clinical Decision Support System (CDSS) layer on top of the ePuskesmas Electronic Medical Record platform. Powered by the Iskandar Diagnosis Engine V1, the system operates entirely client-side via DOM instrumentation — requiring no backend, no proxy, and no modification to the host EMR application. The architecture is designed for zero-footprint integration: the extension mounts a React-based Side Panel, injects a content script into the host page's isolated world, and coordinates state through a typed messaging layer backed by <code>chrome.storage.local</code>.</p>
+<p>This document serves as the primary technical reference for engineers contributing to or auditing the Ghost Protocols V2 codebase.</p>
+<hr>
+<h2 id="table-of-contents" class="tsd-anchor-link">Table of Contents<a href="#table-of-contents" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<ol>
+<li><a href="#1-project-scope">Project Scope</a></li>
+<li><a href="#2-target-deployment-environment">Target Deployment Environment</a></li>
+<li><a href="#3-system-architecture">System Architecture</a></li>
+<li><a href="#4-technology-stack">Technology Stack</a></li>
+<li><a href="#5-repository-structure">Repository Structure</a></li>
+<li><a href="#6-getting-started">Getting Started</a></li>
+<li><a href="#7-build-pipeline">Build Pipeline</a></li>
+<li><a href="#8-core-subsystems">Core Subsystems</a></li>
+<li><a href="#9-security-model">Security Model</a></li>
+<li><a href="#10-development-workflow">Development Workflow</a></li>
+<li><a href="#11-debugging-reference">Debugging Reference</a></li>
+<li><a href="#12-phase-roadmap">Phase Roadmap</a></li>
+<li><a href="#13-contributing">Contributing</a></li>
+<li><a href="#14-license">License</a></li>
+</ol>
+<hr>
+<h2 id="1-project-scope" class="tsd-anchor-link">1. Project Scope<a href="#1-project-scope" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<p>Ghost Protocols V2 targets three primary clinical workflows executed daily within the ePuskesmas (ePus Klaster) EMR:</p>
+<ul>
+<li><strong>Anamnesa</strong> — structured intake of chief complaint and allergy history</li>
+<li><strong>Diagnosa</strong> — ICD-10 code selection and chronic disease flagging</li>
+<li><strong>Resep</strong> — multi-row prescription entry with AJAX autocomplete fields</li>
+</ul>
+<p>The engine introduces a 60–80% reduction in manual prescription entry time through predictive auto-fill, cross-page encounter state propagation, and — in later phases — rule-based clinical decision alerts covering drug-drug interactions, allergy contraindications, and pediatric dosing boundaries.</p>
+<hr>
+<h2 id="2-target-deployment-environment" class="tsd-anchor-link">2. Target Deployment Environment<a href="#2-target-deployment-environment" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<table>
+<thead>
+<tr>
+<th>Attribute</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Platform</td>
+<td>ePuskesmas (ePus Klaster)</td>
+</tr>
+<tr>
+<td>Host URL</td>
+<td>Configured via <code>wxt.config.ts</code> (internal)</td>
+</tr>
+<tr>
+<td>Facility</td>
+<td>Primary Healthcare Center, East Java</td>
+</tr>
+<tr>
+<td>Target Users</td>
+<td>Licensed Physicians and Nursing Staff</td>
+</tr>
+<tr>
+<td>Browser Runtime</td>
+<td>Chrome 114+ (Manifest V3)</td>
+</tr>
+<tr>
+<td>Extension Context</td>
+<td>Side Panel + Content Script (Isolated World)</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="3-system-architecture" class="tsd-anchor-link">3. System Architecture<a href="#3-system-architecture" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<pre><code><span class="hl-0">+-------------------------------------------------+</span><br/><span class="hl-0">|   </span><span class="hl-1">WXT</span><span class="hl-0"> + </span><span class="hl-1">VITE</span><span class="hl-0"> </span><span class="hl-1">BUILD</span><span class="hl-0"> </span><span class="hl-1">SYSTEM</span><span class="hl-0">                       |</span><br/><span class="hl-0">|   </span><span class="hl-2">Auto</span><span class="hl-0">-</span><span class="hl-2">manifest</span><span class="hl-0"> </span><span class="hl-2">generation</span><span class="hl-0">, </span><span class="hl-1">HMR</span><span class="hl-0">, </span><span class="hl-2">TypeScript</span><span class="hl-0">     |</span><br/><span class="hl-0">+------------------------+------------------------+</span><br/><span class="hl-0">                         |</span><br/><span class="hl-0">         +---------------+----------------+</span><br/><span class="hl-0">         |                                |</span><br/><span class="hl-0">+--------+-------+            +-----------+---------+</span><br/><span class="hl-0">|   </span><span class="hl-1">SIDE</span><span class="hl-0"> </span><span class="hl-1">PANEL</span><span class="hl-0">   |            |   </span><span class="hl-1">SERVICE</span><span class="hl-0"> </span><span class="hl-1">WORKER</span><span class="hl-0">    |</span><br/><span class="hl-0">|   </span><span class="hl-2">React</span><span class="hl-0"> </span><span class="hl-3">18</span><span class="hl-0">     | &lt;---------&gt; |   </span><span class="hl-2">Message</span><span class="hl-0"> </span><span class="hl-2">Broker</span><span class="hl-0">    |</span><br/><span class="hl-0">|   </span><span class="hl-2">Typed</span><span class="hl-0"> </span><span class="hl-1">IPC</span><span class="hl-0">    |            |   </span><span class="hl-2">Site</span><span class="hl-0">-</span><span class="hl-2">lock</span><span class="hl-0"> </span><span class="hl-2">guard</span><span class="hl-0">   |</span><br/><span class="hl-0">+----------------+            +-----------+---------+</span><br/><span class="hl-0">                                          |</span><br/><span class="hl-0">                              </span><span class="hl-2">chrome</span><span class="hl-0">.</span><span class="hl-2">tabs</span><span class="hl-0">.</span><span class="hl-2">sendMessage</span><br/><span class="hl-0">                                          |</span><br/><span class="hl-0">                              +-----------</span><span class="hl-2">v</span><span class="hl-0">---------+</span><br/><span class="hl-0">                              |   </span><span class="hl-1">CONTENT</span><span class="hl-0"> </span><span class="hl-1">SCRIPT</span><span class="hl-0">    |</span><br/><span class="hl-0">                              |   </span><span class="hl-2">Isolated</span><span class="hl-0"> </span><span class="hl-2">World</span><span class="hl-0">    |</span><br/><span class="hl-0">                              |                     |</span><br/><span class="hl-0">                              |   </span><span class="hl-2">Page</span><span class="hl-0"> </span><span class="hl-2">Detector</span><span class="hl-0">     |</span><br/><span class="hl-0">                              |   </span><span class="hl-1">DOM</span><span class="hl-0"> </span><span class="hl-2">Scraper</span><span class="hl-0">       |</span><br/><span class="hl-0">                              |   </span><span class="hl-2">Event</span><span class="hl-0"> </span><span class="hl-2">Dispatcher</span><span class="hl-0">  |</span><br/><span class="hl-0">                              |   </span><span class="hl-2">Auto</span><span class="hl-0">-</span><span class="hl-2">fill</span><span class="hl-0"> </span><span class="hl-2">Engine</span><span class="hl-0">  |</span><br/><span class="hl-0">                              +---------------------+</span><br/><span class="hl-0">                                          |</span><br/><span class="hl-0">                              +-----------</span><span class="hl-2">v</span><span class="hl-0">---------+</span><br/><span class="hl-0">                              |  </span><span class="hl-2">chrome</span><span class="hl-0">.</span><span class="hl-2">storage</span><span class="hl-0">     |</span><br/><span class="hl-0">                              |  .</span><span class="hl-2">local</span><span class="hl-0">             |</span><br/><span class="hl-0">                              |  </span><span class="hl-2">Encounter</span><span class="hl-0"> </span><span class="hl-2">State</span><span class="hl-0">    |</span><br/><span class="hl-0">                              |  24</span><span class="hl-2">h</span><span class="hl-0"> </span><span class="hl-1">TTL</span><span class="hl-0">            |</span><br/><span class="hl-0">                              +---------------------+</span>
+</code><button>Copy</button></pre>
+
+<h3 id="communication-model" class="tsd-anchor-link">Communication Model<a href="#communication-model" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<p>All inter-component communication is mediated through <code>@webext-core/messaging</code>, which enforces compile-time type safety on message payloads. No raw <code>chrome.runtime.sendMessage</code> calls exist in the codebase; every message channel is declared as a typed contract in <code>utils/messaging.ts</code> and validated at both sender and receiver boundaries.</p>
+<h3 id="state-persistence" class="tsd-anchor-link">State Persistence<a href="#state-persistence" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<p>Encounter data is serialized and stored in <code>chrome.storage.local</code> under a schema-versioned key. A 24-hour TTL prevents stale patient data from persisting across shifts. The storage layer in <code>utils/storage.ts</code> wraps all read/write operations with typed getters and setters derived from the <code>Encounter</code> interface.</p>
+<hr>
+<h2 id="4-technology-stack" class="tsd-anchor-link">4. Technology Stack<a href="#4-technology-stack" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>Technology</th>
+<th>Version</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Extension Framework</td>
+<td>WXT</td>
+<td>0.20.13</td>
+</tr>
+<tr>
+<td>Build Tool</td>
+<td>Vite (via WXT)</td>
+<td>latest</td>
+</tr>
+<tr>
+<td>Language</td>
+<td>TypeScript (strict mode)</td>
+<td>5.8+</td>
+</tr>
+<tr>
+<td>UI Runtime</td>
+<td>React</td>
+<td>18.3+</td>
+</tr>
+<tr>
+<td>Extension Manifest</td>
+<td>Chrome Manifest V3</td>
+<td>—</td>
+</tr>
+<tr>
+<td>Messaging</td>
+<td>@webext-core/messaging</td>
+<td>latest</td>
+</tr>
+<tr>
+<td>Package Manager</td>
+<td>npm</td>
+<td>18+</td>
+</tr>
+<tr>
+<td>Node Requirement</td>
+<td>Node.js</td>
+<td>18+</td>
+</tr>
+</tbody>
+</table>
+<p>TypeScript strict mode is enforced project-wide. Implicit <code>any</code> is disallowed. All DOM interactions are typed against the Chrome Extension API typings.</p>
+<hr>
+<h2 id="5-repository-structure" class="tsd-anchor-link">5. Repository Structure<a href="#5-repository-structure" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<pre><code><span class="hl-2">ghost</span><span class="hl-0">-</span><span class="hl-2">protocolv2</span><span class="hl-0">/</span><br/><span class="hl-0">|</span><br/><span class="hl-0">|-- </span><span class="hl-2">wxt</span><span class="hl-0">.</span><span class="hl-2">config</span><span class="hl-0">.</span><span class="hl-2">ts</span><span class="hl-0">                    # </span><span class="hl-1">WXT</span><span class="hl-0"> + </span><span class="hl-2">Vite</span><span class="hl-0"> </span><span class="hl-2">configuration</span><span class="hl-0">, </span><span class="hl-2">manifest</span><span class="hl-0"> </span><span class="hl-2">declarations</span><br/><span class="hl-0">|-- </span><span class="hl-2">tsconfig</span><span class="hl-0">.</span><span class="hl-2">json</span><span class="hl-0">                    # </span><span class="hl-2">TypeScript</span><span class="hl-0"> </span><span class="hl-2">strict</span><span class="hl-0"> </span><span class="hl-2">config</span><br/><span class="hl-0">|-- </span><span class="hl-2">package</span><span class="hl-0">.</span><span class="hl-2">json</span><span class="hl-0">                     # </span><span class="hl-2">Dependencies</span><span class="hl-0"> </span><span class="hl-2">and</span><span class="hl-0"> </span><span class="hl-2">npm</span><span class="hl-0"> </span><span class="hl-2">scripts</span><br/><span class="hl-0">|</span><br/><span class="hl-0">|-- </span><span class="hl-2">entrypoints</span><span class="hl-0">/</span><br/><span class="hl-0">|   |-- </span><span class="hl-2">background</span><span class="hl-0">.</span><span class="hl-2">ts</span><span class="hl-0">                # </span><span class="hl-2">Service</span><span class="hl-0"> </span><span class="hl-4">worker</span><span class="hl-0">: </span><span class="hl-2">message</span><span class="hl-0"> </span><span class="hl-2">broker</span><span class="hl-0">, </span><span class="hl-2">site</span><span class="hl-0">-</span><span class="hl-2">lock</span><span class="hl-0"> </span><span class="hl-2">enforcement</span><br/><span class="hl-0">|   |-- </span><span class="hl-2">sidepanel</span><span class="hl-0">/</span><br/><span class="hl-0">|   |   |-- </span><span class="hl-2">index</span><span class="hl-0">.</span><span class="hl-2">html</span><span class="hl-0">               # </span><span class="hl-1">HTML</span><span class="hl-0"> </span><span class="hl-2">shell</span><span class="hl-0"> </span><span class="hl-2">for</span><span class="hl-0"> </span><span class="hl-2">Side</span><span class="hl-0"> </span><span class="hl-2">Panel</span><br/><span class="hl-0">|   |   |-- </span><span class="hl-2">main</span><span class="hl-0">.</span><span class="hl-2">tsx</span><span class="hl-0">                 # </span><span class="hl-2">React</span><span class="hl-0"> </span><span class="hl-1">DOM</span><span class="hl-0"> </span><span class="hl-2">entry</span><span class="hl-0"> </span><span class="hl-2">point</span><br/><span class="hl-0">|   |   |-- </span><span class="hl-2">App</span><span class="hl-0">.</span><span class="hl-2">tsx</span><span class="hl-0">                  # </span><span class="hl-2">Root</span><span class="hl-0"> </span><span class="hl-2">component</span><span class="hl-0">, </span><span class="hl-2">tab</span><span class="hl-0"> </span><span class="hl-2">router</span><br/><span class="hl-0">|   |   </span><span class="hl-5">`-- style.css                # Clinical UI theme</span><br/><span class="hl-5">|   `</span><span class="hl-0">-- </span><span class="hl-2">epuskesmas</span><span class="hl-0">.</span><span class="hl-2">content</span><span class="hl-0">/</span><br/><span class="hl-0">|       |-- </span><span class="hl-2">index</span><span class="hl-0">.</span><span class="hl-2">ts</span><span class="hl-0">                 # </span><span class="hl-2">Content</span><span class="hl-0"> </span><span class="hl-2">script</span><span class="hl-0"> </span><span class="hl-4">entry</span><span class="hl-0">: </span><span class="hl-2">lifecycle</span><span class="hl-0"> </span><span class="hl-2">and</span><span class="hl-0"> </span><span class="hl-2">listener</span><span class="hl-0"> </span><span class="hl-2">registration</span><br/><span class="hl-0">|       </span><span class="hl-5">`-- detector.ts              # URL-pattern-based page type classifier</span><br/><span class="hl-5">|</span><br/><span class="hl-5">|-- utils/</span><br/><span class="hl-5">|   |-- types.ts                     # Core TypeScript interfaces (Encounter, ResepItem, etc.)</span><br/><span class="hl-5">|   |-- messaging.ts                 # Typed message channel declarations</span><br/><span class="hl-5">|   `</span><span class="hl-0">-- </span><span class="hl-2">storage</span><span class="hl-0">.</span><span class="hl-2">ts</span><span class="hl-0">                   # </span><span class="hl-2">chrome</span><span class="hl-0">.</span><span class="hl-2">storage</span><span class="hl-0">.</span><span class="hl-2">local</span><span class="hl-0"> </span><span class="hl-2">abstraction</span><span class="hl-0"> </span><span class="hl-2">layer</span><br/><span class="hl-0">|</span><br/><span class="hl-0">|-- </span><span class="hl-2">lib</span><span class="hl-0">/</span><br/><span class="hl-0">|   </span><span class="hl-5">`-- iskandar-diagnosis-engine/   # Iskandar Diagnosis Engine V1 core modules</span><br/><span class="hl-5">|</span><br/><span class="hl-5">|-- data/</span><br/><span class="hl-5">|   `</span><span class="hl-0">-- </span><span class="hl-2">field</span><span class="hl-0">-</span><span class="hl-2">mappings</span><span class="hl-0">.</span><span class="hl-2">ts</span><span class="hl-0">            # </span><span class="hl-1">DOM</span><span class="hl-0"> </span><span class="hl-2">field</span><span class="hl-0"> </span><span class="hl-2">configuration</span><span class="hl-0"> </span><span class="hl-6">registry</span><span class="hl-0"> (</span><span class="hl-2">Phase</span><span class="hl-0"> </span><span class="hl-3">2</span><span class="hl-0">+)</span><br/><span class="hl-0">|</span><br/><span class="hl-0">|-- </span><span class="hl-2">public</span><span class="hl-0">/</span><br/><span class="hl-0">|   </span><span class="hl-5">`-- icons/                       # Extension icon assets (Phase 7)</span><br/><span class="hl-5">|</span><br/><span class="hl-5">`</span><span class="hl-0">-- .</span><span class="hl-2">taskmaster</span><span class="hl-0">/</span><br/><span class="hl-0">    </span><span class="hl-5">`-- docs/</span><br/><span class="hl-5">        `</span><span class="hl-0">-- </span><span class="hl-2">prd</span><span class="hl-0">.</span><span class="hl-2">txt</span><span class="hl-0">                  # </span><span class="hl-2">Canonical</span><span class="hl-0"> </span><span class="hl-2">Product</span><span class="hl-0"> </span><span class="hl-2">Requirements</span><span class="hl-0"> </span><span class="hl-2">Document</span>
+</code><button>Copy</button></pre>
+
+<hr>
+<h2 id="6-getting-started" class="tsd-anchor-link">6. Getting Started<a href="#6-getting-started" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<h3 id="prerequisites" class="tsd-anchor-link">Prerequisites<a href="#prerequisites" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul>
+<li>Node.js 18 or higher</li>
+<li>npm (bundled with Node.js)</li>
+<li>Google Chrome 114+ with Developer Mode enabled in <code>chrome://extensions</code></li>
+</ul>
+<h3 id="local-development-setup" class="tsd-anchor-link">Local Development Setup<a href="#local-development-setup" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<pre><code class="bash"><span class="hl-7"># Navigate to the project root</span><br/><span class="hl-6">cd</span><span class="hl-0"> </span><span class="hl-5">ghost-protocolv2</span><br/><br/><span class="hl-7"># Install all dependencies</span><br/><span class="hl-6">npm</span><span class="hl-0"> </span><span class="hl-5">install</span><br/><br/><span class="hl-7"># Launch development build with Hot Module Replacement</span><br/><span class="hl-6">npm</span><span class="hl-0"> </span><span class="hl-5">run</span><span class="hl-0"> </span><span class="hl-5">dev</span>
+</code><button type="button">Copy</button></pre>
+
+<p>WXT will automatically open Chrome with the extension loaded as an unpacked extension. Navigate to the configured target EMR host to activate the Side Panel and content script injection.</p>
+<p>Expected console output on a target page:</p>
+<pre><code><span class="hl-0">[</span><span class="hl-2">GhostProtocol</span><span class="hl-0">/</span><span class="hl-2">Content</span><span class="hl-0">] </span><span class="hl-2">Page</span><span class="hl-0"> </span><span class="hl-4">detected</span><span class="hl-0">: </span><span class="hl-2">anamnesa</span><span class="hl-0"> | </span><span class="hl-4">pelayananId</span><span class="hl-0">: </span><span class="hl-3">12345</span><br/><span class="hl-0">[</span><span class="hl-2">GhostProtocol</span><span class="hl-0">/</span><span class="hl-2">Background</span><span class="hl-0">] </span><span class="hl-2">Side</span><span class="hl-0"> </span><span class="hl-2">Panel</span><span class="hl-0"> </span><span class="hl-2">unlocked</span><span class="hl-0"> </span><span class="hl-2">for</span><span class="hl-0"> </span><span class="hl-2">tab</span><span class="hl-0"> </span><span class="hl-3">1</span>
+</code><button>Copy</button></pre>
+
+<hr>
+<h2 id="7-build-pipeline" class="tsd-anchor-link">7. Build Pipeline<a href="#7-build-pipeline" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<pre><code class="bash"><span class="hl-7"># Production build (minified, MV3-compliant)</span><br/><span class="hl-6">npm</span><span class="hl-0"> </span><span class="hl-5">run</span><span class="hl-0"> </span><span class="hl-5">build</span><br/><br/><span class="hl-7"># Package for Chrome Web Store submission</span><br/><span class="hl-6">npm</span><span class="hl-0"> </span><span class="hl-5">run</span><span class="hl-0"> </span><span class="hl-5">zip</span><br/><br/><span class="hl-7"># Firefox-compatible development build</span><br/><span class="hl-6">npm</span><span class="hl-0"> </span><span class="hl-5">run</span><span class="hl-0"> </span><span class="hl-5">dev:firefox</span>
+</code><button type="button">Copy</button></pre>
+
+<table>
+<thead>
+<tr>
+<th>Command</th>
+<th>Output Path</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>npm run build</code></td>
+<td><code>.output/chrome-mv3/</code> (Load Unpacked target)</td>
+</tr>
+<tr>
+<td><code>npm run zip</code></td>
+<td><code>.output/ghost-protocolv2-2.0.0-chrome.zip</code></td>
+</tr>
+</tbody>
+</table>
+<p>WXT handles manifest auto-generation from <code>wxt.config.ts</code> declarations. No manual <code>manifest.json</code> editing is required.</p>
+<hr>
+<h2 id="8-core-subsystems" class="tsd-anchor-link">8. Core Subsystems<a href="#8-core-subsystems" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<h3 id="81-page-detector-" class="tsd-anchor-link">8.1 Page Detector (<code>entrypoints/epuskesmas.content/detector.ts</code>)<a href="#81-page-detector-" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<p>Classifies the current ePuskesmas page by evaluating the URL against three RegExp patterns:</p>
+<table>
+<thead>
+<tr>
+<th>Page Type</th>
+<th>URL Pattern</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>anamnesa</code></td>
+<td><code>/anamnesa/(create|edit)/*</code></td>
+</tr>
+<tr>
+<td><code>diagnosa</code></td>
+<td><code>/diagnosa/(create|edit)/*</code></td>
+</tr>
+<tr>
+<td><code>resep</code></td>
+<td><code>/resep/(create|edit)/*</code></td>
+</tr>
+</tbody>
+</table>
+<p>On classification, the content script dispatches a <code>pageReady</code> message to the service worker containing the detected page type and extracted <code>pelayananId</code>.</p>
+<h3 id="82-encounter-state-schema" class="tsd-anchor-link">8.2 Encounter State Schema<a href="#82-encounter-state-schema" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<pre><code class="typescript"><span class="hl-8">interface</span><span class="hl-0"> </span><span class="hl-9">Encounter</span><span class="hl-0"> {</span><br/><span class="hl-0">  </span><span class="hl-2">id</span><span class="hl-0">: </span><span class="hl-9">string</span><span class="hl-0">;                </span><span class="hl-7">// Unique pelayanan_id from URL</span><br/><span class="hl-0">  </span><span class="hl-2">patient_id</span><span class="hl-0">: </span><span class="hl-9">string</span><span class="hl-0">;</span><br/><span class="hl-0">  </span><span class="hl-2">anamnesa</span><span class="hl-0">: {</span><br/><span class="hl-0">    </span><span class="hl-2">chief_complaint</span><span class="hl-0">: </span><span class="hl-9">string</span><span class="hl-0">;</span><br/><span class="hl-0">    </span><span class="hl-2">allergies</span><span class="hl-0">: </span><span class="hl-9">string</span><span class="hl-0">[];</span><br/><span class="hl-0">    </span><span class="hl-2">vital_signs</span><span class="hl-0">: </span><span class="hl-9">VitalSigns</span><span class="hl-0">;</span><br/><span class="hl-0">  };</span><br/><span class="hl-0">  </span><span class="hl-2">diagnosa</span><span class="hl-0">: {</span><br/><span class="hl-0">    </span><span class="hl-2">icd10_codes</span><span class="hl-0">: </span><span class="hl-9">ICD10Entry</span><span class="hl-0">[];</span><br/><span class="hl-0">    </span><span class="hl-2">chronic_diseases</span><span class="hl-0">: </span><span class="hl-9">string</span><span class="hl-0">[];</span><br/><span class="hl-0">  };</span><br/><span class="hl-0">  </span><span class="hl-2">resep</span><span class="hl-0">: </span><span class="hl-9">ResepItem</span><span class="hl-0">[];        </span><span class="hl-7">// Array of medication entries</span><br/><span class="hl-0">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p>All fields are fully typed. The storage layer enforces schema versioning and TTL expiration on every read operation.</p>
+<h3 id="83-typed-messaging-contracts-" class="tsd-anchor-link">8.3 Typed Messaging Contracts (<code>utils/messaging.ts</code>)<a href="#83-typed-messaging-contracts-" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<pre><code class="typescript"><span class="hl-7">// Defined message channels (compile-time enforced)</span><br/><span class="hl-6">sendMessage</span><span class="hl-0">(</span><span class="hl-5">&#39;fillResep&#39;</span><span class="hl-0">, { </span><span class="hl-2">resepItems:</span><span class="hl-0"> </span><span class="hl-2">ResepItem</span><span class="hl-0">[] });</span><br/><span class="hl-6">sendMessage</span><span class="hl-0">(</span><span class="hl-5">&#39;scrapeAnamnesa&#39;</span><span class="hl-0">, { </span><span class="hl-2">pelayananId:</span><span class="hl-0"> </span><span class="hl-2">string</span><span class="hl-0"> });</span><br/><span class="hl-6">sendMessage</span><span class="hl-0">(</span><span class="hl-5">&#39;pageReady&#39;</span><span class="hl-0">, { </span><span class="hl-2">pageType:</span><span class="hl-0"> </span><span class="hl-2">PageType</span><span class="hl-0">; </span><span class="hl-2">pelayananId</span><span class="hl-0">: </span><span class="hl-2">string</span><span class="hl-0"> });</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Unrecognized message types are rejected at the TypeScript compilation stage, not at runtime. This eliminates an entire class of inter-component integration bugs common in untyped Chrome Extension messaging.</p>
+<h3 id="84-auto-fill-engine-phase-2-" class="tsd-anchor-link">8.4 Auto-fill Engine (Phase 2 — <code>lib/iskandar-diagnosis-engine/filler-core.ts</code>)<a href="#84-auto-fill-engine-phase-2-" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<p>The auto-fill engine dispatches synthetic DOM events to ePuskesmas form fields, simulating the exact browser event sequence required to trigger ePuskesmas's AJAX autocomplete listeners:</p>
+<ol>
+<li><code>focus</code> — activates the field</li>
+<li><code>input</code> — triggers AJAX search with the medication name</li>
+<li><code>keydown</code> (ArrowDown + Enter) — selects the first autocomplete result</li>
+<li><code>change</code> — commits the selection and propagates to dependent fields</li>
+</ol>
+<p>This approach requires no modification to the host application and is resilient to ePuskesmas frontend updates that do not alter the event contract of the form fields.</p>
+<hr>
+<h2 id="9-security-model" class="tsd-anchor-link">9. Security Model<a href="#9-security-model" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<table>
+<thead>
+<tr>
+<th>Control</th>
+<th>Implementation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Isolated World</td>
+<td>Content script JS context is fully isolated from page scripts</td>
+</tr>
+<tr>
+<td>No Remote Code Execution</td>
+<td>All code bundled at build time; no eval, no remote imports</td>
+</tr>
+<tr>
+<td>Host Permission Scoping</td>
+<td><code>host_permissions</code> restricted to the configured EMR host only</td>
+</tr>
+<tr>
+<td>Storage Isolation</td>
+<td><code>chrome.storage.local</code> is extension-private; inaccessible to the host page</td>
+</tr>
+<tr>
+<td>CSRF Preservation</td>
+<td>Auto-fill engine never targets hidden CSRF token fields</td>
+</tr>
+<tr>
+<td>Typed Contracts</td>
+<td>Message schema validation eliminates injection via malformed payloads</td>
+</tr>
+</tbody>
+</table>
+<p>The extension does not transmit any patient data to external endpoints. All state is local to the browser session and expires within 24 hours.</p>
+<hr>
+<h2 id="10-development-workflow" class="tsd-anchor-link">10. Development Workflow<a href="#10-development-workflow" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<h3 id="standard-iteration-cycle" class="tsd-anchor-link">Standard Iteration Cycle<a href="#standard-iteration-cycle" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<pre><code><span class="hl-2">npm</span><span class="hl-0"> </span><span class="hl-2">run</span><span class="hl-0"> </span><span class="hl-2">dev</span><br/><span class="hl-0">    |</span><br/><span class="hl-0">    +-- </span><span class="hl-2">Chrome</span><span class="hl-0"> </span><span class="hl-2">opens</span><span class="hl-0"> </span><span class="hl-10">with</span><span class="hl-0"> </span><span class="hl-2">extension</span><span class="hl-0"> </span><span class="hl-2">loaded</span><br/><span class="hl-0">    |</span><br/><span class="hl-0">    +-- </span><span class="hl-2">Navigate</span><span class="hl-0"> </span><span class="hl-2">to</span><span class="hl-0"> </span><span class="hl-2">the</span><span class="hl-0"> </span><span class="hl-2">target</span><span class="hl-0"> </span><span class="hl-1">EMR</span><span class="hl-0"> </span><span class="hl-2">host</span><span class="hl-0">/{</span><span class="hl-2">target</span><span class="hl-0">-</span><span class="hl-2">page</span><span class="hl-0">}</span><br/><span class="hl-0">    |</span><br/><span class="hl-0">    +-- </span><span class="hl-2">Edit</span><span class="hl-0"> </span><span class="hl-2">source</span><span class="hl-0"> </span><span class="hl-2">file</span><br/><span class="hl-0">    |</span><br/><span class="hl-0">    +-- </span><span class="hl-1">HMR</span><span class="hl-0"> </span><span class="hl-2">auto</span><span class="hl-0">-</span><span class="hl-2">reloads</span><span class="hl-0"> </span><span class="hl-2">affected</span><span class="hl-0"> </span><span class="hl-6">entrypoints</span><span class="hl-0"> (&lt; </span><span class="hl-3">2</span><span class="hl-0"> </span><span class="hl-9">seconds</span><span class="hl-0">)</span><br/><span class="hl-0">    |</span><br/><span class="hl-0">    +-- </span><span class="hl-9">Verify</span><span class="hl-0"> </span><span class="hl-9">console</span><span class="hl-0"> </span><span class="hl-9">output</span><span class="hl-0"> </span><span class="hl-9">and</span><span class="hl-0"> </span><span class="hl-9">Side</span><span class="hl-0"> </span><span class="hl-9">Panel</span><span class="hl-0"> </span><span class="hl-9">state</span><br/><span class="hl-0">    |</span><br/><span class="hl-0">    +-- </span><span class="hl-9">Commit</span>
+</code><button>Copy</button></pre>
+
+<h3 id="environment-variables" class="tsd-anchor-link">Environment Variables<a href="#environment-variables" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>VITE_DEBUG=true</code></td>
+<td>Enables verbose logging across all entrypoints</td>
+</tr>
+<tr>
+<td><code>VITE_DEBUG_BACKGROUND</code></td>
+<td>Scoped logging for service worker</td>
+</tr>
+<tr>
+<td><code>VITE_DEBUG_CONTENT</code></td>
+<td>Scoped logging for content script</td>
+</tr>
+<tr>
+<td><code>VITE_DEBUG_RIWAYAT</code></td>
+<td>Scoped logging for visit history module</td>
+</tr>
+<tr>
+<td><code>VITE_MESSAGE_TIMEOUT_DEFAULT</code></td>
+<td>Default IPC message timeout (ms)</td>
+</tr>
+<tr>
+<td><code>VITE_MESSAGE_TIMEOUT_FILL</code></td>
+<td>Timeout for auto-fill operations</td>
+</tr>
+<tr>
+<td><code>VITE_MESSAGE_TIMEOUT_SCRAPE</code></td>
+<td>Timeout for DOM scrape operations</td>
+</tr>
+<tr>
+<td><code>VITE_MESSAGE_TIMEOUT_VISIT_FETCH</code></td>
+<td>Timeout for visit data retrieval</td>
+</tr>
+<tr>
+<td><code>VITE_MESSAGE_TIMEOUT_AI</code></td>
+<td>Timeout for CDSS inference calls</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="11-debugging-reference" class="tsd-anchor-link">11. Debugging Reference<a href="#11-debugging-reference" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<table>
+<thead>
+<tr>
+<th>Target</th>
+<th>Access Method</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Service Worker logs</td>
+<td><code>chrome://extensions</code> &gt; Ghost Protocols V2 &gt; &quot;service worker&quot; link</td>
+</tr>
+<tr>
+<td>Content Script logs</td>
+<td>DevTools on the ePuskesmas page &gt; Console tab</td>
+</tr>
+<tr>
+<td>Side Panel logs</td>
+<td>Right-click the Side Panel &gt; Inspect</td>
+</tr>
+<tr>
+<td>Storage state</td>
+<td>DevTools &gt; Application &gt; Storage &gt; Extension Storage</td>
+</tr>
+<tr>
+<td>Message traffic</td>
+<td>DevTools &gt; Network (filter: <code>chrome-extension://</code>)</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="12-phase-roadmap" class="tsd-anchor-link">12. Phase Roadmap<a href="#12-phase-roadmap" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<h3 id="phase-1-foundation-complete" class="tsd-anchor-link">Phase 1 — Foundation (Complete)<a href="#phase-1-foundation-complete" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul>
+<li>WXT project scaffold with React template</li>
+<li>TypeScript strict mode, all core interfaces</li>
+<li>Service worker with side panel site-lock enforcement</li>
+<li>Content script with URL-pattern page classifier</li>
+<li>Typed messaging infrastructure (<code>@webext-core/messaging</code>)</li>
+<li>Storage layer with <code>Encounter</code> schema and TTL</li>
+<li>Side Panel React UI with tab navigation</li>
+<li>Clinical UI theme</li>
+</ul>
+<p><strong>Definition of Done (verified)</strong>:</p>
+<ul>
+<li><code>npm run dev</code> launches Chrome with extension loaded</li>
+<li>Side Panel activates only on the configured EMR host</li>
+<li>Console confirms page detection on target URL patterns</li>
+<li>Zero TypeScript compilation errors</li>
+<li>HMR cycle completes in under 2 seconds</li>
+</ul>
+<h3 id="phase-2-prescription-auto-fill-weeks-23" class="tsd-anchor-link">Phase 2 — Prescription Auto-Fill (Weeks 2–3)<a href="#phase-2-prescription-auto-fill-weeks-23" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul>
+<li>Implement <code>filler-core.ts</code> event dispatch engine</li>
+<li>AJAX autocomplete simulation for medication search fields</li>
+<li>Dynamic medication row creation and population</li>
+<li>Resep DOM field mapping registry (29 fields)</li>
+<li>Side Panel Resep form builder with live preview</li>
+</ul>
+<h3 id="phase-3-cross-page-persistence-weeks-45" class="tsd-anchor-link">Phase 3 — Cross-Page Persistence (Weeks 4–5)<a href="#phase-3-cross-page-persistence-weeks-45" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul>
+<li>DOM scraper modules for all three page types</li>
+<li>Anamnesa and Diagnosa field mapping registry</li>
+<li>Cross-page allergy propagation to Resep contraindication layer</li>
+</ul>
+<h3 id="phase-4-full-panel-ui-weeks-67" class="tsd-anchor-link">Phase 4 — Full Panel UI (Weeks 6–7)<a href="#phase-4-full-panel-ui-weeks-67" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul>
+<li>Complete Anamnesa, Diagnosa, and Resep tab forms</li>
+<li>Undo stack for auto-fill operations</li>
+<li>Field highlighting for filled elements</li>
+<li>Structured error reporting with user-facing retry interface</li>
+</ul>
+<h3 id="phase-5-cdss-phase-1-weeks-89" class="tsd-anchor-link">Phase 5 — CDSS Phase 1 (Weeks 8–9)<a href="#phase-5-cdss-phase-1-weeks-89" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul>
+<li>Drug allergy alert system</li>
+<li>Duplicate medication detection within a single encounter</li>
+<li>Chronic disease contraindication rule engine</li>
+</ul>
+<h3 id="phase-6-cdss-phase-2-weeks-1011" class="tsd-anchor-link">Phase 6 — CDSS Phase 2 (Weeks 10–11)<a href="#phase-6-cdss-phase-2-weeks-1011" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul>
+<li>Drug-Drug Interaction database integration</li>
+<li>ICD-10 suggestion from symptom keyword extraction</li>
+<li>Pediatric weight-based dosing calculator</li>
+</ul>
+<h3 id="phase-7-production-hardening-week-12" class="tsd-anchor-link">Phase 7 — Production Hardening (Week 12+)<a href="#phase-7-production-hardening-week-12" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul>
+<li>Extension icon asset production</li>
+<li>Chrome Web Store listing and review submission</li>
+<li>Multi-facility configuration system</li>
+<li>User onboarding documentation and training materials</li>
+</ul>
+<hr>
+<h2 id="13-contributing" class="tsd-anchor-link">13. Contributing<a href="#13-contributing" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<p>Ghost Protocols V2 is an internal Sentra Infrastructure project. All contributions must conform to the following engineering standards:</p>
+<ul>
+<li><strong>Specification-driven development</strong>: all features must be traceable to a PRD entry in <code>.taskmaster/docs/prd.txt</code></li>
+<li><strong>TypeScript strict mode</strong>: <code>noImplicitAny</code>, <code>strictNullChecks</code>, and <code>strictFunctionTypes</code> are non-negotiable</li>
+<li><strong>No raw messaging</strong>: all IPC must use the typed channel declared in <code>utils/messaging.ts</code></li>
+<li><strong>Branch isolation</strong>: each task executes in a dedicated Git branch; no direct commits to <code>main</code></li>
+<li><strong>Zero fabricated state</strong>: no hardcoded mock data may be merged into any non-test module</li>
+</ul>
+<hr>
+<h2 id="14-license" class="tsd-anchor-link">14. License<a href="#14-license" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<p><strong>INTERNAL — Sentra Infrastructure</strong></p>
+<p>This software is proprietary and confidential. Unauthorized distribution, reproduction, or deployment outside of authorized facilities is prohibited.</p>
+<hr>
+<h2 id="references" class="tsd-anchor-link">References<a href="#references" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<ul>
+<li>WXT Framework Documentation: <a href="https://wxt.dev">https://wxt.dev</a></li>
+<li>Chrome Extension Manifest V3: <a href="https://developer.chrome.com/docs/extensions/mv3/">https://developer.chrome.com/docs/extensions/mv3/</a></li>
+<li>@webext-core/messaging: <a href="https://webext-core.aklinker1.io/guide/messaging/">https://webext-core.aklinker1.io/guide/messaging/</a></li>
+<li>Full PRD: <code>.taskmaster/docs/prd.txt</code></li>
+<li>Original Project Specification: <code>Sentra_Assist_Project_Spec.pdf</code></li>
+</ul>
+<hr>
+<p><em>Ghost Protocols V2 is developed and maintained under the Sentra Healthcare Artificial Intelligence engineering division. Document ID: SENTRA-SPEC-002 v2.0.0.</em></p>
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="assets/icons.svg#icon-chevronDown"></use></svg><h3>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-private" name="private"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Private</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="assets/icons.svg#icon-chevronDown"></use></svg><h3>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#ghost-protocols-v2"><span>Ghost <wbr/>Protocols <wbr/>V2</span></a><ul><li><a href="#abstract"><span>Abstract</span></a></li><li><a href="#table-of-contents"><span>Table of <wbr/>Contents</span></a></li><li><a href="#1-project-scope"><span>1. <wbr/>Project <wbr/>Scope</span></a></li><li><a href="#2-target-deployment-environment"><span>2. <wbr/>Target <wbr/>Deployment <wbr/>Environment</span></a></li><li><a href="#3-system-architecture"><span>3. <wbr/>System <wbr/>Architecture</span></a></li><li><ul><li><a href="#communication-model"><span>Communication <wbr/>Model</span></a></li><li><a href="#state-persistence"><span>State <wbr/>Persistence</span></a></li></ul></li><li><a href="#4-technology-stack"><span>4. <wbr/>Technology <wbr/>Stack</span></a></li><li><a href="#5-repository-structure"><span>5. <wbr/>Repository <wbr/>Structure</span></a></li><li><a href="#6-getting-started"><span>6. <wbr/>Getting <wbr/>Started</span></a></li><li><ul><li><a href="#prerequisites"><span>Prerequisites</span></a></li><li><a href="#local-development-setup"><span>Local <wbr/>Development <wbr/>Setup</span></a></li></ul></li><li><a href="#7-build-pipeline"><span>7. <wbr/>Build <wbr/>Pipeline</span></a></li><li><a href="#8-core-subsystems"><span>8. <wbr/>Core <wbr/>Subsystems</span></a></li><li><ul><li><a href="#81-page-detector-"><span>8.1 <wbr/>Page <wbr/>Detector ()</span></a></li><li><a href="#82-encounter-state-schema"><span>8.2 <wbr/>Encounter <wbr/>State <wbr/>Schema</span></a></li><li><a href="#83-typed-messaging-contracts-"><span>8.3 <wbr/>Typed <wbr/>Messaging <wbr/>Contracts ()</span></a></li><li><a href="#84-auto-fill-engine-phase-2-"><span>8.4 <wbr/>Auto-<wbr/>fill <wbr/>Engine (<wbr/>Phase 2 — )</span></a></li></ul></li><li><a href="#9-security-model"><span>9. <wbr/>Security <wbr/>Model</span></a></li><li><a href="#10-development-workflow"><span>10. <wbr/>Development <wbr/>Workflow</span></a></li><li><ul><li><a href="#standard-iteration-cycle"><span>Standard <wbr/>Iteration <wbr/>Cycle</span></a></li><li><a href="#environment-variables"><span>Environment <wbr/>Variables</span></a></li></ul></li><li><a href="#11-debugging-reference"><span>11. <wbr/>Debugging <wbr/>Reference</span></a></li><li><a href="#12-phase-roadmap"><span>12. <wbr/>Phase <wbr/>Roadmap</span></a></li><li><ul><li><a href="#phase-1-foundation-complete"><span>Phase 1 — <wbr/>Foundation (<wbr/>Complete)</span></a></li><li><a href="#phase-2-prescription-auto-fill-weeks-23"><span>Phase 2 — <wbr/>Prescription <wbr/>Auto-<wbr/>Fill (<wbr/>Weeks 2–3)</span></a></li><li><a href="#phase-3-cross-page-persistence-weeks-45"><span>Phase 3 — <wbr/>Cross-<wbr/>Page <wbr/>Persistence (<wbr/>Weeks 4–5)</span></a></li><li><a href="#phase-4-full-panel-ui-weeks-67"><span>Phase 4 — <wbr/>Full <wbr/>Panel <wbr/>UI (<wbr/>Weeks 6–7)</span></a></li><li><a href="#phase-5-cdss-phase-1-weeks-89"><span>Phase 5 — <wbr/>CDSS <wbr/>Phase 1 (<wbr/>Weeks 8–9)</span></a></li><li><a href="#phase-6-cdss-phase-2-weeks-1011"><span>Phase 6 — <wbr/>CDSS <wbr/>Phase 2 (<wbr/>Weeks 10–11)</span></a></li><li><a href="#phase-7-production-hardening-week-12"><span>Phase 7 — <wbr/>Production <wbr/>Hardening (<wbr/>Week 12+)</span></a></li></ul></li><li><a href="#13-contributing"><span>13. <wbr/>Contributing</span></a></li><li><a href="#14-license"><span>14. <wbr/>License</span></a></li><li><a href="#references"><span>References</span></a></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="modules.html">Sentra Assist API Documentation - v1.0.1</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>
