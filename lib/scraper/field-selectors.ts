@@ -1,3 +1,4 @@
+// Designed and constructed by Claudesy.
 /**
  * Centralized selector registry for clinical extraction.
  * Single source of truth to reduce selector drift across modules.

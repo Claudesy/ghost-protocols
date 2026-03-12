@@ -1,3 +1,4 @@
+<!-- Claudesy's vision, brought to life. -->
 # CLAUDE.md — Sentra Assist
 
 ## ⚠️ MANDATORY SOP — ALL AGENTS MUST FOLLOW

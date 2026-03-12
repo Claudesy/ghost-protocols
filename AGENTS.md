@@ -1,3 +1,4 @@
+<!-- Claudesy's vision, brought to life. -->
 # CODEX.md — Sentra Assist (OpenAI Codex)
 
 ## Identity

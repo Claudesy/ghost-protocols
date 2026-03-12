@@ -1,3 +1,4 @@
+// Designed and constructed by Claudesy.
 /**
  * Therapy Widget - Treatment Recommendations Summary
  *

@@ -1,3 +1,4 @@
+// Designed and constructed by Claudesy.
 /**
  * Sentra Assist — MAIN World Bridge Script
  *

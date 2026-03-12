@@ -1,3 +1,4 @@
+// Designed and constructed by Claudesy.
 import { describe, expect, it } from 'vitest';
 import { analyzeTrajectory } from './trajectory-analyzer';
 import type { VisitRecord } from './visit-history-store';

@@ -1,3 +1,4 @@
+// Designed and constructed by Claudesy.
 import { VISIT_FIELD_SELECTORS, VISIT_LABEL_KEYWORDS } from './field-selectors';
 import { cleanText, toFloat, toInt } from './normalizers';
 

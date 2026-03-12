@@ -1,3 +1,4 @@
+// Designed and constructed by Claudesy.
 /**
  * Hypoglycemia 15-15 Timer
  *

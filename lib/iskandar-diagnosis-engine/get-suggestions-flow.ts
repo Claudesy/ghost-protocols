@@ -1,3 +1,4 @@
+// Designed and constructed by Claudesy.
 import type { APIResponse, CDSSResponse, DiagnosisRequestContext } from '@/types/api';
 import { getICD10Details, searchForDiagnosisSuggestions } from '@/lib/rag';
 import type { Encounter } from '~/utils/types';

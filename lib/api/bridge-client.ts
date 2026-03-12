@@ -1,3 +1,4 @@
+// Designed and constructed by Claudesy.
 /**
  * Sentra Assist — Dashboard Bridge Client
  * Polls the Puskesmas Dashboard Bridge API for pending transfer requests.

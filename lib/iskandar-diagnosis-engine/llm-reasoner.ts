@@ -1,3 +1,4 @@
+// Designed and constructed by Claudesy.
 /**
  * Iskandar Diagnosis Engine V1 — LLM Reasoner (Constrained)
  * LLM is COPILOT, not PILOT. It ranks/enriches candidates from KB.

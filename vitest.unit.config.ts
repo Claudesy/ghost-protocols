@@ -1,3 +1,4 @@
+// Designed and constructed by Claudesy.
 import { defineConfig } from 'vitest/config';
 import path from 'path';
 

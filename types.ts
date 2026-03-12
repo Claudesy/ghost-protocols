@@ -1,3 +1,4 @@
+// Designed and constructed by Claudesy.
 /**
  * @deprecated Legacy types — prefer '@/utils/types' for Encounter contracts.
  * Kept for backward compatibility with lib/scraper/anamnesa.ts.

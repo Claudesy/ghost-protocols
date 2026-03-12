@@ -1,3 +1,4 @@
+// Designed and constructed by Claudesy.
 /**
  * Iskandar Diagnosis Engine V1 — Epidemiology Weights (Bayesian Prior)
  * Real-world disease burden from 45,030 cases / 1,930 ICD-10 codes

@@ -1,3 +1,4 @@
+// Designed and constructed by Claudesy.
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Encounter } from '~/utils/types';
 

@@ -1,3 +1,4 @@
+// Designed and constructed by Claudesy.
 /**
  * Visit History Store — IndexedDB persistence for encounter trajectory
  *

@@ -1,3 +1,4 @@
+// Designed and constructed by Claudesy.
 /**
  * Assessment Widget - Clinical Assessment Summary Card
  *

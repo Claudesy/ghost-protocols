@@ -1,3 +1,4 @@
+// Designed and constructed by Claudesy.
 /**
  * Iskandar Diagnosis Engine V1 — Traffic Light Safety Gate
  * 8 deterministic rules, escalation-only (NEVER downgrades).

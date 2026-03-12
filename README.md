@@ -1,3 +1,4 @@
+<!-- Claudesy's vision, brought to life. -->
 # ⚡ Sentra Assist — Iskandar Diagnosis Engine V1
 
 **Version**: 1.0.0 (Phase 1 Complete)  

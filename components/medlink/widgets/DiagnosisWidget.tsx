@@ -1,3 +1,4 @@
+// Designed and constructed by Claudesy.
 /**
  * Diagnosis Widget - AI-Suggested Diagnoses Summary
  *

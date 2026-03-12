@@ -1,3 +1,4 @@
+// Designed and constructed by Claudesy.
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { DiagnosisRequestContext } from '@/types/api';
 import type { Encounter } from '~/utils/types';

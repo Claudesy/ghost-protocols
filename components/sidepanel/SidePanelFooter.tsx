@@ -1,3 +1,4 @@
+// Designed and constructed by Claudesy.
 /**
  * Ghost Protocols - Side Panel Footer Component
  */

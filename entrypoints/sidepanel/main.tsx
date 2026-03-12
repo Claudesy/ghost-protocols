@@ -1,3 +1,4 @@
+// Designed and constructed by Claudesy.
 /**
  * Sentra Assist - Side Panel Entry
  * Updated with TTV Inference UI + Emergency Dashboard

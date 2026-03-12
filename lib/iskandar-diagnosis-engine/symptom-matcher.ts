@@ -1,3 +1,4 @@
+// Designed and constructed by Claudesy.
 /**
  * Iskandar Diagnosis Engine V1 — Symptom Matcher (Deterministic)
  * IDF-weighted + Coverage + Jaccard scoring against 159-disease KB

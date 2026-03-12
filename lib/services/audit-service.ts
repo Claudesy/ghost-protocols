@@ -1,3 +1,4 @@
+// Designed and constructed by Claudesy.
 /**
  * The "Black Box" - Immutable Audit Trail Service
  *
