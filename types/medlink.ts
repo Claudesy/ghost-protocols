@@ -1,3 +1,4 @@
+// Designed and constructed by Claudesy.
 /**
  * Medlink Integration Module - Type Definitions
  *

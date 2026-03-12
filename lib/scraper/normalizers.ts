@@ -1,3 +1,4 @@
+// Designed and constructed by Claudesy.
 /**
  * Normalization helpers for DOM scraping output.
  */

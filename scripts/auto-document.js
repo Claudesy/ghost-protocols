@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// Blueprinted & built by Claudesy.
 
 /**
  * Auto-Documentation Script

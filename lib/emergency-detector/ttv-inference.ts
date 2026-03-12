@@ -1,3 +1,4 @@
+// Designed and constructed by Claudesy.
 /**
  * Gate 1: TTV (Vital Signs) Inference Algorithm
  *

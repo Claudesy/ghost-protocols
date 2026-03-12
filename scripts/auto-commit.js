@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// Blueprinted & built by Claudesy.
 /**
  * Auto-Commit Script for Solo Development
  * Automatically commits changes with smart commit messages

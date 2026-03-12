@@ -1,3 +1,4 @@
+// Blueprinted & built by Claudesy.
 /**
  * Remove white background from PKM logo
  * Converts JPG to PNG with transparent background

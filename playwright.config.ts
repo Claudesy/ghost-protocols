@@ -1,3 +1,4 @@
+// Designed and constructed by Claudesy.
 import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({

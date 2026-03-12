@@ -1,3 +1,4 @@
+// Blueprinted & built by Claudesy.
 /**
  * DDInter CSV to JSON Converter
  * Converts DDInter 2.0 CSV files to compact JSON for Sentra Assist DDI checker

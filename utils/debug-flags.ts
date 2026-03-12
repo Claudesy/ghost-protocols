@@ -1,3 +1,4 @@
+// Designed and constructed by Claudesy.
 /**
  * Runtime debug flags for targeted diagnostics.
  */

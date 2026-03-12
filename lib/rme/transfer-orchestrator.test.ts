@@ -1,3 +1,4 @@
+// Designed and constructed by Claudesy.
 import { describe, expect, it, vi } from 'vitest';
 import { RMETransferOrchestrator } from '@/lib/rme/transfer-orchestrator';
 import type { RMETransferPayload } from '@/utils/types';

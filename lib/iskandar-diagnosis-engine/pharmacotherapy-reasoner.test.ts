@@ -1,3 +1,4 @@
+// Designed and constructed by Claudesy.
 import { describe, expect, it } from 'vitest';
 import { generatePharmacotherapyPlan } from './pharmacotherapy-reasoner';
 import type { PrescriptionRequestContext } from '@/types/api';

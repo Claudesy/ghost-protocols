@@ -1,3 +1,4 @@
+// Blueprinted & built by Claudesy.
 /**
  * Optimize DDI Database
  * Creates a compact version with only Major + Moderate interactions

@@ -1,3 +1,4 @@
+// Designed and constructed by Claudesy.
 /**
  * Sentra Assist — Dashboard Bridge Poller
  * Uses Chrome Alarms API to periodically poll for pending transfers.

@@ -1,3 +1,4 @@
+// Designed and constructed by Claudesy.
 import type { DiagnosisSuggestion } from '@/types/api';
 
 export interface DifferentialVitals {

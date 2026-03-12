@@ -1,3 +1,4 @@
+// Designed and constructed by Claudesy.
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { mockSendMessage, mockTypedSendMessage, mockTypedOnMessage } = vi.hoisted(() => ({

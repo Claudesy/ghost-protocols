@@ -1,3 +1,4 @@
+// Designed and constructed by Claudesy.
 /**
  * Pieces Integration Verification
  * Tests the interaction between SettingsStore and PiecesClient

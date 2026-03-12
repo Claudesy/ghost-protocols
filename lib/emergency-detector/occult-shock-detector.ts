@@ -1,3 +1,4 @@
+// Designed and constructed by Claudesy.
 /**
  * Gate 4: Occult Shock Detection (Relative Hypotension)
  *

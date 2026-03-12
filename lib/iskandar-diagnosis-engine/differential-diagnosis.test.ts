@@ -1,3 +1,4 @@
+// Designed and constructed by Claudesy.
 import { describe, expect, it } from 'vitest';
 import type { DiagnosisSuggestion } from '@/types/api';
 import {

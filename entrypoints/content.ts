@@ -1,3 +1,4 @@
+// Designed and constructed by Claudesy.
 /**
  * Precision-Architected. Future-Built by Docsynapse
  * Sentra Healthcare Artificial Intelligence

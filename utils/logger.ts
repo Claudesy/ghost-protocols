@@ -1,3 +1,4 @@
+// Designed and constructed by Claudesy.
 /**
  * Structured runtime logger with optional debug scopes and log redaction.
  */

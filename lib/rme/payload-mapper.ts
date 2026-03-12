@@ -1,3 +1,4 @@
+// Designed and constructed by Claudesy.
 import type { MedicationRecommendation } from '@/types/api';
 import type {
   AnamnesaFillPayload,

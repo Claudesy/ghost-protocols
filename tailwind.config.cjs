@@ -1,3 +1,4 @@
+// Designed and constructed by Claudesy.
 /* eslint-disable @typescript-eslint/no-require-imports, no-undef */
 const { fontFamily } = require('tailwindcss/defaultTheme');
 

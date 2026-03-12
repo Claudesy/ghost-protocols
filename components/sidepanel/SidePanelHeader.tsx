@@ -1,3 +1,4 @@
+// Designed and constructed by Claudesy.
 /**
  * Sentra Assist - Side Panel Header Component
  * Reusable header with logo, title, and optional animated SVG

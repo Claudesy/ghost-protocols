@@ -1,3 +1,4 @@
+# Blueprinted & built by Claudesy.
 # Environment variables (contains secrets)
 .env.local
 .env.*.local
@@ -34,8 +35,9 @@ nul
 # Archived clutter — semua
 archieved/
 
-# Generated docs
-docs/
+# Generated docs (TypeDoc API output — hand-crafted docs/ are tracked)
+docs/api/
+coverage/
 
 # Codex temp
 .codex-temp/
