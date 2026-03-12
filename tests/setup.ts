@@ -43,7 +43,8 @@ const originalFetch = globalThis.fetch;
         status: 200,
         headers: { 'Content-Type': 'application/json' },
       });
-    } catch {
+    } catch (err) {
+      console.warn(`[test-setup] Could not serve /data/${match[1]}:`, err);
       return new Response('{}', { status: 404 });
     }
   }
