@@ -31,14 +31,14 @@ entrypoints/sidepanel/*.backup
 temp_styles.txt
 nul
 
-# Archived clutter
-archieved/2026-02-11-repo-optimization/
-archieved/legacy/.output/
-archieved/legacy/output/
-archieved/legacy/.claude/
-archieved/legacy/skills/
-archieved/legacy/sources/
-archieved/legacy/✅/
+# Archived clutter — semua
+archieved/
+
+# Generated docs
+docs/
+
+# Codex temp
+.codex-temp/
 
 # Editor directories and files
 .vscode/*
