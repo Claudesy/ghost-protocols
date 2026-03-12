@@ -84,7 +84,7 @@ describe('getSuggestions -> runDiagnosisEngine(v3) flow', () => {
 
     expect(response.success).toBe(true);
     expect(response.data).toBeDefined();
-    expect(response.data?.meta?.model_version).toContain('sentra-inference-v3');
+    expect(response.data?.meta?.model_version).toContain('IDE-V1');
     expect(response.data?.diagnosis_suggestions.length).toBeGreaterThan(0);
 
     const first = response.data?.diagnosis_suggestions[0];

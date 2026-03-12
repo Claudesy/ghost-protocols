@@ -58,11 +58,11 @@ vi.mock('@/lib/api/sentra-api', () => ({
   },
 }));
 
-vi.mock('@/lib/cdss/get-suggestions-flow', () => ({
+vi.mock('@/lib/iskandar-diagnosis-engine/get-suggestions-flow', () => ({
   runGetSuggestionsFlow: mockRunGetSuggestionsFlow,
 }));
 
-vi.mock('@/lib/cdss', () => ({
+vi.mock('@/lib/iskandar-diagnosis-engine', () => ({
   initCDSSEngine: mockInitCDSSEngine,
   getCDSSEngineStatus: mockGetCDSSEngineStatus,
 }));

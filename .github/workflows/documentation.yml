@@ -28,6 +28,12 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Prepare WXT types
+        run: pnpm postinstall
+
+      - name: Run TypeScript check
+        run: pnpm typecheck
+
       - name: Check for missing documentation
         run: |
           pnpm docs:auto
