@@ -1,8 +1,8 @@
 /**
  * TTV Inference UI Component
  *
- * Gate 1: Vital Signs + Anamnesa with AI Narrative Generation
- * Two-column layout: Vital Signs (left) | Symptoms + AI Narrative (right)
+ * Gate 1: Vital Signs + Anamnesa with inline text refinement
+ * Two-column layout: Medical History (left) | Vital Signs (right)
  *
  * Uses integrated clinical decision workflow:
  * - Gate 2: HTN Classification (FKTP 2024)
@@ -14,11 +14,23 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import { piecesClient, type PiecesSnippet } from '../../lib/api';
-import { generateNarrative, getSuggestions, correctTypos } from '../../lib/emergency-detector/narrative-generator';
+import { generateNarrative, correctTypos } from '../../lib/emergency-detector/narrative-generator';
 import { playNotificationSound } from '../../utils/audio';
 import type { AnamnesaFillPayload, FillResult } from '../../utils/types';
 import { diagnosisSuggestionsStyles } from './DiagnosisSuggestions';
 import { PatientHeader, type MedicalHistoryItem } from './PatientHeader';
+import {
+  getOnlineDoctors,
+  sendConsultToDoctor,
+  type OnlineDoctor,
+  type ConsultPayload,
+} from '../../lib/api/bridge-client';
+import {
+  getOnlineDoctors,
+  sendConsultToDoctor,
+  type OnlineDoctor,
+  type ConsultPayload,
+} from '../../lib/api/bridge-client';
 
 // ============================================================================
 // NATIVE CHROME MESSAGING (Bypass @webext-core/messaging for reliability)
@@ -104,7 +116,6 @@ export interface TTVInferenceUIProps {
   patientAge: number;
   patientRM: string;
   onComplete: (data: TTVInferenceData) => void;
-  onCancel?: () => void;
   showMaskedName?: boolean;
   onAlertsChange?: (alerts: ScreeningAlert[]) => void;
   // Extended patient info
@@ -226,7 +237,7 @@ export const TTVInferenceUI = ({
     liftedSetterRef.current = liftedSetter;
   }, [liftedState, liftedSetter]);
 
-  console.log('[TTVInferenceUI] Mounting with isLifted:', isLifted, 'ttvState:', ttvState);
+  // [TTVInferenceUI] Mounted successfully
 
   // Local state (only used if lifted state not provided)
   const [localSbp, setLocalSBP] = useState<string>('');
@@ -383,17 +394,12 @@ export const TTVInferenceUI = ({
   const [animatingField, setAnimatingField] = useState<string | null>(null);
   const [isAutoFilling, setIsAutoFilling] = useState(false);
 
-  // Suggestions state (always local)
-  const [suggestions, setSuggestions] = useState<string[]>([]);
-  const [showSuggestions, setShowSuggestions] = useState(false);
-
   // Pieces Memory state
   const [piecesAvailable, setPiecesAvailable] = useState(false);
-  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [memorySuggestions, setMemorySuggestions] = useState<PiecesSnippet[]>([]);
   const [showMemory, setShowMemory] = useState(false);
   const [autoContext, setAutoContext] = useState<string>('');
-  const [isSearchingMemory, setIsSearchingMemory] = useState(false);
+  const [, setIsSearchingMemory] = useState(false);
 
   // Check Pieces availability
   useEffect(() => {
@@ -424,6 +430,21 @@ export const TTVInferenceUI = ({
 
   // Allergy options
   const allergyOptions = ['Allergy', 'Mental Health', 'Nicotine Use', 'Obesity', 'Malnutrition', 'DOA'];
+  const uplinkActionLabel = 'Send to Sentra Network';
+  const historyChipStyle = {
+    padding: '5px 6px',
+    fontSize: '10.5px',
+    lineHeight: '1.2',
+    borderRadius: '4px',
+  } as const;
+  const getHistoryChipProps = (isActive: boolean) => ({
+    className: isActive ? 'neu-tab-active text-platinum font-semibold' : 'text-muted font-medium',
+    style: {
+      ...historyChipStyle,
+      background: isActive ? undefined : '#0f1318',
+      border: isActive ? undefined : '1px solid #1d232b',
+    },
+  });
 
   const toggleAllergy = (allergy: string) => {
     setAllergies((prev) => {
@@ -583,7 +604,7 @@ export const TTVInferenceUI = ({
     });
   }, [autosenPreset, generateTTVValues, isAutoFilling, isLifted, ttvState, onTTVStateChange]);
 
-  // AI Narrative State
+  // Inline refined anamnesa state
   const [narrative, setNarrative] = useState({
     keluhan_utama: '',
     lama_sakit: '',
@@ -591,7 +612,7 @@ export const TTVInferenceUI = ({
     confidence: 0,
   });
 
-  // Real-time narrative generation
+  // Real-time symptom refinement for downstream submission payload
   useEffect(() => {
     if (symptomText.trim()) {
       const generated = generateNarrative(symptomText, {
@@ -622,13 +643,7 @@ export const TTVInferenceUI = ({
     const rrNum = parseInt(rr) || 0;
     const tempNum = parseFloat(temp) || 0;
 
-    // Debug logging
-    console.log('[TTVInferenceUI] Alert check triggered:', {
-      sbp: sbpNum,
-      dbp: dbpNum,
-      glucose: glucoseNum,
-      isLifted,
-    });
+    // Alert check triggered with current vital signs
 
     // CRITICAL: Check for HTN Crisis even if only SBP is entered
     // SBP ≥180 alone is dangerous and requires immediate attention
@@ -700,15 +715,7 @@ export const TTVInferenceUI = ({
       };
       const glucoseResult: GlucoseClassification = classifyBloodGlucose(glucoseData);
 
-      // DEBUG: Log glucose decision path
-      console.log('[GATE 3] Glucose Decision:', {
-        glucoseNum,
-        category: glucoseResult.category,
-        isHypo: glucoseNum < 70,
-        isHyperCrisis: glucoseNum >= 400,
-        isHyperSignificant: glucoseNum >= 200,
-        isHyperModerate: glucoseNum >= 140,
-      });
+      // Glucose decision path evaluated
 
       // CRITICAL: Hypoglycemia (< 70 mg/dL) - ISPAD Rule of 15
       if (glucoseResult.category === 'HYPOGLYCEMIA_CRISIS' || glucoseNum < 70) {
@@ -1301,53 +1308,24 @@ export const TTVInferenceUI = ({
     }
   }, [sbp, dbp, glucose, hr, rr, temp, onAlertsChange]);
 
-  // Autocomplete suggestions
   const handleSymptomChange = useCallback((value: string) => {
-    // Use comprehensive auto-correction from narrative-generator
-    const correctedValue = correctTypos(value);
+    setSymptomText(value);
+  }, [setSymptomText]);
 
-    setSymptomText(correctedValue);
-
-    // Get last word for suggestions
-    const words = correctedValue.split(/[,;\n]/);
-    const lastWord = words[words.length - 1].trim();
-
-    if (lastWord.length >= 2) {
-      const newSuggestions = getSuggestions(lastWord);
-      setSuggestions(newSuggestions);
-      setShowSuggestions(newSuggestions.length > 0);
-    } else {
-      setShowSuggestions(false);
+  useEffect(() => {
+    if (!symptomText.trim()) {
+      return;
     }
-  }, []);
 
-  const handleSuggestionClick = (suggestion: string) => {
-    const words = symptomText.split(/[,;\n]/);
-    words[words.length - 1] = suggestion;
-    const newText = words.join(', ');
-    setSymptomText(newText + ', ');
-    setShowSuggestions(false);
-  };
+    const correctionTimer = globalThis.setTimeout(() => {
+      const correctedValue = correctTypos(symptomText);
+      if (correctedValue !== symptomText) {
+        setSymptomText(correctedValue);
+      }
+    }, 2000);
 
-  const handleSaveToPieces = async () => {
-    if (!narrative.keluhan_utama) return;
-
-    setSaveStatus('saving');
-    try {
-      await piecesClient.saveClinicalSnippet({
-        title: `Clinical Insight: ${patientName} (${patientRM})`,
-        content: narrative.keluhan_utama,
-        classification: 'markdown',
-        tags: ['clinical-insight', patientRM, narrative.is_akut ? 'akut' : 'kronik'],
-      });
-      setSaveStatus('saved');
-      setTimeout(() => setSaveStatus('idle'), 3000);
-    } catch (error) {
-      console.error('[TTVInferenceUI] Failed to save to Pieces:', error);
-      setSaveStatus('error');
-      setTimeout(() => setSaveStatus('idle'), 3000);
-    }
-  };
+    return () => globalThis.clearTimeout(correctionTimer);
+  }, [setSymptomText, symptomText]);
 
   const handleRecallMemory = async () => {
     setShowMemory(!showMemory);
@@ -1357,24 +1335,31 @@ export const TTVInferenceUI = ({
     }
   };
 
-  // Store screening alerts for Clinical Trajectory
+  // Store screening alerts for doctor handoff
   const [, setCurrentAlerts] = useState<ScreeningAlert[]>([]);
 
-  // Uplink status state
+  // Network send status state
   const [uplinkStatus, setUplinkStatus] = useState<'idle' | 'sending' | 'success' | 'error'>(
     'idle'
   );
   const [, setUplinkError] = useState<string | null>(null);
 
-  // Scramble text state for UPLINK button animation
-  const [scrambleText, setScrambleText] = useState('Satellite Processing');
+  // Send to Doctor state
+  const [showDoctorPanel, setShowDoctorPanel] = useState(false);
+  const [onlineDoctors, setOnlineDoctors] = useState<OnlineDoctor[]>([]);
+  const [selectedDoctorId, setSelectedDoctorId] = useState('');
+  const [consultStatus, setConsultStatus] = useState<'idle' | 'loading' | 'sending' | 'success' | 'error'>('idle');
+  const [consultError, setConsultError] = useState<string | null>(null);
+
+  // Scramble text state for network action button animation
+  const [scrambleText, setScrambleText] = useState(uplinkActionLabel);
 
   // Text scramble effect based on uplink status
   useEffect(() => {
     if (uplinkStatus === 'sending') {
       // Start scramble animation
       const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%&';
-      const targetText = 'Satellite Processing';
+      const targetText = uplinkActionLabel;
       let frame = 0;
 
       const interval = setInterval(() => {
@@ -1399,9 +1384,9 @@ export const TTVInferenceUI = ({
     } else if (uplinkStatus === 'error') {
       setScrambleText('SYNC FAILED');
     } else {
-      setScrambleText('Satellite Processing');
+      setScrambleText(uplinkActionLabel);
     }
-  }, [uplinkStatus]);
+  }, [uplinkActionLabel, uplinkStatus]);
 
   // Medical history state (detected from ePuskesmas page)
   const [medicalHistory, setMedicalHistory] = useState<MedicalHistoryItem[]>([]);
@@ -1513,15 +1498,19 @@ export const TTVInferenceUI = ({
       `Gejala yang dialami: ${symptomText}.\n` +
       `${narrative.is_akut ? 'Kondisi bersifat akut.' : 'Kondisi bersifat kronik.'}`;
 
-    // Generate random alergi yang masuk akal
+    // Generate random alergi yang masuk akal berdasarkan UI selection
     const generateRandomAlergi = () => {
       const alergiObat = ['Penisilin', 'Amoxicillin', 'Sulfa', 'NSAID', 'Aspirin'];
       const alergiMakanan = ['Seafood', 'Kacang', 'Telur', 'Susu', 'Gluten'];
       const alergiUdara = ['Debu', 'Dingin', 'Asap rokok', 'Serbuk sari'];
 
-      const hasObat = allergies.includes('Obat');
-      const hasMakanan = allergies.includes('Makanan');
-      const hasUdara = allergies.includes('Udara Dingin') || allergies.includes('Debu');
+      // Map UI options to allergy categories
+      // 'Allergy' = general allergy flag → generate random allergies from all categories
+      // 'Mental Health', 'Nicotine Use', 'Obesity', 'Malnutrition', 'DOA' = risk factors (not allergies)
+      const hasAllergy = allergies.includes('Allergy');
+      const hasObat = allergies.includes('Obat') || hasAllergy;
+      const hasMakanan = allergies.includes('Makanan') || hasAllergy;
+      const hasUdara = allergies.includes('Udara Dingin') || allergies.includes('Debu') || hasAllergy;
 
       return {
         obat: hasObat ? [alergiObat[Math.floor(Math.random() * alergiObat.length)]] : [],
@@ -1533,7 +1522,7 @@ export const TTVInferenceUI = ({
       };
     };
 
-    // Generate riwayat penyakit berdasarkan kondisi
+    // Generate riwayat penyakit berdasarkan kondisi dan risk factors
     const generateRiwayatPenyakit = () => {
       const sbpNum = parseInt(sbp) || 0;
       const glucoseNum = parseInt(glucose) || 0;
@@ -1548,6 +1537,24 @@ export const TTVInferenceUI = ({
       if (sbpNum >= 140 && glucoseNum >= 140)
         dahulu = 'Riwayat hipertensi dan DM (+), kontrol rutin.';
 
+      // Add risk factors from UI selection
+      const riskFactors = allergies.filter(a => 
+        ['Mental Health', 'Nicotine Use', 'Obesity', 'Malnutrition', 'DOA'].includes(a)
+      );
+      if (riskFactors.length > 0) {
+        const riskText = riskFactors.map(r => {
+          switch(r) {
+            case 'Mental Health': return 'gangguan mental';
+            case 'Nicotine Use': return 'perokok';
+            case 'Obesity': return 'obesitas';
+            case 'Malnutrition': return 'malnutrisi';
+            case 'DOA': return 'riwayat DOA';
+            default: return r;
+          }
+        }).join(', ');
+        dahulu += ` Riwayat: ${riskText}.`;
+      }
+
       const keluarga = 'Tidak ada riwayat penyakit keturunan yang signifikan dalam keluarga.';
 
       return { sekarang, dahulu, keluarga };
@@ -1558,13 +1565,28 @@ export const TTVInferenceUI = ({
       const randomInRange = (min: number, max: number) =>
         Math.floor(Math.random() * (max - min + 1)) + min;
 
-      // Indonesian anthropometric averages based on gender
-      // Male: Height 165-172cm, Weight 58-72kg, Waist 78-92cm
-      // Female: Height 153-160cm, Weight 48-62kg, Waist 68-82cm
       const isMale = patientGender === 'L';
+      const isObese = allergies.includes('Obesity');
+      const isMalnourished = allergies.includes('Malnutrition');
+
       const tinggi = isMale ? randomInRange(165, 172) : randomInRange(153, 160);
-      const berat = isMale ? randomInRange(58, 72) : randomInRange(48, 62);
-      const lingkarPerut = isMale ? randomInRange(78, 92) : randomInRange(68, 82);
+
+      // Generate berat badan sesuai kondisi (Asian BMI criteria)
+      let berat: number;
+      let lingkarPerut: number;
+      if (isObese) {
+        // IMT target 25–35 → Obesitas I/II
+        berat = isMale ? randomInRange(72, 102) : randomInRange(62, 86);
+        lingkarPerut = isMale ? randomInRange(92, 112) : randomInRange(82, 100);
+      } else if (isMalnourished) {
+        // IMT target <17 → Kurus/Malnutrisi
+        berat = isMale ? randomInRange(36, 48) : randomInRange(30, 40);
+        lingkarPerut = isMale ? randomInRange(58, 70) : randomInRange(50, 62);
+      } else {
+        // Normal range
+        berat = isMale ? randomInRange(58, 72) : randomInRange(48, 62);
+        lingkarPerut = isMale ? randomInRange(78, 92) : randomInRange(68, 82);
+      }
 
       // Calculate IMT (BMI)
       const heightM = tinggi / 100;
@@ -2131,6 +2153,82 @@ export const TTVInferenceUI = ({
     sbp && dbp && hr && rr && temp && glucose && narrative.keluhan_utama.length > 0;
 
   // ========================================================================
+  // SEND TO DOCTOR HANDLERS
+  // ========================================================================
+  const handleOpenDoctorPanel = async () => {
+    setShowDoctorPanel(true);
+    setConsultStatus('loading');
+    setConsultError(null);
+    try {
+      const doctors = await getOnlineDoctors();
+      setOnlineDoctors(doctors);
+      setConsultStatus('idle');
+    } catch (err) {
+      setConsultStatus('error');
+      setConsultError(err instanceof Error ? err.message : 'Gagal memuat daftar dokter');
+    }
+  };
+
+  const handleSendToDoctor = async () => {
+    if (!selectedDoctorId) return;
+    setConsultStatus('sending');
+
+    const rand = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
+    const isMale = patientGender === 'L';
+    const isObese = allergies.includes('Obesity');
+    const isMalnourished = allergies.includes('Malnutrition');
+    const tinggi = isMale ? rand(165, 172) : rand(153, 160);
+    let berat: number;
+    let lingkarPerut: number;
+    if (isObese) {
+      berat = isMale ? rand(72, 102) : rand(62, 86);
+      lingkarPerut = isMale ? rand(92, 112) : rand(82, 100);
+    } else if (isMalnourished) {
+      berat = isMale ? rand(36, 48) : rand(30, 40);
+      lingkarPerut = isMale ? rand(58, 70) : rand(50, 62);
+    } else {
+      berat = isMale ? rand(58, 72) : rand(48, 62);
+      lingkarPerut = isMale ? rand(78, 92) : rand(68, 82);
+    }
+    const heightM = tinggi / 100;
+    const imt = parseFloat((berat / (heightM * heightM)).toFixed(1));
+    let hasilImt: string;
+    if (imt < 18.5) hasilImt = 'Kurus';
+    else if (imt < 23) hasilImt = 'Normal';
+    else if (imt < 25) hasilImt = 'BB Lebih';
+    else if (imt < 30) hasilImt = 'Obesitas I';
+    else hasilImt = 'Obesitas II';
+
+    const riskFactors = allergies.filter((a) =>
+      ['Mental Health', 'Nicotine Use', 'Obesity', 'Malnutrition', 'DOA'].includes(a)
+    );
+
+    const payload: ConsultPayload = {
+      patient: { name: patientName, age: patientAge, gender: patientGender, rm: patientRM },
+      ttv: { sbp, dbp, hr, rr, temp, spo2, glucose },
+      keluhan_utama: symptomText,
+      risk_factors: riskFactors,
+      anthropometrics: { tinggi, berat, imt, hasil_imt: hasilImt, lingkar_perut: lingkarPerut },
+      penyakit_kronis: [],
+      target_doctor_id: selectedDoctorId,
+      sent_at: new Date().toISOString(),
+    };
+
+    try {
+      await sendConsultToDoctor(payload);
+      setConsultStatus('success');
+      setTimeout(() => {
+        setShowDoctorPanel(false);
+        setConsultStatus('idle');
+        setSelectedDoctorId('');
+      }, 2500);
+    } catch (err) {
+      setConsultStatus('error');
+      setConsultError(err instanceof Error ? err.message : 'Gagal mengirim konsultasi');
+    }
+  };
+
+  // ========================================================================
   // INPUT (vitals + anamnesa + UPLINK)
   // ========================================================================
   return (
@@ -2163,16 +2261,25 @@ export const TTVInferenceUI = ({
 
       {/* Main Content: Two Columns */}
       <div className="ttv-content">
-        {/* FIRST SECTION: Medical History + AI Narrative */}
+        {/* FIRST SECTION: Medical History */}
         <div className="ttv-right-column">
-          <div className="ttv-section glass-card">
+          <div className="ttv-section glass-card ttv-section-static ttv-section-dark">
             <div className="ttv-section-header">
               <div>
                 <h3 className="ttv-section-title">Medical History</h3>
               </div>
               <div className="ttv-autosen-controls">
                 {patientGender === 'L' ? (
-                  <span className="ttv-pregnancy-btn-locked">
+                  <span
+                    className="neu-tab-active text-platinum font-semibold"
+                    style={{
+                      ...historyChipStyle,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      minWidth: '72px',
+                    }}
+                  >
                     Negative-
                   </span>
                 ) : (
@@ -2180,14 +2287,16 @@ export const TTVInferenceUI = ({
                     <button
                       type="button"
                       onClick={() => setPregnancyStatus(false)}
-                      className={`ttv-autosen-btn ${pregnancyStatus === false ? 'ttv-pregnancy-active' : 'ttv-pregnancy-inactive'}`}
+                      className={getHistoryChipProps(pregnancyStatus === false).className}
+                      style={getHistoryChipProps(pregnancyStatus === false).style}
                     >
                       Negative-
                     </button>
                     <button
                       type="button"
                       onClick={() => setPregnancyStatus(true)}
-                      className={`ttv-autosen-btn ${pregnancyStatus === true ? 'ttv-pregnancy-active' : 'ttv-pregnancy-inactive'}`}
+                      className={getHistoryChipProps(pregnancyStatus === true).className}
+                      style={getHistoryChipProps(pregnancyStatus === true).style}
                     >
                       Positive+
                     </button>
@@ -2199,25 +2308,16 @@ export const TTVInferenceUI = ({
             </div>
 
             {/* Screening Flags */}
-            <div style={{ background: 'var(--carbon-900)', border: '1px solid var(--carbon-700)', borderRadius: '10px', padding: '6px' }}>
+            <div style={{ background: '#07090c', border: '1px solid #1c2128', borderRadius: '4px', padding: '6px' }}>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '4px' }}>
                 {allergyOptions.map((option) => (
                   <button
                     key={option}
                     type="button"
                     onClick={() => toggleAllergy(option)}
-                    className={`motion-press rounded-md relative ${
-                      allergies.includes(option)
-                        ? 'neu-tab-active text-platinum font-semibold'
-                        : 'text-muted font-medium'
-                    }`}
+                    className={`relative ${getHistoryChipProps(allergies.includes(option)).className}`}
                     style={{
-                      padding: '5px 6px',
-                      fontSize: '10.5px',
-                      lineHeight: '1.2',
-                      background: allergies.includes(option) ? undefined : 'var(--carbon-800)',
-                      border: allergies.includes(option) ? undefined : '1px solid var(--carbon-700)',
-                      borderRadius: '6px',
+                      ...getHistoryChipProps(allergies.includes(option)).style,
                     }}
                   >
                     {option}
@@ -2262,21 +2362,6 @@ export const TTVInferenceUI = ({
                   )}
                 </div>
 
-                {/* Autocomplete Suggestions */}
-                {showSuggestions && (
-                  <div className="ttv-suggestions">
-                    {suggestions.map((suggestion, index) => (
-                      <button
-                        key={index}
-                        onClick={() => handleSuggestionClick(suggestion)}
-                        className="ttv-suggestion-item"
-                      >
-                        {suggestion}
-                      </button>
-                    ))}
-                  </div>
-                )}
-
                 {/* Pieces Memory Suggestions */}
                 {showMemory && (
                   <div className="ttv-memory-suggestions">
@@ -2313,71 +2398,11 @@ export const TTVInferenceUI = ({
                 </div>
               </div>
             </div>
-
-            {/* AI Generated Narrative */}
-            {narrative.keluhan_utama && (
-              <div className="ttv-ai-narrative">
-                <div className="ttv-ai-header">
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <h4 className="ttv-ai-title">Sentra Agent Narrative</h4>
-                    {isSearchingMemory && (
-                      <span className="ttv-memory-pulse" title="Searching Local Memory...">
-                        <span className="pulse-dot"></span>
-                        Auto-Recall...
-                      </span>
-                    )}
-                  </div>
-                  <div className="ttv-ai-badges">
-                    <span className="ttv-ai-badge">{narrative.is_akut ? 'Akut' : 'Kronik'}</span>
-                    {piecesAvailable && (
-                      <button
-                        onClick={handleSaveToPieces}
-                        disabled={saveStatus === 'saving' || saveStatus === 'saved'}
-                        className={`ttv-save-pieces-btn ${saveStatus}`}
-                      >
-                        {saveStatus === 'saving'
-                          ? 'Saving...'
-                          : saveStatus === 'saved'
-                            ? 'Saved to Pieces'
-                            : saveStatus === 'error'
-                              ? 'Connection Error'
-                              : 'Save to Pieces'}
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                <div className="ttv-ai-content">
-                  <div className="ttv-ai-field">
-                    <label>Keluhan Utama:</label>
-                    <p>{narrative.keluhan_utama}</p>
-                  </div>
-
-                  <div className="ttv-ai-field">
-                    <label>Lama Sakit:</label>
-                    <p>{narrative.lama_sakit}</p>
-                  </div>
-                </div>
-
-                <div className="ttv-ai-confidence">
-                  <span className="ttv-confidence-label">Confidence:</span>
-                  <div className="ttv-confidence-bar">
-                    <div
-                      className="ttv-confidence-fill"
-                      style={{ width: `${narrative.confidence * 100}%` }}
-                    />
-                  </div>
-                  <span className="ttv-confidence-value">
-                    {Math.round(narrative.confidence * 100)}%
-                  </span>
-                </div>
-              </div>
-            )}
           </div>
         </div>
 
         {/* SECOND SECTION: Vital Signs */}
-        <div className="ttv-section glass-card">
+        <div className="ttv-section glass-card ttv-section-static ttv-section-dark">
           <div className="ttv-section-header">
             <div>
               <h3 className="ttv-section-title">Vital Signs</h3>
@@ -2587,20 +2612,104 @@ export const TTVInferenceUI = ({
                 ? scrambleText
                 : uplinkStatus === 'success'
                   ? 'Synced ✓'
-                  : 'Satellite Processing'}
+                  : uplinkActionLabel}
             </span>
           </button>
           <button
             onClick={() => {
-              console.log('[TTVInferenceUI] ✅ Trajectory tab clicked!', { isFormValid });
               onNavigateToTrajectory?.();
             }}
             disabled={!isFormValid}
-            className="motion-press flex-1 py-2 px-2 rounded-lg text-body relative neu-tab text-muted font-medium"
+            className="motion-press flex-1 py-2 px-2 rounded-lg text-body relative neu-tab text-muted font-medium flex items-center justify-center"
           >
-            Clinical Trajectory
+            <span>Clinical Trajectory</span>
           </button>
         </div>
+      </div>
+
+      {/* Send to Doctor Panel */}
+      <div className="mt-3 relative z-10">
+        {!showDoctorPanel ? (
+          <button
+            onClick={handleOpenDoctorPanel}
+            disabled={!isFormValid}
+            className="w-full motion-press py-2.5 px-4 rounded-lg text-body neu-tab text-muted font-medium flex items-center justify-center gap-2 disabled:opacity-40"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.8a19.79 19.79 0 01-3.07-8.63A2 2 0 012 .97h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.91 8.08a16 16 0 006.86 6.86l1.38-1.38a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/>
+            </svg>
+            <span className="text-[11px] uppercase tracking-[0.1em]">Kirim ke Dokter</span>
+          </button>
+        ) : (
+          <div className="neu-card p-4 space-y-3">
+            {/* Panel Header */}
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-small font-semibold text-platinum">Pilih Dokter Online</span>
+              <button
+                onClick={() => { setShowDoctorPanel(false); setConsultStatus('idle'); setSelectedDoctorId(''); }}
+                className="text-muted hover:text-platinum text-xs w-6 h-6 flex items-center justify-center rounded"
+              >✕</button>
+            </div>
+
+            {/* Loading */}
+            {consultStatus === 'loading' && (
+              <p className="text-muted text-xs text-center py-2">Memuat daftar dokter online...</p>
+            )}
+
+            {/* No doctors */}
+            {consultStatus === 'idle' && onlineDoctors.length === 0 && (
+              <p className="text-muted text-xs text-center py-2">Tidak ada dokter online saat ini.</p>
+            )}
+
+            {/* Doctor List */}
+            {onlineDoctors.length > 0 && consultStatus !== 'success' && (
+              <div className="space-y-1.5">
+                {onlineDoctors.map((doc) => (
+                  <button
+                    key={doc.id}
+                    onClick={() => setSelectedDoctorId(doc.id)}
+                    className={`w-full py-2 px-3 rounded-lg text-left transition-all ${
+                      selectedDoctorId === doc.id
+                        ? 'neu-tab-active text-platinum'
+                        : 'neu-tab text-muted hover:text-platinum'
+                    }`}
+                  >
+                    <span className="text-xs font-semibold">{doc.name}</span>
+                    {doc.poli && (
+                      <span className="text-[10px] opacity-60 ml-2">· {doc.poli}</span>
+                    )}
+                    {doc.role && (
+                      <span className="text-[10px] opacity-40 ml-1">({doc.role})</span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Error */}
+            {consultStatus === 'error' && (
+              <p className="text-red-400 text-xs text-center py-1">{consultError}</p>
+            )}
+
+            {/* Success */}
+            {consultStatus === 'success' && (
+              <p className="text-green-400 text-xs text-center py-2 font-semibold">
+                ✓ Data pasien berhasil dikirim ke dokter
+              </p>
+            )}
+
+            {/* Send Button */}
+            {selectedDoctorId && consultStatus !== 'success' && (
+              <button
+                onClick={handleSendToDoctor}
+                disabled={consultStatus === 'sending'}
+                className="w-full motion-press py-2.5 px-4 rounded-lg neu-tab-active text-platinum text-xs font-semibold disabled:opacity-50 mt-1"
+              >
+                {consultStatus === 'sending' ? 'Mengirim...' : 'Kirim Sekarang →'}
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
     </div>
@@ -2613,7 +2722,9 @@ export const TTVInferenceUI = ({
 
 export const ttvInferenceUIStyles = `
 .ttv-inference-ui {
-  background: radial-gradient(circle at top left, #1a1c23 0%, #131519 100%);
+  background:
+    radial-gradient(circle at top left, rgba(255, 69, 0, 0.03) 0%, transparent 48%),
+    linear-gradient(180deg, #14171c 0%, #0d1014 100%);
   min-height: 100vh;
   width: 100%;
 }
@@ -2626,12 +2737,174 @@ export const ttvInferenceUIStyles = `
 }
 
 .ttv-section {
-  background: var(--glass-bg, rgba(255, 255, 255, 0.03));
+  background: linear-gradient(155deg, rgba(30, 35, 43, 0.92) 0%, rgba(20, 24, 30, 0.94) 100%);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border-radius: 12px;
   padding: 16px;
   border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.08));
+  box-shadow:
+    0 2px 6px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.02);
+}
+
+.ttv-section-dark {
+  background: linear-gradient(180deg, #0b0e12 0%, #06080b 100%);
+  border-color: rgba(255, 104, 40, 0.24);
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.01);
+}
+
+.ttv-section-static,
+.ttv-section-static * {
+  animation: none !important;
+  transition: none !important;
+  transform: none !important;
+}
+
+.ttv-section-static {
+  border-radius: 4px;
+}
+
+.ttv-section-static,
+.ttv-section-static:hover,
+.ttv-section-static:focus-within,
+.doctor-static-ui .ttv-section-static,
+.doctor-static-ui .ttv-section-static:hover,
+.doctor-static-ui .ttv-section-static:focus-within,
+.doctor-static-ui .ttv-section-static.glass-card:hover,
+.doctor-static-ui .ttv-section-static.ttv-section-dark:hover,
+.doctor-static-ui .ttv-section-static.ttv-section-dark {
+  background: linear-gradient(180deg, #0b0e12 0%, #06080b 100%) !important;
+  border-color: rgba(255, 104, 40, 0.24) !important;
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.01) !important;
+  transform: none !important;
+}
+
+.ttv-section-static .ttv-section-header,
+.ttv-section-static .ttv-textarea,
+.ttv-section-static .ttv-input-with-unit,
+.ttv-section-static .ttv-input-small,
+.ttv-section-static .ttv-autosen-btn,
+.ttv-section-static .ttv-pregnancy-inactive,
+.ttv-section-static .ttv-pregnancy-active,
+.ttv-section-static .ttv-pregnancy-btn-locked,
+.ttv-section-static .ttv-preset-select,
+.ttv-section-static .neu-tab-active,
+.ttv-section-static .sentratype-status-bar {
+  border-radius: 4px;
+}
+
+.ttv-section-static .ttv-textarea,
+.ttv-section-static .ttv-input-with-unit,
+.ttv-section-static .ttv-input-small {
+  background: linear-gradient(180deg, #090c10 0%, #05070a 100%);
+  border-color: rgba(255, 255, 255, 0.04);
+}
+
+.ttv-section-static .ttv-autosen-btn,
+.ttv-section-static .ttv-pregnancy-inactive,
+.ttv-section-static .ttv-pregnancy-btn-locked,
+.ttv-section-static .ttv-preset-select {
+  background: linear-gradient(180deg, #12171d 0%, #0a0d11 100%);
+}
+
+.ttv-section-static .ttv-pregnancy-active {
+  background: linear-gradient(180deg, #141a21 0%, #0c1015 100%);
+}
+
+.ttv-section-static .ttv-textarea:hover,
+.ttv-section-static .ttv-textarea:focus,
+.ttv-section-static .ttv-input-with-unit:hover,
+.ttv-section-static .ttv-input-small:hover,
+.ttv-section-static .ttv-autosen-btn:hover,
+.ttv-section-static .ttv-pregnancy-inactive:hover,
+.ttv-section-static .ttv-pregnancy-active:hover,
+.ttv-section-static .ttv-pregnancy-btn-locked:hover,
+.ttv-section-static .ttv-preset-select:hover,
+.ttv-section-static .ttv-btn-secondary:hover,
+.ttv-section-static .ttv-recall-btn:hover,
+.ttv-section-static .ttv-recall-btn.active:hover,
+.ttv-section-static .ttv-memory-item:hover,
+.doctor-static-ui .ttv-section-static .ttv-textarea:hover,
+.doctor-static-ui .ttv-section-static .ttv-textarea:focus,
+.doctor-static-ui .ttv-section-static .ttv-input-with-unit:hover,
+.doctor-static-ui .ttv-section-static .ttv-input-small:hover,
+.doctor-static-ui .ttv-section-static .ttv-autosen-btn:hover,
+.doctor-static-ui .ttv-section-static .ttv-pregnancy-inactive:hover,
+.doctor-static-ui .ttv-section-static .ttv-pregnancy-active:hover,
+.doctor-static-ui .ttv-section-static .ttv-pregnancy-btn-locked:hover,
+.doctor-static-ui .ttv-section-static .ttv-preset-select:hover,
+.doctor-static-ui .ttv-section-static .ttv-btn-secondary:hover,
+.doctor-static-ui .ttv-section-static .ttv-recall-btn:hover,
+.doctor-static-ui .ttv-section-static .ttv-recall-btn.active:hover,
+.doctor-static-ui .ttv-section-static .ttv-memory-item:hover {
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+.ttv-section-static .ttv-textarea:hover,
+.ttv-section-static .ttv-textarea:focus,
+.ttv-section-static .ttv-input-with-unit:hover,
+.ttv-section-static .ttv-input-small:hover,
+.doctor-static-ui .ttv-section-static .ttv-textarea:hover,
+.doctor-static-ui .ttv-section-static .ttv-textarea:focus,
+.doctor-static-ui .ttv-section-static .ttv-input-with-unit:hover,
+.doctor-static-ui .ttv-section-static .ttv-input-small:hover {
+  background: linear-gradient(180deg, #090c10 0%, #05070a 100%) !important;
+  border-color: rgba(255, 255, 255, 0.04) !important;
+}
+
+.ttv-section-static .ttv-autosen-btn:hover,
+.ttv-section-static .ttv-pregnancy-inactive:hover,
+.ttv-section-static .ttv-pregnancy-btn-locked:hover,
+.ttv-section-static .ttv-preset-select:hover,
+.doctor-static-ui .ttv-section-static .ttv-autosen-btn:hover,
+.doctor-static-ui .ttv-section-static .ttv-pregnancy-inactive:hover,
+.doctor-static-ui .ttv-section-static .ttv-pregnancy-btn-locked:hover,
+.doctor-static-ui .ttv-section-static .ttv-preset-select:hover {
+  background: linear-gradient(180deg, #12171d 0%, #0a0d11 100%) !important;
+  color: inherit !important;
+  border-color: inherit !important;
+  opacity: inherit !important;
+}
+
+.ttv-section-static .ttv-pregnancy-active:hover,
+.doctor-static-ui .ttv-section-static .ttv-pregnancy-active:hover {
+  background: linear-gradient(180deg, #141a21 0%, #0c1015 100%) !important;
+  color: #39ff14 !important;
+  border-color: rgba(57, 255, 20, 0.25) !important;
+}
+
+.ttv-section-static .ttv-btn-secondary:hover,
+.doctor-static-ui .ttv-section-static .ttv-btn-secondary:hover {
+  background: linear-gradient(145deg, #1d2229 0%, #14181e 100%) !important;
+  color: var(--text-secondary) !important;
+  border-color: var(--border-subtle) !important;
+}
+
+.ttv-section-static .ttv-recall-btn:hover,
+.doctor-static-ui .ttv-section-static .ttv-recall-btn:hover {
+  background: rgba(0, 200, 255, 0.1) !important;
+  border-color: rgba(0, 200, 255, 0.3) !important;
+  color: #00c8ff !important;
+}
+
+.ttv-section-static .ttv-recall-btn.active:hover,
+.doctor-static-ui .ttv-section-static .ttv-recall-btn.active:hover {
+  background: #00c8ff !important;
+  border-color: #00c8ff !important;
+  color: #000 !important;
+}
+
+.ttv-section-static .ttv-memory-item:hover,
+.doctor-static-ui .ttv-section-static .ttv-memory-item:hover {
+  background: transparent !important;
+  border-color: var(--border-subtle) !important;
+  color: inherit !important;
 }
 
 .ttv-section-header {
@@ -2659,19 +2932,24 @@ export const ttvInferenceUIStyles = `
 }
 
 .ttv-autosen-btn {
-  background: var(--accent-primary);
-  color: white;
-  border: none;
+  background: var(--carbon-gradient-control, linear-gradient(145deg, #181c22 0%, #111419 100%));
+  color: #39ff14;
+  border: 1px solid rgba(57, 255, 20, 0.25);
   padding: 6px 12px;
-  border-radius: 4px;
+  border-radius: 8px;
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: all 0.2s;
+  box-shadow:
+    inset 0 1px 3px rgba(0, 0, 0, 0.3),
+    0 1px 0 rgba(255, 255, 255, 0.02);
 }
 
 .ttv-autosen-btn:hover {
-  background: var(--accent-hover);
+  background: var(--carbon-gradient-control-hover, linear-gradient(145deg, #1d2229 0%, #15191f 100%));
+  color: #4aff29;
+  border-color: rgba(57, 255, 20, 0.4);
 }
 
 .ttv-autosen-select {
@@ -2686,11 +2964,11 @@ export const ttvInferenceUIStyles = `
 }
 
 .ttv-preset-select {
-  background: var(--surface-primary);
+  background: var(--carbon-gradient-control, linear-gradient(145deg, #181c22 0%, #111419 100%));
   color: var(--text-primary);
   border: 1px solid var(--border-subtle);
   padding: 6px 12px;
-  border-radius: 4px;
+  border-radius: 8px;
   font-size: 11px;
   font-weight: 600;
   cursor: pointer;
@@ -2698,40 +2976,40 @@ export const ttvInferenceUIStyles = `
 }
 
 .ttv-preset-select:hover {
-  background: var(--surface-hover);
+  background: var(--carbon-gradient-control-hover, linear-gradient(145deg, #1d2229 0%, #15191f 100%));
   border-color: rgba(255, 255, 255, 0.15);
 }
 
 /* Pregnancy Button States */
 .ttv-pregnancy-inactive {
-  background: var(--surface-primary);
+  background: var(--carbon-gradient-control, linear-gradient(145deg, #181c22 0%, #111419 100%));
   color: var(--text-tertiary);
   border: 1px solid var(--border-subtle);
   opacity: 0.6;
 }
 
 .ttv-pregnancy-inactive:hover {
-  background: var(--surface-hover);
+  background: var(--carbon-gradient-control-hover, linear-gradient(145deg, #1d2229 0%, #15191f 100%));
   opacity: 0.8;
 }
 
 .ttv-pregnancy-active {
-  background: var(--accent-primary);
-  color: white;
-  border: none;
+  background: linear-gradient(145deg, #1b2027 0%, #13171c 100%);
+  color: #39ff14;
+  border: 1px solid rgba(57, 255, 20, 0.25);
   opacity: 1;
 }
 
 .ttv-pregnancy-active:hover {
-  background: var(--accent-hover);
+  background: var(--carbon-gradient-control-hover, linear-gradient(145deg, #1d2229 0%, #15191f 100%));
 }
 
 .ttv-pregnancy-btn-locked {
-  background: var(--surface-primary);
+  background: var(--carbon-gradient-inset, linear-gradient(145deg, #15191f 0%, #101318 100%));
   color: var(--text-tertiary);
   border: 1px solid var(--border-subtle);
   padding: 6px 12px;
-  border-radius: 4px;
+  border-radius: 8px;
   font-size: 11px;
   font-weight: 600;
   opacity: 0.5;
@@ -2792,9 +3070,9 @@ export const ttvInferenceUIStyles = `
   display: flex;
   align-items: center;
   gap: 8px;
-  background: var(--surface-primary);
+  background: var(--carbon-gradient-input, linear-gradient(145deg, #14181d 0%, #0f1216 100%));
   border: 1px solid var(--border-subtle);
-  border-radius: 4px;
+  border-radius: 10px;
   padding: 0 10px;
   transition: border-color 0.2s;
 }
@@ -2816,9 +3094,9 @@ export const ttvInferenceUIStyles = `
 
 .ttv-input-small {
   width: 70px;
-  background: var(--surface-primary);
+  background: var(--carbon-gradient-input, linear-gradient(145deg, #14181d 0%, #0f1216 100%));
   border: 1px solid var(--border-subtle);
-  border-radius: 4px;
+  border-radius: 10px;
   padding: 10px;
   font-size: 15px;
   font-weight: 600;
@@ -2856,7 +3134,7 @@ export const ttvInferenceUIStyles = `
 
 .ttv-textarea {
   width: 100%;
-  background: linear-gradient(145deg, #1a1b1c 0%, #16161a 100%);
+  background: var(--carbon-gradient-input, linear-gradient(145deg, #14181d 0%, #0f1216 100%));
   border: 1px solid rgba(255, 255, 255, 0.04);
   border-radius: 10px;
   padding: 12px;
@@ -2878,152 +3156,11 @@ export const ttvInferenceUIStyles = `
   border-color: rgba(255, 255, 255, 0.12);
 }
 
-.ttv-suggestions {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  right: 0;
-  background: var(--surface-primary);
-  border: 1px solid var(--accent-primary);
-  border-radius: 4px;
-  margin-top: 4px;
-  max-height: 180px;
-  overflow-y: auto;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-  z-index: 10;
-}
-
-.ttv-suggestion-item {
-  width: 100%;
-  padding: 10px 12px;
-  background: none;
-  border: none;
-  text-align: left;
-  font-size: 12px;
-  color: var(--text-primary);
-  cursor: pointer;
-  transition: background 0.2s;
-  border-bottom: 1px solid var(--border-subtle);
-}
-
-.ttv-suggestion-item:last-child {
-  border-bottom: none;
-}
-
-.ttv-suggestion-item:hover {
-  background: var(--surface-hover);
-}
-
 .ttv-hint {
   font-size: 11px;
   color: var(--text-tertiary);
   margin: 0 0 16px 0;
   font-style: normal;
-}
-
-.ttv-ai-narrative {
-  background: var(--surface-primary);
-  border: 1px solid var(--border-subtle);
-  border-radius: 8px;
-  padding: 12px;
-  margin-top: 12px;
-}
-
-.ttv-ai-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 12px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid var(--border-subtle);
-}
-
-.ttv-ai-title {
-  flex: 1;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-secondary);
-  margin: 0;
-  text-transform: uppercase;
-  letter-spacing: 0.8px;
-}
-
-.ttv-ai-badge {
-  background: var(--accent-primary);
-  color: white;
-  padding: 4px 10px;
-  border-radius: 3px;
-  font-size: 10px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
-}
-
-.ttv-ai-content {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.ttv-ai-field {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.ttv-ai-field label {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--text-tertiary);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.ttv-ai-field p {
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--text-primary);
-  margin: 0;
-  line-height: 1.6;
-}
-
-.ttv-ai-confidence {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 10px;
-  padding-top: 10px;
-  border-top: 1px solid var(--border-subtle);
-}
-
-.ttv-confidence-label {
-  font-size: 10px;
-  font-weight: 700;
-  color: var(--text-tertiary);
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
-}
-
-.ttv-confidence-bar {
-  flex: 1;
-  height: 6px;
-  background: var(--surface-tertiary);
-  border-radius: 3px;
-  overflow: hidden;
-}
-
-.ttv-confidence-fill {
-  height: 100%;
-  background: var(--accent-primary);
-  transition: width 0.3s ease;
-}
-
-.ttv-confidence-value {
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--accent-primary);
-  min-width: 35px;
-  text-align: right;
 }
 
 .ttv-actions {
@@ -3069,13 +3206,13 @@ export const ttvInferenceUIStyles = `
 }
 
 .ttv-btn-secondary {
-  background: transparent;
+  background: linear-gradient(145deg, #1d2229 0%, #14181e 100%);
   color: var(--text-secondary);
   border: 1px solid var(--border-subtle);
 }
 
 .ttv-btn-secondary:hover {
-  background: var(--surface-secondary);
+  background: linear-gradient(145deg, #242a32 0%, #191d24 100%);
 }
 
 /* UPLINK Button Styles */
